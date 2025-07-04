@@ -2,8 +2,10 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 import ChatView from "../views/chatView/index.tsx";
 import Layout from "../views/layout/index.tsx";
 import DirectoryView from "../views/directoryView/index.tsx";
+import LoginView from "../views/loginView/index.tsx";
+import RegisterView from "../views/registerView/index.tsx";
 const router = createBrowserRouter([
-    // 根路由
+    // 一级路由首页
     {
         path: "",
         element: <Layout/>,
@@ -25,6 +27,16 @@ const router = createBrowserRouter([
             }
         ]
     },
+    // 一级路由登录
+    {
+        path: "login",
+        element: <LoginView/>,
+    },
+    // 一级路由注册
+    {
+        path: "register",
+        element: <RegisterView/>,
+    }
 ]);
 
 export default router;

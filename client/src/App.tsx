@@ -1,9 +1,14 @@
 import './App.css'
 import { RouterProvider } from 'react-router-dom';
+import { Provider } from 'react-redux';
 import router from './router';
+import store from './store/user';
+
 function App() {
     return (
-        <RouterProvider router={router}/> //React Router v6 的根组件
+        <Provider store={store}>
+            <RouterProvider router={router}/> 
+        </Provider>
     )
 }
 
