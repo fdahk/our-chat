@@ -1,4 +1,6 @@
 import { configureStore, createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import storage from 'redux-persist/lib/storage'; // 默认使用 localStorage
+import { persistReducer, persistStore } from 'redux-persist';
 
 // 用户状态类型
 interface UserState {
@@ -32,8 +34,14 @@ const initialState: UserState = {
   isAuthenticated: false,
 };
 
-// 创建用户 slice
-// createSlice：自动生成 action creators 和 reducer 的工具函数
+// 1. 配置 persist
+const persistConfig = {
+  key: 'user',      // 存储在 localStorage 的 key
+  storage,          // 存储方式
+  whitelist: ['id', 'username', 'nickname', 'email', 'avatar', 'bio', 'phone', 'status', 'created_at', 'updated_at', 'last_seen', 'isAuthenticated'] // 只持久化这些字段
+};
+
+// 2. 创建 slice
 const userSlice = createSlice({
   name: 'user', //为这个 slice 命名，用于生成 action 类型前缀
   initialState, //初始状态
@@ -79,18 +87,25 @@ const userSlice = createSlice({
   },
 });
 
-// 导出 actions
-export const { login, logout, updateProfile } = userSlice.actions;
+// 3. 包装 reducer
+const persistedUserReducer = persistReducer(persistConfig, userSlice.reducer);
 
 // 配置 store
 const store = configureStore({
   reducer: {
-    user: userSlice.reducer,
+    user: persistedUserReducer,
   },
+  // 5. 解决 serializableCheck 警告
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: false,
+    }),
 });
 
+export const persistor = persistStore(store);
+export default store;
 
 export type RootState = ReturnType<typeof store.getState>; // 获取 store 状态类型，用于数据类型检查
 export type AppDispatch = typeof store.dispatch; // dispatch 是一个hook函数，用于派发 actions
 
-export default store;
+export const { login, logout, updateProfile } = userSlice.actions;

@@ -5,10 +5,25 @@ import { logout } from '../../store/user';
 import { useNavigate } from 'react-router-dom';
 import layoutStyle from './index.module.scss';
 import { Outlet, NavLink } from 'react-router-dom';
+import SocketService from '../../utils/socket';
+import { useEffect } from 'react';
 
 function Layout() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
+    // 渲染时连接socket
+    useEffect(() => {
+        const socket = SocketService.getInstance(); // 获取socket实例
+        
+        socket.on('connect', () => {
+            console.log('socket连接成功');
+        });
+
+        return () => {
+            socket.disconnect();
+        };
+    }, []);
+    
     // 导航栏选项列表
     const itemList = [
         {
@@ -46,11 +61,7 @@ function Layout() {
                 {/* 头像 */}
                 <div className={layoutStyle.left_nav_item_avatar}>
                     <Dropdown menu={{ items }} trigger={['click']} placement="bottomRight">
-                        <Avatar
-                            src="src/assets/avatar.jpg"
-                            icon={<UserOutlined />}
-                            style={{ cursor: 'pointer' }}
-                        />
+                        <img src="src/assets/avatar.jpg" alt="" />
                     </Dropdown>
                 </div>
                 {/* 选项 */}

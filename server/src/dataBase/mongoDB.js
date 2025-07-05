@@ -31,51 +31,65 @@ export const disconnectDB = async () => {
 // 导出这个模型（mongoose.model创建的类），其他文件使用这个类创建消息实例
 
 // 1. 消息 Schema
+// const messageSchema = new mongoose.Schema({
+//     _id: { type: String, required: true }, // 消息ID，与MySQL保持一致
+//     conversationId: { type: String, required: true, index: true }, // 会话ID
+//     senderId: { type: String, required: true, index: true }, // 发送者ID
+//     content: { type: String, required: true }, // 消息内容
+//     type: { type: String, enum: ['text', 'image', 'video', 'audio', 'file', 'emoji', 'location', 'contact', 'system'], default: 'text' }, // 消息类型
+//     status: { type: String, enum: ['sending', 'sent', 'delivered', 'read', 'failed'], default: 'sent' }, // 消息状态
+//     replyTo: { messageId: String, content: String, senderId: String }, // 回复消息
+//     mentions: [String], // 提及的用户ID列表
+//     isEdited: { type: Boolean, default: false }, // 是否编辑
+//     editHistory: [{ content: String, editedAt: { type: Date, default: Date.now } }], // 编辑历史
+//     isDeleted: { type: Boolean, default: false }, // 是否删除
+//     deletedAt: Date, // 删除时间
+//     extra: { // 额外信息
+//         // 图片/视频消息
+//         url: String, // 图片/视频URL
+//         thumbnail: String, // 缩略图URL
+//         width: Number, // 图片/视频宽度
+//         height: Number, // 图片/视频高度
+//         duration: Number, // 视频/音频时长
+        
+//         // 文件消息
+//         fileName: String, // 文件名
+//         fileSize: Number, // 文件大小
+//         mimeType: String, // 文件类型
+        
+//         // 位置消息
+//         latitude: Number, // 纬度
+//         longitude: Number, // 经度
+//         address: String, // 地址
+        
+//         // 联系人消息
+//         contactName: String, // 联系人姓名
+//         contactPhone: String, // 联系人电话
+        
+//         // 系统消息
+//         systemType: String, // join, leave, kick, etc.
+//         targetUsers: [String] // 目标用户ID列表
+//     },
+//     timestamp: { type: Date, default: Date.now, index: true } // 消息时间（索引）
+// }, 
+// {
+//     collection: 'messages', // 集合名
+//     timestamps: true // 自动添加 createdAt 和 updatedAt 字段
+// });
 const messageSchema = new mongoose.Schema({
-    _id: { type: String, required: true }, // 消息ID，与MySQL保持一致
-    conversationId: { type: String, required: true, index: true }, // 会话ID
-    senderId: { type: String, required: true, index: true }, // 发送者ID
-    content: { type: String, required: true }, // 消息内容
-    type: { type: String, enum: ['text', 'image', 'video', 'audio', 'file', 'emoji', 'location', 'contact', 'system'], default: 'text' }, // 消息类型
-    status: { type: String, enum: ['sending', 'sent', 'delivered', 'read', 'failed'], default: 'sent' }, // 消息状态
-    replyTo: { messageId: String, content: String, senderId: String }, // 回复消息
-    mentions: [String], // 提及的用户ID列表
-    isEdited: { type: Boolean, default: false }, // 是否编辑
-    editHistory: [{ content: String, editedAt: { type: Date, default: Date.now } }], // 编辑历史
-    isDeleted: { type: Boolean, default: false }, // 是否删除
-    deletedAt: Date, // 删除时间
-    extra: { // 额外信息
-        // 图片/视频消息
-        url: String, // 图片/视频URL
-        thumbnail: String, // 缩略图URL
-        width: Number, // 图片/视频宽度
-        height: Number, // 图片/视频高度
-        duration: Number, // 视频/音频时长
-        
-        // 文件消息
-        fileName: String, // 文件名
-        fileSize: Number, // 文件大小
-        mimeType: String, // 文件类型
-        
-        // 位置消息
-        latitude: Number, // 纬度
-        longitude: Number, // 经度
-        address: String, // 地址
-        
-        // 联系人消息
-        contactName: String, // 联系人姓名
-        contactPhone: String, // 联系人电话
-        
-        // 系统消息
-        systemType: String, // join, leave, kick, etc.
-        targetUsers: [String] // 目标用户ID列表
-    },
-    timestamp: { type: Date, default: Date.now, index: true } // 消息时间（索引）
-}, 
-{
-    collection: 'messages', // 集合名
-    timestamps: true // 自动添加 createdAt 和 updatedAt 字段
-});
+  conversationId: { type: String, required: true },
+  senderId: { type: String, required: true },
+  content: { type: String, required: true },
+  type: { type: String, default: 'text' },
+  status: { type: String, default: 'sent' },
+  mentions: { type: [String], default: [] },
+  isEdited: { type: Boolean, default: false },
+  isDeleted: { type: Boolean, default: false },
+  extra: { type: Object, default: {} },
+  editHistory: { type: Array, default: [] },
+}, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });
+
+
 
 // 2. 会话缓存（用于快速查询）
 const conversationCacheSchema = new mongoose.Schema({
