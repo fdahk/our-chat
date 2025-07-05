@@ -2,7 +2,7 @@ import { post, get } from '../../utils/http';
 import { type RegisterData, type RegisterResponse } from './type';
 
 
-// 注册API函数
+// 注册API
 export const registerUser = async (userData: RegisterData) => {
   return post<RegisterResponse>('/api/register', {
     username: userData.username,

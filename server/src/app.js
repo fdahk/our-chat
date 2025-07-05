@@ -3,6 +3,7 @@ import cors from 'cors'; //跨域中间件
 import { connectDB } from './dataBase/mongoDB.js';
 import { Server } from 'socket.io'; //基于WebSocket的实时通信库
 import registerRouter from './routes/register.js';
+import loginRouter from './routes/login.js';
 
 const app = express(); //Express监听（http）服务器
 const PORT = process.env.PORT || 3007;
@@ -22,7 +23,7 @@ const io = new Server(server);
 
 // 路由
 app.use('/api', registerRouter);
-
+app.use('/api', loginRouter);
 // 错误处理中间件
 app.use((err, req, res, next) => {
   console.error('全局错误处理:', err);

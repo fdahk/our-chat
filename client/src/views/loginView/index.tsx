@@ -21,8 +21,8 @@ import {
 } from '@ant-design/icons';
 // 引入redux
 import { useDispatch } from 'react-redux';
-import { login } from './api.ts';
-import type { AppDispatch } from '../../store/user'; // 数据类型检查
+import { loginApi } from './api.ts';
+import  {type AppDispatch, login } from '../../store/user'; // 数据类型检查
 import styles from './index.module.scss';
 import { useNavigate } from 'react-router-dom';
 import { type LoginForm } from './type';
@@ -37,14 +37,30 @@ function LoginView() {
 
   const handleLogin = async (values: LoginForm) => {
     setLoading(true);
-    
     try {
-      const result = await login({
+      const result = await loginApi({
         username: values.username,
         password: values.password,
         remember: values.remember,
       });
       console.log(result);
+      // 存储token到本地
+      localStorage.setItem('token', result.data.token);
+      // 存储用户信息到 redux
+      dispatch(login({
+        id: result.data.id,
+        username: result.data.username,
+        nickname: result.data.nickname,
+        email: result.data.email,
+        avatar: result.data.avatar,
+        bio: result.data.bio,
+        phone: result.data.phone,
+        status: result.data.status,
+        created_at: result.data.created_at,
+        updated_at: result.data.updated_at,
+        last_seen: result.data.last_seen,
+      }));
+
       // 跳转到主页
       navigate('/chat');
     } catch (error) {
@@ -111,7 +127,11 @@ function LoginView() {
               <Input.Password
                 prefix={<LockOutlined />}
                 placeholder="密码"
-                iconRender={(visible) => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
+                iconRender={visible =>
+                  visible
+                    ? <EyeTwoTone twoToneColor="#07c160" /> //双色图标，只用style无效，且不支持css变量
+                    : <EyeInvisibleOutlined />
+                }
               />
             </Form.Item>
 

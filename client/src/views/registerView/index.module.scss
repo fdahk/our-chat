@@ -28,55 +28,6 @@
     }
   }
   
-  // 自定义表单样式
-  :global {
-    .ant-form-item {
-      margin-bottom: 16px;
-    }
-    
-    .ant-input-affix-wrapper,
-    .ant-input {
-      border-radius: 8px;
-      border: 1px solid #d9d9d9;
-      transition: all 0.3s;
-      
-      &:hover {
-        border-color: #40a9ff;
-      }
-      
-      &:focus,
-      &.ant-input-affix-wrapper-focused {
-        border-color: #1890ff;
-        box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
-      }
-    }
-    
-    .ant-btn-primary {
-      height: 45px;
-      border-radius: 8px;
-      font-weight: 500;
-      font-size: 16px;
-      
-      &:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
-      }
-    }
-    
-    .ant-btn:not(.ant-btn-primary) {
-      border-radius: 8px;
-      height: 40px;
-      
-      &:hover {
-        transform: translateY(-1px);
-      }
-    }
-    
-    .ant-checkbox-wrapper {
-      font-size: 14px;
-    }
-  }
-  
   // 响应式设计
   @media (max-width: 768px) {
     .registerContainer {

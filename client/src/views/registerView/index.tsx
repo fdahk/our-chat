@@ -47,7 +47,7 @@ function RegisterView() {
         bio: '',
       });
       
-      // 由于响应拦截器已经处理了错误，这里只处理成功情况
+      // 响应拦截器已经处理了错误，这里只处理成功情况
       message.success('注册成功！即将跳转到登录页面');
       
       // 清空表单
@@ -209,7 +209,7 @@ function RegisterView() {
               <Input.Password
                 prefix={<LockOutlined />}
                 placeholder="密码"
-                iconRender={(visible) => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
+                iconRender={(visible) => (visible ? <EyeTwoTone twoToneColor="#07c160" /> : <EyeInvisibleOutlined />)}
               />
             </Form.Item>
 
@@ -232,7 +232,7 @@ function RegisterView() {
               <Input.Password
                 prefix={<LockOutlined />}
                 placeholder="确认密码"
-                iconRender={(visible) => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
+                iconRender={(visible) => (visible ? <EyeTwoTone twoToneColor="#07c160" /> : <EyeInvisibleOutlined />)}
               />
             </Form.Item>
 

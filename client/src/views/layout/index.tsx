@@ -1,7 +1,15 @@
+import { Dropdown, Avatar } from 'antd';
+import { UserOutlined, LogoutOutlined } from '@ant-design/icons';
+import { useDispatch } from 'react-redux';
+import { logout } from '../../store/user';
+import { useNavigate } from 'react-router-dom';
 import layoutStyle from './index.module.scss';
-import { Outlet,NavLink } from 'react-router-dom';
+import { Outlet, NavLink } from 'react-router-dom';
 
 function Layout() {
+    const dispatch = useDispatch();
+    const navigate = useNavigate();
+    // 导航栏选项列表
     const itemList = [
         {
             name: 'chat',
@@ -14,13 +22,36 @@ function Layout() {
             path: '/directory'
         }
     ]
+
+    // 退出登录处理
+    const handleLogout = () => {
+        dispatch(logout());
+        localStorage.removeItem('token');
+        navigate('/login');
+    };
+
+    const items = [
+        {
+            key: 'logout',
+            icon: <LogoutOutlined />,
+            label: '退出登录',
+            onClick: handleLogout,
+        },
+    ];
+
     return (
         <div className={layoutStyle.layout_container}>
             {/* 左导航栏 */}
             <div className={layoutStyle.left_nav}>
                 {/* 头像 */}
                 <div className={layoutStyle.left_nav_item_avatar}>
-                    <img src="src\assets\avatar.jpg" alt="" />
+                    <Dropdown menu={{ items }} trigger={['click']} placement="bottomRight">
+                        <Avatar
+                            src="src/assets/avatar.jpg"
+                            icon={<UserOutlined />}
+                            style={{ cursor: 'pointer' }}
+                        />
+                    </Dropdown>
                 </div>
                 {/* 选项 */}
                 {
@@ -42,6 +73,6 @@ function Layout() {
             <Outlet/>
         </div>
     )
-
 }
+
 export default Layout;
