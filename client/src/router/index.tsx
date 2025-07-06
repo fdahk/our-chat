@@ -1,9 +1,12 @@
 import { createBrowserRouter, Navigate } from "react-router-dom"; 
-import ChatView from "../views/chatView/index.tsx";
+// 一级路由组件
 import Layout from "../views/layout/index.tsx";
-import DirectoryView from "../views/directoryView/index.tsx";
 import LoginView from "../views/loginView/index.tsx";
 import RegisterView from "../views/registerView/index.tsx";
+// 二级路由组件
+import DirectoryView from "../views/directoryView/index.tsx";
+import ChatView from "../views/chatView/index.tsx";
+
 const router = createBrowserRouter([
     // 一级路由首页
     {
@@ -19,7 +22,6 @@ const router = createBrowserRouter([
             {
                 path: "chat",
                 element: <ChatView/>,
-                // 三级路由
             },
             {
                 path: "directory",

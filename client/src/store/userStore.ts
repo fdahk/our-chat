@@ -1,9 +1,9 @@
 import { configureStore, createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import storage from 'redux-persist/lib/storage'; // 默认使用 localStorage
+import storage from 'redux-persist/lib/storage'; // 使用 localStorage 作为存储
 import { persistReducer, persistStore } from 'redux-persist';
 
-// 用户状态类型
-interface UserState {
+// 用户状态类型， 注：对外导出，用于数据类型检查
+export interface UserState {
   id: number | null;
   username: string;
   nickname: string;
@@ -34,14 +34,15 @@ const initialState: UserState = {
   isAuthenticated: false,
 };
 
-// 1. 配置 persist
+// 配置 persist 持久化
 const persistConfig = {
   key: 'user',      // 存储在 localStorage 的 key
   storage,          // 存储方式
-  whitelist: ['id', 'username', 'nickname', 'email', 'avatar', 'bio', 'phone', 'status', 'created_at', 'updated_at', 'last_seen', 'isAuthenticated'] // 只持久化这些字段
+  // 只持久化这些字段
+  whitelist: ['id', 'username', 'nickname', 'email', 'avatar', 'bio', 'phone', 'status', 'created_at', 'updated_at', 'last_seen', 'isAuthenticated'] 
 };
 
-// 2. 创建 slice
+// 创建 slice
 const userSlice = createSlice({
   name: 'user', //为这个 slice 命名，用于生成 action 类型前缀
   initialState, //初始状态
@@ -76,6 +77,7 @@ const userSlice = createSlice({
       state.updated_at = '';
       state.last_seen = '';
       state.isAuthenticated = false;
+      
       console.log("store清空成功");
     },
     // partial 全部可选实现部分更新
@@ -87,25 +89,35 @@ const userSlice = createSlice({
   },
 });
 
-// 3. 包装 reducer
+// 持久化包装 reducer
+// 页面刷新后，状态会自动恢复
 const persistedUserReducer = persistReducer(persistConfig, userSlice.reducer);
 
 // 配置 store
-const store = configureStore({
+const userStore = configureStore({
   reducer: {
-    user: persistedUserReducer,
+    user: persistedUserReducer, // 使用持久化包装的 reducer
   },
-  // 5. 解决 serializableCheck 警告
+  //  解决 serializableCheck 警告
+  // Middleware 是 Redux 中的中间件，在 action 到达 reducer前进行拦截和处理
+  // 默认包含以下 middleware：
+  // redux-thunk (处理异步 action)
+  // serializable-state-invariant-middleware (检查状态序列化)
+  // immutability-state-invariant-middleware (检查状态不可变性)
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
-      serializableCheck: false,
+      // Redux Toolkit 默认会检查 action 和 state 是否可以被序列化
+
+      // 如果包含函数、Symbol 等不可序列化的值，会发出警告
+      serializableCheck: false, // 禁用序列化检查
     }),
 });
 
-export const persistor = persistStore(store);
-export default store;
+// 创建持久化存储的 persistor 对象，用于在 React 应用中配置 PersistGate 组件
+// 作用：监听 store 状态变化，自动保存到 localStorage，页面加载时恢复状态
+export const userPersistor = persistStore(userStore);
 
-export type RootState = ReturnType<typeof store.getState>; // 获取 store 状态类型，用于数据类型检查
-export type AppDispatch = typeof store.dispatch; // dispatch 是一个hook函数，用于派发 actions
-
+export default userStore;
+// export type RootState = ReturnType<typeof store.getState>; // 获取 store 状态类型，用于数据类型检查 export  UserState，命名麻烦不如直接导出算了
+export type UserDispatch = typeof userStore.dispatch; // dispatch 是一个hook函数，用于派发 actions
 export const { login, logout, updateProfile } = userSlice.actions;

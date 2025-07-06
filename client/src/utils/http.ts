@@ -1,8 +1,9 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse, type AxiosError } from 'axios';
-import { message } from 'antd';
+import { message } from 'antd'; //引入antd的message 消息提示组件
+import type { ApiResponse } from '../globalType/apiResponse';
 
 const http: AxiosInstance = axios.create({
-  baseURL: 'http://127.0.0.1:3007', 
+  baseURL: 'http://127.0.0.1:3007', //请求地址
   timeout: 10000,  
   headers: {
     // 统一JSON格式
@@ -11,25 +12,30 @@ const http: AxiosInstance = axios.create({
   },
 });
 
-// 请求拦截器
+
+// 请求拦截器可以在请求发送前： 修改请求配置， 添加认证信息， 添加请求头，记录日志， 处理错误
 http.interceptors.request.use(
+  // 第一个参数：请求成功处理函数
   (config: any) => {
-    // 添加认证 token
+    // 添加认证 token，将 token 添加到请求头的 Authorization 字段，用于身份验证
     const token = localStorage.getItem('token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // 添加时间戳防止缓存
+    // 为 GET 请求添加时间戳参数，防止浏览器缓存导致的数据过期问题
+    // 浏览器会缓存 GET 请求的响应，当再次请求相同 URL 时，可能直接返回缓存的数据
     if (config.method === 'get') {
       config.params = {
         ...config.params,
         _t: Date.now(),
       };
     }
+    // 返回修改后的配置
     return config;
   },
-
+  // 第二个参数：请求错误处理函数
+  // 请求拦截器错误处理
   (error: AxiosError) => {
     // 请求错误处理
     console.error('请求拦截器错误:', error);
@@ -40,10 +46,12 @@ http.interceptors.request.use(
 
 // 响应拦截器
 http.interceptors.response.use(
+  // 第一个参数：响应成功处理函数
   (response: AxiosResponse) => {
     // 2xx的状态码都会触发该函数直接返回数据部分，简化调用
     return response.data;
   },
+  // 第二个参数：响应错误处理函数
   (error: AxiosError) => {
     // 超出 2xx的状态码都会触发该函数
     console.error('响应错误:', error);
@@ -81,7 +89,7 @@ http.interceptors.response.use(
           message.error((data as any)?.message || `请求失败 (${status})`);
       }
     } else if (error.request) {
-      // 请求已发出但没有收到响应
+      // error.request 存在代表：请求配置正确，请求已经通过网络发送，但是服务器没有返回响应
       if (error.code === 'ECONNABORTED') {
         message.error('请求超时，请稍后重试');
       } else {
@@ -91,19 +99,16 @@ http.interceptors.response.use(
       // 其他错误
       message.error('请求配置错误');
     }
-
+    // 返回错误，用于在组件中处理错误
     return Promise.reject(error);
   }
 );
 
-// 通用请求方法封装
-export interface ApiResponse<T = any> {
-  success: boolean;
-  message: string;
-  data?: T;
-}
+
 
 // GET 请求
+// 函数泛型语法 <T = any>，写在函数前面
+// 注意：返回值是promise<response.data>
 export const get = <T = any>(
   url: string, 
   config?: AxiosRequestConfig

@@ -1,29 +1,17 @@
-import { Dropdown, Avatar } from 'antd';
-import { UserOutlined, LogoutOutlined } from '@ant-design/icons';
+import { Dropdown } from 'antd';
+import { LogoutOutlined } from '@ant-design/icons';
 import { useDispatch } from 'react-redux';
-import { logout } from '../../store/user';
+import { logout } from '../../store/userStore';
 import { useNavigate } from 'react-router-dom';
 import layoutStyle from './index.module.scss';
 import { Outlet, NavLink } from 'react-router-dom';
-import SocketService from '../../utils/socket';
-import { useEffect } from 'react';
+import { clearGlobalMessages } from '../../store/chatStore';
+import type { UserDispatch } from '../../store/userStore';
 
 function Layout() {
-    const dispatch = useDispatch();
+    const dispatch = useDispatch<UserDispatch>();
     const navigate = useNavigate();
-    // 渲染时连接socket
-    useEffect(() => {
-        const socket = SocketService.getInstance(); // 获取socket实例
-        
-        socket.on('connect', () => {
-            console.log('socket连接成功');
-        });
 
-        return () => {
-            socket.disconnect();
-        };
-    }, []);
-    
     // 导航栏选项列表
     const itemList = [
         {
@@ -40,9 +28,10 @@ function Layout() {
 
     // 退出登录处理
     const handleLogout = () => {
-        dispatch(logout());
-        localStorage.removeItem('token');
-        navigate('/login');
+        dispatch(logout()); // 清空用户信息
+        localStorage.removeItem('token'); // 清空token
+        dispatch(clearGlobalMessages()); // 清空全局消息
+        navigate('/login'); //注：跳转到登录页，layout组件销毁会触发useEffect，断开socket连接
     };
 
     const items = [
@@ -61,7 +50,7 @@ function Layout() {
                 {/* 头像 */}
                 <div className={layoutStyle.left_nav_item_avatar}>
                     <Dropdown menu={{ items }} trigger={['click']} placement="bottomRight">
-                        <img src="src/assets/avatar.jpg" alt="" />
+                        <img src="src/assets/images/avatar.jpg" alt="" />
                     </Dropdown>
                 </div>
                 {/* 选项 */}

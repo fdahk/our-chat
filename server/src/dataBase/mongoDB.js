@@ -82,14 +82,28 @@ const messageSchema = new mongoose.Schema({
   content: { type: String, required: true },
   type: { type: String, default: 'text' },
   status: { type: String, default: 'sent' },
-  mentions: { type: [String], default: [] },
+  mentions: { type: Array, default: [] },
   isEdited: { type: Boolean, default: false },
   isDeleted: { type: Boolean, default: false },
   extra: { type: Object, default: {} },
   editHistory: { type: Array, default: [] },
-}, { timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } });
+  timestamp: { type: Date, default: Date.now},
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
 
+// 单字段索引
+messageSchema.index({ conversationId: 1 });
+messageSchema.index({ senderId: 1 });
+messageSchema.index({ timestamp: 1 });
 
+// 复合索引
+messageSchema.index({ conversationId: 1, timestamp: -1 });
+messageSchema.index({ senderId: 1, timestamp: -1 });
+
+// 其他索引
+messageSchema.index({ 'replyTo.messageId': 1 });
+messageSchema.index({ mentions: 1 });
 
 // 2. 会话缓存（用于快速查询）
 const conversationCacheSchema = new mongoose.Schema({

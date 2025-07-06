@@ -1,11 +1,11 @@
 import express from 'express';
 import cors from 'cors'; //跨域中间件
-import { connectDB } from './dataBase/mongoDB.js';
+import { connectDB } from './dataBase/mongoDb.js';
 import { Server } from 'socket.io'; //基于WebSocket的实时通信库
 import registerRouter from './routes/register.js';
 import loginRouter from './routes/login.js';
 import conversationRouter from './routes/conversation.js';
-import { Message } from './dataBase/mongoDB.js';
+import { Message } from './dataBase/mongoDb.js';
 const app = express(); //Express监听（http）服务器
 const PORT = process.env.PORT || 3007;
 // 跨域中间件
