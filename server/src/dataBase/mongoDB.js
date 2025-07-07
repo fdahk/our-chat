@@ -3,7 +3,7 @@
 
 import mongoose from 'mongoose'; //Mongoose，提供Schema验证，自动管理数据结构
 const URL = 'mongodb://localhost:27017/our-chat';
-export const connectDB = async () => {
+export const connectDb = async () => {
     try {
         await mongoose.connect(URL);
         console.log('MongoDB连接成功');
@@ -14,7 +14,7 @@ export const connectDB = async () => {
 };
 
 // 断开连接
-export const disconnectDB = async () => {
+export const disconnectDb = async () => {
     try {
         await mongoose.disconnect();
         console.log('MongoDB断开连接');
@@ -92,16 +92,12 @@ const messageSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 });
 
-// 单字段索引
+// 统一用 schema.index() 声明索引
 messageSchema.index({ conversationId: 1 });
 messageSchema.index({ senderId: 1 });
 messageSchema.index({ timestamp: 1 });
-
-// 复合索引
 messageSchema.index({ conversationId: 1, timestamp: -1 });
 messageSchema.index({ senderId: 1, timestamp: -1 });
-
-// 其他索引
 messageSchema.index({ 'replyTo.messageId': 1 });
 messageSchema.index({ mentions: 1 });
 
@@ -112,7 +108,7 @@ const conversationCacheSchema = new mongoose.Schema({
     title: String, // 会话标题
     avatar: String, // 会话头像
     participants: [String], // 参与者ID列表（索引）
-    // lastMessage: { type: String } Mongoose 只会把它当作一个“对象类型的字段”，但不是嵌套对象，导致你传对象时报错。
+    // lastMessage: { type: String } Mongoose 只会把它当作一个"对象类型的字段"，但不是嵌套对象，导致你传对象时报错。
     lastMessage: { type: mongoose.Schema.Types.Mixed }, // 允许存储任意对象
     totalMessages: { type: Number, default: 0 }, // 消息总数
     createdAt: { type: Date, default: Date.now }, // 创建时间

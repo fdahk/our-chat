@@ -12,7 +12,7 @@ const rootPersistConfig = {
   whitelist: ['user', 'chat'], // 需要持久化的 slice
 };
 
-// 合并所有reducer
+// 合并所有reducer（每个reducer都自动管理自己的state
 const rootReducer = {
   user: userReducer,
   chat: chatReducer,

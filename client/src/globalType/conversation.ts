@@ -11,7 +11,7 @@ export interface Conversation {
     // 可扩展更多字段
   }
   
-  // 所有会话消息储存
+  // 会话消息类型
   export interface ConvMessage {
     [key: string]: Message[]; // 键是会话id，值是消息列表
   }

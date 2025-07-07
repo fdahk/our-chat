@@ -1,20 +1,39 @@
 // 全局 socket 监听器，监听 socket 消息，并更新全局消息状态,在app.tsx中使用
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { type UserState } from '../store/userStore';
 import SocketService from './socket';
-import { addGlobalMessage } from '../store/chatStore';
+import { addGlobalMessage, initGlobalConversations, initGlobalMessages } from '../store/chatStore';
 import type { Message } from '../globalType/message';
+import { getConversationList, getConversationMessages } from '../globalApi/getChat';
+import type { ApiResponse } from '../globalType/apiResponse';
+import type { Conversation, ConvMessage } from '../globalType/conversation';
 
 export default function GlobalSocketListener() {
-  const userId = useSelector((state: UserState) => state.id);
+
+  // const userId = useSelector((state: UserState) => state.id);
+  const user = JSON.parse(localStorage.getItem('persist:user') as string);
+  const userId: number = user.id; // 注：Number类型
+  // console.log(userId); // 调试
   const dispatch = useDispatch();
   const socket = SocketService.getInstance();
-  
+
     // 注：这里监听的是全局消息，消息派发逻辑由后端实现，更新redux状态全局消息，同时触发组件重新渲染
     useEffect(() => {
-      socket.connect(); // 连接socket
-      socket.emit('connection', { userId }); // 发送连接事件，后端监听connection事件
+      // 首次启动应用先从后端获取会话列表和全局消息存到本地 
+      // Promise 链式调用，比传统async/await更简洁，回调函数更是古代的写法
+      // 获取会话列表
+      getConversationList(userId).then((res: ApiResponse<Conversation[]>) => {
+        dispatch(initGlobalConversations(res.data ?? []));
+      });
+      // 获取所有会话消息
+      getConversationMessages(userId).then((res: ApiResponse<ConvMessage>) => {
+        dispatch(initGlobalMessages(res.data ?? {})); // 注： 数据结构为 { [conversationId: string]: Message[] , ... }
+      });
+
+       // 连接socket
+      socket.connect();
+      socket.emit('join', userId); // 发送连接事件，后端处理连接后的配置（加入会话等
 
       // 新消息处理函数
       const handleMessage = (msg: Message) => {
@@ -31,7 +50,6 @@ export default function GlobalSocketListener() {
 
       // 仅监听 receiveMessage 事件，更新消息列表，消息派发逻辑由后端实现
       socket.on('receiveMessage', handleMessage);
-
       return () => {
           socket.off('receiveMessage', handleMessage); // 退出登录时，移除事件监听
           socket.disconnect(); // 断开socket连接

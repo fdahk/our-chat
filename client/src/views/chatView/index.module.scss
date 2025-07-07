@@ -69,11 +69,13 @@
         flex: 1;
         min-height: 0; // 让内容可以收缩,防止容器撑开
         padding: 0 10px;
+        overflow-y: auto;
+        scrollbar-width: none; // 隐藏滚动条
     }
     .message_list {
         height: 100%;
-        overflow-y: auto;
-        scrollbar-width: none; // 隐藏滚动条
+        // overflow-y: auto;
+        // scrollbar-width: none; // 隐藏滚动条
         li {
             border-bottom: none; //去掉组件默认的分割线
         }

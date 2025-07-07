@@ -8,7 +8,7 @@ import { persistReducer } from 'redux-persist';
 // 聊天状态类型
 export interface ChatState {
   globalMessages: ConvMessage, //注：数据结构为 { [conversationId: string]: Message[] , ... }
-  conversations: Conversation[], //注：数据结构为 { [conversationId: string]: Message[] , ... }
+  globalConversations: Conversation[], 
 }
 
 
@@ -16,7 +16,7 @@ export interface ChatState {
 // 注：数据结构为 state.globalMessages: { [conversationId: string]: Message[] , ... }
 const initialState: ChatState = {
   globalMessages: {},
-  conversations: [],
+  globalConversations: [],
 };
 
 // createSlice 简化redux创建过程：
@@ -31,22 +31,33 @@ const chatSlice = createSlice({
     //自动使用action creator工厂函数创造action
     //action 的结构：{type: 'chat/addGlobalMessage', payload: Message} ，type自动生成，payload是传入的参数
     // 全局消息管理
+    initGlobalMessages(state, action: PayloadAction<ConvMessage>) {
+      state.globalMessages = action.payload;
+    },
     addGlobalMessage(state, action: PayloadAction<Message>) {
-      state.globalMessages[action.payload.conversationId].push(action.payload); //将新消息添加到全局消息数组
+      // state.globalMessages[action.payload.conversationId].push(action.payload); //将新消息添加到全局消息数组
+      state.globalMessages = {
+        ...state.globalMessages,
+        [action.payload.conversationId]: [...(state.globalMessages[action.payload.conversationId] ?? []), action.payload]
+      };
+      // console.log("添加全局消息"); // 调试
     },
     clearGlobalMessages(state) {
       state.globalMessages = {};
     },
     // 会话管理
+    initGlobalConversations(state, action: PayloadAction<Conversation[]>) {
+      state.globalConversations = action.payload;
+    },
     addConversation(state, action: PayloadAction<Conversation>) {
-      state.conversations.push(action.payload);
+      state.globalConversations.push(action.payload);
     },
     updateConversation(state, action: PayloadAction<Conversation>) {
       const { id, ...rest } = action.payload;
-      state.conversations = state.conversations.map(conversation => conversation.id === id ? { ...conversation, ...rest } : conversation);
+      state.globalConversations = state.globalConversations.map(conversation => conversation.id === id ? { ...conversation, ...rest } : conversation);
     },
     deleteConversation(state, action: PayloadAction<string>) {
-      state.conversations = state.conversations.filter(conversation => conversation.id !== action.payload);
+      state.globalConversations = state.globalConversations.filter(conversation => conversation.id !== action.payload);
     }
   },
 });
@@ -55,14 +66,15 @@ const chatSlice = createSlice({
 const persistConfig = {
   key: 'chat',
   storage,
-  whitelist: ['globalMessages', 'conversations'],
+  whitelist: ['globalMessages', 'globalConversations'],
 };
 const persistedChatReducer = persistReducer(persistConfig, chatSlice.reducer);
 
 
 
 //chatSlice.actions 是 createSlice 自动生成的一个对象，包含了所有的 action creators工厂函数，用于创建action
-export const { addGlobalMessage, clearGlobalMessages, addConversation, updateConversation, deleteConversation } = chatSlice.actions;
+export const { initGlobalMessages, initGlobalConversations, addGlobalMessage, clearGlobalMessages,
+                addConversation, updateConversation, deleteConversation } = chatSlice.actions;
 
 //处理 所有action：根据 action.type 使用reducer函数（ Immer库）执行对应的状态更新逻辑
 //在组件中使用：通过 useSelector 获取状态，useDispatch 分发 action，实现状态管理

@@ -22,7 +22,7 @@ import {
 // 引入redux
 import { useDispatch } from 'react-redux';
 import { loginApi } from './api.ts';
-import  {type AppDispatch, login } from '../../store/userStore.ts'; // 数据类型检查
+import  { login } from '../../store/userStore'; // 数据类型检查
 import styles from './index.module.scss';
 import { useNavigate } from 'react-router-dom';
 import { type LoginForm } from './type';
@@ -32,7 +32,7 @@ const { Title, Text } = Typography;
 function LoginView() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const dispatch = useDispatch<AppDispatch>();
+  const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const handleLogin = async (values: LoginForm) => {
