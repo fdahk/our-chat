@@ -1,8 +1,9 @@
 // import { MongoClient } from 'mongodb'; //原生MongoClient，需要手动管理数据结构，没有Schema验证
 // const client = new MongoClient(process.env.MONGODB_URI);
-
 import mongoose from 'mongoose'; //Mongoose，提供Schema验证，自动管理数据结构
-const URL = 'mongodb://localhost:27017/our-chat';
+
+const URL = 'mongodb://localhost:27017/our-chat'; // 数据库地址
+
 export const connectDb = async () => {
     try {
         await mongoose.connect(URL);
@@ -149,13 +150,6 @@ const fileInfoSchema = new mongoose.Schema({
     timestamps: true // 自动添加 createdAt 和 updatedAt 字段
 });
 
-// 索引
-messageSchema.index({ conversationId: 1, timestamp: -1 }); // 会话ID（索引）
-messageSchema.index({ senderId: 1, timestamp: -1 }); // 发送者ID（索引）
-messageSchema.index({ 'replyTo.messageId': 1 }); // 回复消息ID（索引）
-messageSchema.index({ mentions: 1 }); // 提及的用户ID列表（索引）
-
-userConversationStateSchema.index({ userId: 1, conversationId: 1 }, { unique: true }); // 用户ID和会话ID（唯一索引）
 
 // 导出
 export const Message = mongoose.model('Message', messageSchema); // 消息

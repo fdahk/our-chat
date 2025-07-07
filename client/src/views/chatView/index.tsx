@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
-import { type RootState } from '../../store/rootStore';
-import type { Conversation, ConvMessage } from '../../globalType/conversation';
-import type { Message } from '../../globalType/message';
+import type { Conversation, ConvMessage } from '@/globalType/conversation';
+import type { Message } from '@/globalType/message';
 import { Input, Button, List } from 'antd';
 import chatViewStyle from './index.module.scss';
-import SocketService from '../../utils/socket';
+import SocketService from '@/utils/socket';
 
 
 function ChatView() {

@@ -1,4 +1,4 @@
-import { post, get } from '../../utils/http';
+import { post, get } from '@/utils/http';
 import { type RegisterData, type RegisterResponse } from './type';
 
 

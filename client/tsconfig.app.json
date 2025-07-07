@@ -21,7 +21,13 @@
     "noUnusedParameters": true,
     // "erasableSyntaxOnly": true, // 这个选项在ts中是无效的
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+
+    /* 路径别名 */
+    "baseUrl": "./",
+    "paths": {
+      "@/*": ["src/*"],
+    }
   },
   "include": ["src"]
 }

@@ -1,15 +1,15 @@
 import { Dropdown } from 'antd';
 import { LogoutOutlined } from '@ant-design/icons';
 import { useDispatch } from 'react-redux';
-import { logout } from '../../store/userStore';
+import { logout } from '@/store/userStore';
 import { useNavigate } from 'react-router-dom';
 import layoutStyle from './index.module.scss';
 import { Outlet, NavLink } from 'react-router-dom';
-import { clearGlobalMessages } from '../../store/chatStore';
-import type { UserDispatch } from '../../store/userStore';
+import { clearGlobalMessages } from '@/store/chatStore';
+
 
 function Layout() {
-    const dispatch = useDispatch<UserDispatch>();
+    const dispatch = useDispatch();
     const navigate = useNavigate();
 
     // 导航栏选项列表

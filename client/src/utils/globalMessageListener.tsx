@@ -1,15 +1,14 @@
 // 全局 socket 监听器，监听 socket 消息，并更新全局消息状态,在app.tsx中使用
-import { useEffect, useState } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { type UserState } from '../store/userStore';
+import { useEffect} from 'react';
+import { useDispatch } from 'react-redux';
 import SocketService from './socket';
-import { addGlobalMessage, initGlobalConversations, initGlobalMessages } from '../store/chatStore';
-import type { Message } from '../globalType/message';
-import { getConversationList, getConversationMessages } from '../globalApi/getChat';
-import type { ApiResponse } from '../globalType/apiResponse';
-import type { Conversation, ConvMessage } from '../globalType/conversation';
+import { addGlobalMessage, initGlobalConversations, initGlobalMessages } from '@/store/chatStore';
+import type { Message } from '@/globalType/message';
+import { getConversationList, getConversationMessages } from '@/globalApi/getChat';
+import type { ApiResponse } from '@/globalType/apiResponse';
+import type { Conversation, ConvMessage } from '@/globalType/conversation';
 
-export default function GlobalSocketListener() {
+export default function GlobalMessageListener() {
 
   // const userId = useSelector((state: UserState) => state.id);
   const user = JSON.parse(localStorage.getItem('persist:user') as string);

@@ -1,6 +1,6 @@
-import { configureStore, createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import storage from 'redux-persist/lib/storage'; // 使用 localStorage 作为存储
-import { persistReducer, persistStore } from 'redux-persist';
+import { persistReducer } from 'redux-persist';
 
 // 用户状态类型， 注：对外导出，用于数据类型检查
 export interface UserState {
@@ -92,32 +92,37 @@ const userSlice = createSlice({
 // 持久化包装 reducer
 // 页面刷新后，状态会自动恢复
 const persistedUserReducer = persistReducer(persistConfig, userSlice.reducer);
+export default persistedUserReducer;
+//废除这个store，应在rootStore中合并并统一配置
+// // 配置 store
+// const userStore = configureStore({
+//   reducer: {
+//     user: persistedUserReducer, // 使用持久化包装的 reducer
+//   },
+//   //  解决 serializableCheck 警告
+//   // Middleware 是 Redux 中的中间件，在 action 到达 reducer前进行拦截和处理
+//   // 默认包含以下 middleware：
+//   // redux-thunk (处理异步 action)
+//   // serializable-state-invariant-middleware (检查状态序列化)
+//   // immutability-state-invariant-middleware (检查状态不可变性)
+//   middleware: (getDefaultMiddleware) =>
+//     getDefaultMiddleware({
+//       // Redux Toolkit 默认会检查 action 和 state 是否可以被序列化
 
-// 配置 store
-const userStore = configureStore({
-  reducer: {
-    user: persistedUserReducer, // 使用持久化包装的 reducer
-  },
-  //  解决 serializableCheck 警告
-  // Middleware 是 Redux 中的中间件，在 action 到达 reducer前进行拦截和处理
-  // 默认包含以下 middleware：
-  // redux-thunk (处理异步 action)
-  // serializable-state-invariant-middleware (检查状态序列化)
-  // immutability-state-invariant-middleware (检查状态不可变性)
-  middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware({
-      // Redux Toolkit 默认会检查 action 和 state 是否可以被序列化
-
-      // 如果包含函数、Symbol 等不可序列化的值，会发出警告
-      serializableCheck: false, // 禁用序列化检查
-    }),
-});
+//       // 如果包含函数、Symbol 等不可序列化的值，会发出警告
+//       serializableCheck: false, // 禁用序列化检查
+//     }),
+// });
 
 // 创建持久化存储的 persistor 对象，用于在 React 应用中配置 PersistGate 组件
 // 作用：监听 store 状态变化，自动保存到 localStorage，页面加载时恢复状态
-export const userPersistor = persistStore(userStore);
+// export const userPersistor = persistStore(userStore);
 
-export default userStore;
+
+// export default userStore;
 // export type RootState = ReturnType<typeof store.getState>; // 获取 store 状态类型，用于数据类型检查 export  UserState，命名麻烦不如直接导出算了
-export type UserDispatch = typeof userStore.dispatch; // dispatch 是一个hook函数，用于派发 actions
-export const { login, logout, updateProfile } = userSlice.actions;
+// export type UserDispatch = typeof userStore.dispatch; // dispatch 是一个hook函数，用于派发 actions
+export const { login, logout, updateProfile } = userSlice.actions; // 导出action creators
+
+// 可选：导出类型
+// export type { UserState };

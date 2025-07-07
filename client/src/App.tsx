@@ -5,7 +5,7 @@ import { rootStore, rootPersistor } from './store/rootStore';
 import { ConfigProvider } from 'antd';
 import { PersistGate } from 'redux-persist/integration/react';
 import router from './router';
-import GlobalSocketListener from './utils/globalSocketListener';
+import GlobalMessageListener from './utils/globalMessageListener';
 
 function App() {
     return (
@@ -19,7 +19,7 @@ function App() {
                     }}
                 >
                     {/* 应用级组件 */}
-                    <GlobalSocketListener /> {/* 全局监听socket消息 */}
+                    <GlobalMessageListener /> {/* 全局监听消息 */}
                     <RouterProvider router={router}/> {/* 路由 */}
                 </ConfigProvider>
             </PersistGate>

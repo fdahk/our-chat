@@ -1,5 +1,5 @@
-import { get } from '../utils/http';
-import type { Conversation, ConvMessage } from '../globalType/conversation';
+import { get } from '@/utils/http';
+import type { Conversation, ConvMessage } from '@/globalType/conversation';
 
 // 获取会话列表
 export const getConversationList = async (userId: number) => {

@@ -1,7 +1,7 @@
 // PayloadAction 是 TypeScript 类型，用于定义 action 的 payload 类型
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { Message } from '../globalType/message';
-import type { ConvMessage, Conversation } from '../globalType/conversation';
+import type { Message } from '@/globalType/message';
+import type { ConvMessage, Conversation } from '@/globalType/conversation';
 import storage from 'redux-persist/lib/storage';
 import { persistReducer } from 'redux-persist';
 
@@ -14,6 +14,7 @@ export interface ChatState {
 
 // 初始状态
 // 注：数据结构为 state.globalMessages: { [conversationId: string]: Message[] , ... }
+// 注：数据结构为 state.globalConversations: Conversation[]
 const initialState: ChatState = {
   globalMessages: {},
   globalConversations: [],
@@ -72,14 +73,18 @@ const persistedChatReducer = persistReducer(persistConfig, chatSlice.reducer);
 
 
 
-//chatSlice.actions 是 createSlice 自动生成的一个对象，包含了所有的 action creators工厂函数，用于创建action
+//chatSlice.actions 是 createSlice 自动生成的一个对象，包含了所有的 action creators工厂函数，用于创建action修改state
 export const { initGlobalMessages, initGlobalConversations, addGlobalMessage, clearGlobalMessages,
                 addConversation, updateConversation, deleteConversation } = chatSlice.actions;
 
 //处理 所有action：根据 action.type 使用reducer函数（ Immer库）执行对应的状态更新逻辑
 //在组件中使用：通过 useSelector 获取状态，useDispatch 分发 action，实现状态管理
 // export default chatSlice.reducer;
-export default persistedChatReducer; // 导出持久化包装的 reducer,用于获取数据
+
+// 必须导出持久化包装的 reducer给rootStore使用，rootStore是整个 React 应用唯一的数据源
+// 在rootStore 里用哪个 reducer，组件中使用 useSelector、useDispatch 访问到的就是哪个 reducer 管理的状态
+// 必须提供rootstore 持久化包装后的 reducer，redux-persist 才能拦截所有 action，自动存储和恢复状态。
+export default persistedChatReducer; 
 
 //reducer作用详解：
 // 组件中 useSelector 读取状态

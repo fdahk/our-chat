@@ -1,4 +1,4 @@
-import { post, get } from '../../utils/http';
+import { post } from '@/utils/http';
 import { type LoginForm } from './type';
 
 // 登录API

@@ -22,7 +22,7 @@ import {
 // 引入redux
 import { useDispatch } from 'react-redux';
 import { loginApi } from './api.ts';
-import  { login } from '../../store/userStore'; // 数据类型检查
+import  { login } from '@/store/userStore'; // 数据类型检查
 import styles from './index.module.scss';
 import { useNavigate } from 'react-router-dom';
 import { type LoginForm } from './type';
