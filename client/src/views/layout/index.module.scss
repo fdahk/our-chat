@@ -1,5 +1,6 @@
 // npm install -D sass-embedded 
 .layout_container {
+    position: relative;
     display: flex;
     flex-direction: row;
     height: 500px;
@@ -7,8 +8,10 @@
     background-color: white;
     margin: 0 auto;
 }
+// 左导航栏
 .left_nav {
-    background-color: rgba(0, 0, 0, 0.8);
+    background-color: var(--background-color);
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -27,6 +30,21 @@
         height: 100%;
     }
 }
+// 统一icon样式
+.my_iconfont{
+        font-size: 1.4rem;
+        color: var(--icon-color);
+        cursor: pointer;
+        &:hover {
+            color: var(--primary-color);
+        }    
+}
+.active {
+    .my_iconfont {
+        color: var(--primary-color);
+    }
+}
+// 选项  
 .left_nav_item {
     width: 40px;
     height: 40px;
@@ -34,17 +52,49 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    .iconfont {
-        font-size: 1.4rem;
-        color: rgba(236, 227, 227, 0.714);
-        cursor: pointer;
-        &:hover {
-            color: var(--primary-color);
-        }    
-    }
+
 }
-.active {
-    .iconfont {
-        color: var(--primary-color);
+
+// 设置中心
+.left_nav_item_menu {
+    width: 40px;
+    height: 40px;
+    position: absolute;
+    bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+// 设置中心菜单
+.menu_center {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    justify-content: start;
+    bottom: 10px;
+    right: -100px;
+    width: 100px;
+    // height: 150px;
+    background-color: var(--background-color);
+    cursor: pointer;
+
+    .menu_center_item_box{
+        width: 100%;
+        display: flex;
+        padding-left: 10px;
+        flex-direction: column;
+        align-items: start;
+        &:hover {
+            background-color: var(--background-color-hover);
+        }  
+    }
+    .menu_center_item {
+        height: 45px;
+        display: flex;
+        font-size: 0.9rem;
+        align-items: center;
+        color: var(--icon-color);
+
     }
 }

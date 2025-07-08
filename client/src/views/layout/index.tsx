@@ -1,12 +1,11 @@
-import { Dropdown } from 'antd';
-import { LogoutOutlined } from '@ant-design/icons';
 import { useDispatch } from 'react-redux';
 import { logout } from '@/store/userStore';
 import { useNavigate } from 'react-router-dom';
 import layoutStyle from './index.module.scss';
 import { Outlet, NavLink } from 'react-router-dom';
 import { clearGlobalMessages } from '@/store/chatStore';
-
+import { useState, useRef, useEffect } from 'react';
+import SettingView from '@/views/settingView';
 
 function Layout() {
     const dispatch = useDispatch();
@@ -26,22 +25,54 @@ function Layout() {
         }
     ]
 
-    // 退出登录处理
+    // 菜单栏
+    const [menuVisible, setMenuVisible] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+    // 设置中心
+    const [settingVisible, setSettingVisible] = useState(false);
+    // 点击外部关闭
+    useEffect(() => {
+        if (!menuVisible) return;
+
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) setMenuVisible(false);
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [menuVisible]);
+
+    // 点击退出登录
     const handleLogout = () => {
         dispatch(logout()); // 清空用户信息
         localStorage.removeItem('token'); // 清空token
         dispatch(clearGlobalMessages()); // 清空全局消息
         navigate('/login'); //注：跳转到登录页，layout组件销毁会触发useEffect，断开socket连接
     };
-
-    const items = [
+    // 点击设置中心
+    const handleSetting = () => {
+        setSettingVisible(!settingVisible);
+    };    
+    // 点击菜单栏
+    const handleMenu = () => {
+        setMenuVisible(!menuVisible);
+    };
+    // 菜单选项
+    const menuItems = [
+        {
+            key: 'setting',
+            label: '设置',
+            onClick: handleSetting,
+        },
         {
             key: 'logout',
-            icon: <LogoutOutlined />,
             label: '退出登录',
             onClick: handleLogout,
         },
     ];
+
 
     return (
         <div className={layoutStyle.layout_container}>
@@ -49,9 +80,7 @@ function Layout() {
             <div className={layoutStyle.left_nav}>
                 {/* 头像 */}
                 <div className={layoutStyle.left_nav_item_avatar}>
-                    <Dropdown menu={{ items }} trigger={['click']} placement="bottomRight">
-                        <img src="src/assets/images/avatar.jpg" alt="" />
-                    </Dropdown>
+                        <img src="src/assets/images/defaultAvatar.jpg" alt="" />
                 </div>
                 {/* 选项 */}
                 {
@@ -64,13 +93,41 @@ function Layout() {
                                     `${layoutStyle.left_nav_item} ${isActive ? layoutStyle.active : ''}`
                                 }
                             >
-                                <i className={`iconfont ${layoutStyle.iconfont} ${item.icon}`}></i>
+                                <i className={`iconfont ${layoutStyle.my_iconfont} ${item.icon}`}></i>
                             </NavLink>
                         )
                     })
                 }
+                {/* 设置中心 */}
+                <div className={layoutStyle.left_nav_item_menu} onClick={handleMenu}>
+                    <i className={`iconfont ${layoutStyle.my_iconfont} icon-menu`}></i>
+                </div>
+                {/* 菜单栏 */}
+                {menuVisible && (
+                    <div
+                        className={layoutStyle.menu_center}
+                        ref={menuRef}
+                    >
+                        {menuItems.map(item => {
+                            return (
+                                <div className={layoutStyle.menu_center_item_box} key={item.key} onClick={item.onClick}>
+                                    <div className={layoutStyle.menu_center_item}>
+                                        {item.label}
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                )}   
             </div>
+
+
+            {/* 二级路由出口 */}
             <Outlet/>
+            {/* 设置中心弹窗 */}
+            {settingVisible && (
+                <SettingView />
+            )}
         </div>
     )
 }

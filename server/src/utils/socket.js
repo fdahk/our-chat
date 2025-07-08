@@ -1,5 +1,5 @@
 import { Server } from 'socket.io'; //基于WebSocket的实时通信库
-
+import { Message } from '../dataBase/mongoDb.js';
 export const initSocket = (server) => {
     //创建WebSocket服务器，连接的建立依赖http，WebSocket的握手（连接建立）阶段，先通过http，然后升级为 WebSocket
     const io = new Server(server, {

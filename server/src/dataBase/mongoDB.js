@@ -152,7 +152,7 @@ const fileInfoSchema = new mongoose.Schema({
 
 
 // 导出
-export const Message = mongoose.model('Message', messageSchema); // 消息
+export const Message = mongoose.model('Message', messageSchema); // 消息模型
 export const ConversationCache = mongoose.model('ConversationCache', conversationCacheSchema); // 会话缓存
 export const UserConversationState = mongoose.model('UserConversationState', userConversationStateSchema); // 用户会话状态
 export const FileInfo = mongoose.model('FileInfo', fileInfoSchema); // 文件信息

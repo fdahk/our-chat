@@ -91,7 +91,7 @@ function ChatView() {
                             }}
                         >
                             <div className={chatViewStyle.item_avatar}>
-                                <img src={item.avatar || ''} alt="" />
+                                <img src={item.avatar || 'src/assets/images/defaultAvatar.jpg'} alt="" />
                             </div>
                             <div className={chatViewStyle.item_title}>{item.title}</div>
                         </div>

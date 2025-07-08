@@ -17,6 +17,10 @@
 
   /* 主题色 */
   --primary-color: #07c160;
+  --background-color: #333333;
+  --background-color-hover: #4f4f4f;
+  --icon-color: #b2a9ac;
+  --text-color: #333333;
 }
 
 
