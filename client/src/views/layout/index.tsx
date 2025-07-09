@@ -1,4 +1,4 @@
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '@/store/userStore';
 import { useNavigate } from 'react-router-dom';
 import layoutStyle from './index.module.scss';
@@ -10,7 +10,7 @@ import SettingView from '@/views/settingView';
 function Layout() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
-
+    const user = useSelector((state: any) => state.user);
     // 导航栏选项列表
     const itemList = [
         {
@@ -80,7 +80,7 @@ function Layout() {
             <div className={layoutStyle.left_nav}>
                 {/* 头像 */}
                 <div className={layoutStyle.left_nav_item_avatar}>
-                        <img src="src/assets/images/defaultAvatar.jpg" alt="" />
+                        <img src={user.avatar ? `http://localhost:3007${user.avatar}` : 'src/assets/images/defaultAvatar.jpg'} alt="" />
                 </div>
                 {/* 选项 */}
                 {

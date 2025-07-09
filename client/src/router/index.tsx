@@ -6,6 +6,7 @@ import RegisterView from "@/views/registerView/index.tsx";
 // 二级路由组件
 import DirectoryView from "@/views/directoryView/index.tsx";
 import ChatView from "@/views/chatView/index.tsx";
+// 三级路由组件
 
 const router = createBrowserRouter([
     // 一级路由首页

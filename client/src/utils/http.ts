@@ -6,9 +6,13 @@ const http: AxiosInstance = axios.create({
   baseURL: 'http://127.0.0.1:3007', //请求地址
   timeout: 10000,  
   headers: {
-    // 统一JSON格式
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
+    // 注：以下全局配置废除
+    //大多数场景 axios 会自动处理 Content-Type
+    // 如果写死了，所有负载都会JSON.stringify 转成字符串，导致其他格式无法传递（如formData
+    // 全局统一JSON格式
+    // 'Content-Type': 'application/json', //负载内容用 JSON.stringify 转成字符串，并用 application/json 作为请求头
+    // 'Accept': 'application/json', //期望返回的数据格式是 JSON
+    Accept: 'application/json',
   },
 });
 

@@ -84,7 +84,7 @@ const userSlice = createSlice({
     updateProfile: (state, action: PayloadAction<Partial<UserState>>) => {
       // 更新用户信息 action
       Object.assign(state, action.payload);
-      console.log("store更新成功");
+      // console.log("store更新成功");
     },
   },
 });
