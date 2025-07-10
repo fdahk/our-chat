@@ -1,0 +1,100 @@
+
+.modalCard {
+    background-color: #fff;
+    border-radius: 12px;
+    width: 250px;
+    padding: 24px 32px 16px 32px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+}
+
+.header {
+    display: flex;
+    align-items: flex-start;
+    position: relative;
+}
+
+.avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    object-fit: cover;
+    margin-right: 18px;
+}
+
+.info {
+    flex: 1;
+}
+
+.username {
+    font-size: 1.2rem;
+    font-weight: 400;
+    color: #222;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.iconUser {
+    font-size: 1.2rem;
+    color: blue;
+}
+
+.wxid, .region {
+    font-size: 13px;
+    color: #888;
+    margin-top: 2px;
+}
+
+
+
+.line {
+    height: 1px;
+    background: #eee;
+    margin: 18px 0 10px 0;
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 15px;    
+}
+
+.label {
+    color: #888;
+    width: 70px;
+    flex-shrink: 0;
+}
+
+.value {
+    color: #333;
+    flex: 1;
+}
+
+.addRemark {
+    color: #bbb;
+    cursor: pointer;
+}
+
+.footer {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 18px;
+    border-top: 1px solid #eee;
+    padding-top: 12px;
+}
+
+.action {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #888;
+    font-size: 13px;
+    cursor: pointer;
+    transition: color 0.2s;
+    &:hover { color: var(--primary-color); }
+    i {
+        font-size: 22px;
+        margin-bottom: 4px;
+    }
+}

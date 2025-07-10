@@ -28,9 +28,9 @@
             gap: 10px;
             padding: 10px;
             cursor: pointer;
-            background-color: rgba(0, 0, 0, 0.08);
+            background-color: var(--button-color);
             &:hover {
-                background-color: rgba(0, 0, 0, 0.15);
+                background-color: var(--button-color-hover);
             }
             .item_avatar {
                 width: 35px;
@@ -41,8 +41,8 @@
                 }
             }
             .item_title {
-                font-size: 16px;
-                font-weight: bold;
+                font-size: 1.1rem;
+                font-weight: 400;
             }
             .item_content {
                 font-size: 14px;
@@ -50,4 +50,13 @@
             }
         }
     }
+}
+// 右侧
+.directory_view_right {
+    flex: 1;
+    height: 100%;
+    background-color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }

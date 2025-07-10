@@ -2,11 +2,11 @@
 import { useEffect} from 'react';
 import { useDispatch } from 'react-redux';
 import SocketService from './socket';
-import { addGlobalMessage, initGlobalConversations, initGlobalMessages } from '@/store/chatStore';
+import { addGlobalMessage, initGlobalConversations } from '@/store/chatStore';
 import type { Message } from '@/globalType/message';
-import { getConversationList, getConversationMessages } from '@/globalApi/chatApi';
+import { getConversationList } from '@/globalApi/chatApi';
 import type { ApiResponse } from '@/globalType/apiResponse';
-import type { Conversation, ConvMessage } from '@/globalType/conversation';
+import type { Conversation } from '@/globalType/conversation';
 
 export default function GlobalMessageListener() {
 
@@ -25,10 +25,7 @@ export default function GlobalMessageListener() {
       getConversationList(userId).then((res: ApiResponse<Conversation[]>) => {
         dispatch(initGlobalConversations(res.data ?? []));
       });
-      // 获取所有会话消息
-      getConversationMessages(userId).then((res: ApiResponse<ConvMessage>) => {
-        dispatch(initGlobalMessages(res.data ?? {})); // 注： 数据结构为 { [conversationId: string]: Message[] , ... }
-      });
+
 
        // 连接socket
       socket.connect();
@@ -41,7 +38,7 @@ export default function GlobalMessageListener() {
               // 函数式更新 ：注： 当某个会话是第一次收到消息时，其结构为[id] : undefined，需要使用空数组初始化
               // 注： 消息更新在chatView组件中，这里仅更新redux状态全局消息
               // setMessages((prev) => ({ ...prev, [msg.conversationId]: [...(prev[msg.conversationId] ?? []) , msg] }));
-              dispatch(addGlobalMessage(msg)); // 更新redux状态全局消息
+              dispatch(addGlobalMessage(msg)); //及时更新消息
               // 消息提示音,注：浏览器获取资源应当使用基于浏览器根目录的路径
               const audio = new Audio('src/assets/audios/message.wav');
               audio.play();

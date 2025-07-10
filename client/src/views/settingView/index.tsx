@@ -5,7 +5,7 @@ import { useState, useRef } from 'react';
 import { useDispatch } from 'react-redux';
 import { uploadImg } from './api';
 import { updateProfile } from '@/store/userStore';
-import CropperModal from '@/globalComponents/cropper'; 
+import CropperModal from '@/globalComponents/cropperModal/cropperModal'; 
 import { updateUserInfo } from '@/globalApi/userApi';
 function SettingView({ onClose }: { onClose: () => void }) {
     const [loading, setLoading] = useState(false);

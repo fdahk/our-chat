@@ -1,11 +1,13 @@
 // 消息类型
 export interface Message {
     conversationId: string;
-    senderId: string;
+    // 注：项目代码类型混乱，统一数据库、后端、前端，当数据为数字id时，全部统一为number类型
+    // 注： 前端修改类型时会有类型提示，后端要检查的类型修改包括（mongo的schema、后端接口部分
+    senderId: number; 
     content: string;
     type: string; 
     status: string; 
-    mentions: string[];
+    mentions: number[];
     isEdited: boolean;
     isDeleted: boolean;
     extra: {};

@@ -19,8 +19,11 @@
   --primary-color: #07c160;
   --background-color: #333333;
   --background-color-hover: #4f4f4f;
+  --button-color: #edecec;
+  --button-color-hover: #d3d2d2;
   --icon-color: #b2a9ac;
   --text-color: #333333;
+  --warning-color: #f56c6c;
 }
 
 

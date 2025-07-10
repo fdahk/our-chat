@@ -79,7 +79,7 @@ export const disconnectDb = async () => {
 // });
 const messageSchema = new mongoose.Schema({
   conversationId: { type: String, required: true },
-  senderId: { type: String, required: true },
+  senderId: { type: Number, required: true },
   content: { type: String, required: true },
   type: { type: String, default: 'text' },
   status: { type: String, default: 'sent' },

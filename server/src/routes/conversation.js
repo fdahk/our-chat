@@ -8,13 +8,10 @@ router.get('/conversation', async (req, res) => {
     const userId = req.query.userId;
     try {
         const [list] = await mySql.execute(
-            `SELECT * FROM conversations
-             WHERE id LIKE ? OR id LIKE ?
+            `SELECT * FROM user_conversations
+             WHERE user_id = ?
              ORDER BY updated_at DESC`,
-            [
-                `single_${userId}_%`,
-                `single_%_${userId}`,
-            ]
+            [userId]
         );
         res.json({ success: true, data: list });
     } catch (error) {
@@ -23,25 +20,17 @@ router.get('/conversation', async (req, res) => {
     }
 });
 
-// 获取所有会话消息（MongoDB）
+// 获取会话的消息（MongoDB）
 router.get('/conversation/messages', async (req, res) => {
-    const userId = req.query.userId;
-    if (!userId) {
-        return res.status(400).json({ success: false, message: '缺少 userId 参数' });
+    const conversationId = req.query.conversationId;
+    if (!conversationId) {
+        return res.status(400).json({ success: false, message: '缺少 conversationId 参数' });
     }
     try {
-        // 匹配 _2_（中间）、_2（结尾）、2_（开头）
-        const regex = new RegExp(`(_${userId}_|_${userId}$|^${userId}_)`);
-        const messages = await Message.find({ conversationId: { $regex: regex } })
+        const messages = await Message.find({ conversationId: conversationId })
             .sort({ timestamp: 1 }) // 按时间排序，从旧到新
             .lean();
-        // 处理数据格式，返回数据结构为 { [conversationId: string]: Message[] , ... }
-        const newMessages = messages.reduce((acc, item) => {
-            acc[item.conversationId] = [...(acc[item.conversationId] || []), item];
-            return acc;
-        }, {});
-        // console.log(newMessages); // 调试
-        res.json({ success: true, data: newMessages });
+        res.json({ success: true, data: messages });
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, message: '获取对话消息失败' });

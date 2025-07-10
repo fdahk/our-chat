@@ -7,7 +7,7 @@ router.get('/getFriendList/:id', async (req, res) => {
         const sql = `SELECT friend_id, remark FROM friendships WHERE user_id = ? AND status = ?`;
         const [friendId] = await mySql.query(sql, [id, "accepted"]); // 获取好友id列表
         // 依据好友id列表获取好友信息
-        const [friendInfo] = await mySql.query(`SELECT id, username, avatar FROM users WHERE id IN (?)`, [friendId.map(item => item.friend_id)]);
+        const [friendInfo] = await mySql.query(`SELECT id, username, avatar, gender FROM users WHERE id IN (?)`, [friendId.map(item => item.friend_id)]);
         // 合并好友id和好友信息
         const friendList = {
             //注：friendId : [ { friend_id: number, remark: string } ]
@@ -15,7 +15,7 @@ router.get('/getFriendList/:id', async (req, res) => {
             //注：friendInfo : [ { id: number, username: string, avatar: string } ]
             // 处理后：{ id: { username: string, avatar: string } }
             friendInfo: friendInfo.reduce((acc, item) => {
-                acc[item.id] = { username: item.username, avatar: item.avatar };
+                acc[item.id] = { username: item.username, avatar: item.avatar, gender: item.gender };
                 return acc;
             }, {})
         }
