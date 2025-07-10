@@ -1,0 +1,53 @@
+.directory_view_container {
+    flex: 1;
+    height: 100%;
+    display: flex;
+    background-color: white;
+}
+
+// 左侧
+.directory_view_left {
+    width: 200px;
+    height: 100%;
+    background-color: white;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid rgba(0, 0, 0, 0.2);
+    .directory_view_left_header {
+        height: 50px;
+        display: flex;
+    }
+    .directory_view_left_body {
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        .directory_view_left_body_item {
+            display: flex;
+            align-items: center;
+            justify-content: start;
+            gap: 10px;
+            padding: 10px;
+            cursor: pointer;
+            background-color: rgba(0, 0, 0, 0.08);
+            &:hover {
+                background-color: rgba(0, 0, 0, 0.15);
+            }
+            .item_avatar {
+                width: 35px;
+                height: 35px;
+                img {
+                    width: 100%;
+                    height: 100%;
+                }
+            }
+            .item_title {
+                font-size: 16px;
+                font-weight: bold;
+            }
+            .item_content {
+                font-size: 14px;
+                color: rgba(0, 0, 0, 0.8);
+            }
+        }
+    }
+}

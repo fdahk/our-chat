@@ -4,7 +4,7 @@ import { useDispatch } from 'react-redux';
 import SocketService from './socket';
 import { addGlobalMessage, initGlobalConversations, initGlobalMessages } from '@/store/chatStore';
 import type { Message } from '@/globalType/message';
-import { getConversationList, getConversationMessages } from '@/globalApi/getChat';
+import { getConversationList, getConversationMessages } from '@/globalApi/chatApi';
 import type { ApiResponse } from '@/globalType/apiResponse';
 import type { Conversation, ConvMessage } from '@/globalType/conversation';
 

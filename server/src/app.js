@@ -6,7 +6,8 @@ import loginRouter from './routes/login.js';
 import conversationRouter from './routes/conversation.js';
 import { initSocket } from './utils/socket.js';
 import uploadRouter from './routes/upload.js';
-
+import userRouter from './routes/user.js';
+import friendRouter from './routes/friend.js';
 const app = express(); //Express监听（http）服务器
 const PORT = process.env.PORT || 3007; //获取端口
 
@@ -39,4 +40,6 @@ app.use('/api', registerRouter);
 app.use('/api', loginRouter);
 app.use('/user', conversationRouter);
 app.use('/user/uploads', uploadRouter);
+app.use('/user', userRouter);
+app.use('/user', friendRouter);
 initSocket(server); // 初始化socket.io

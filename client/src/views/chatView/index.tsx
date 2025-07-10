@@ -23,7 +23,7 @@ function ChatView() {
     const globalConversations = useSelector((state: any) => state.chat.globalConversations); // 从redux中获取全局会话列表
     const socket = SocketService.getInstance(); // 获取socket实例
     const chatBodyRef = useRef<HTMLDivElement>(null); // 消息列表的ref，用来实现滚动
-
+    // const inputRef = useRef<HTMLTextAreaElement>(null); // 输入框的ref，用来实现滚动，注：antd组件已实现
     // 从localStorage（应用启动时已从后端中获取最新的会话列表和全局消息存到本地）中获取
     useEffect(() => {
         // 错误写法：
@@ -47,6 +47,9 @@ function ChatView() {
     useEffect(() => {
         // 注： ref不要绑定错了、一定要if判断存在，不然dom没渲染完成也会执行
         if (chatBodyRef.current) {
+            // scrollTop：当前滚动条距离顶部的像素值（可读可写）
+            // scrollHeight：内容总高度（只读）
+            // clientHeight：可视区域高度（只读）
             chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
         }
     }, [messages, activeConv]);
@@ -75,6 +78,16 @@ function ChatView() {
         setInput('');
     };
 
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+        else if (e.key === 'Enter' && e.shiftKey) {
+            e.preventDefault();
+            setInput(prev => prev + '\n');
+        }
+    };
     return (
         <div className={chatViewStyle.chat_view_container}>
             {/* 左侧：对话列表 */}
@@ -116,18 +129,20 @@ function ChatView() {
                             />
                         </div>
                         {/* 输入框 */}
-                        <div className={chatViewStyle.input_area}>
-                            <Input.TextArea
-                                value={input}
-                                onChange={e => setInput(e.target.value)}
-                                onPressEnter={e => { e.preventDefault(); sendMessage(); }}
-                                rows={2}
-                                placeholder="请输入消息"
-                                className={chatViewStyle.input_textarea}
-                            />
-                            <Button type="primary" onClick={sendMessage} className={chatViewStyle.send_button}>
-                                发送
-                            </Button>
+                        <div className={chatViewStyle.input_area_container}>
+                            <div className={chatViewStyle.input_area_box}>
+                                <Input.TextArea
+                                    value={input}
+                                    onChange={e => setInput(e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                    autoSize={{ minRows: 2, maxRows: 4 }}
+                                    placeholder="请输入消息"
+                                    className={chatViewStyle.input_textarea}
+                                />
+                                <Button type="primary" onClick={sendMessage} className={chatViewStyle.send_button}>
+                                    发送
+                                </Button>
+                            </div>
                         </div>
                     </>
                 ) : (

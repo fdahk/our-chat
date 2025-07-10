@@ -51,6 +51,10 @@ function Layout() {
         dispatch(clearGlobalMessages()); // 清空全局消息
         navigate('/login'); //注：跳转到登录页，layout组件销毁会触发useEffect，断开socket连接
     };
+    // 关闭设置中心(给子组件)
+    const handleCloseSetting = () => {
+        setSettingVisible(false);
+    }
     // 点击设置中心
     const handleSetting = () => {
         setSettingVisible(!settingVisible);
@@ -126,7 +130,7 @@ function Layout() {
             <Outlet/>
             {/* 设置中心弹窗 */}
             {settingVisible && (
-                <SettingView />
+                <SettingView onClose={handleCloseSetting}/>
             )}
         </div>
     )

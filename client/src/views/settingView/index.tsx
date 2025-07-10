@@ -6,8 +6,8 @@ import { useDispatch } from 'react-redux';
 import { uploadImg } from './api';
 import { updateProfile } from '@/store/userStore';
 import CropperModal from '@/globalComponents/cropper'; 
-
-function SettingView() {
+import { updateUserInfo } from '@/globalApi/userApi';
+function SettingView({ onClose }: { onClose: () => void }) {
     const [loading, setLoading] = useState(false);
     const dispatch = useDispatch();
     const inputRef = useRef<HTMLInputElement>(null);
@@ -39,7 +39,10 @@ function SettingView() {
         formData.append('file', croppedBlob, 'avatar.jpg');
         setLoading(true);
         uploadImg(formData).then(res => {
+            //更新redux
             dispatch(updateProfile({ avatar: res.data.url }));
+            // 更新后端
+            updateUserInfo({ id: user.id, avatar: res.data.url });
             setLoading(false);
         }).catch(err => {
             setLoading(false);
@@ -51,6 +54,10 @@ function SettingView() {
     const handleClickUpload = () => {
         inputRef.current?.click();
     }
+    // 关闭设置
+    const handleClose = () => {
+        onClose();
+    }
     // 用户信息
     const user = useSelector((state: any) => state.user);
 
@@ -58,7 +65,8 @@ function SettingView() {
         <div className={settingStyle.setting_view_mask}>
         <div className={settingStyle.setting_view}>
             <div className={settingStyle.setting_view_title}>
-                <h1>设置</h1>
+                <p>设置</p>
+                <i className={`iconfont icon-close ${settingStyle.icon_close}`} onClick={handleClose}></i>
             </div>
 
             <div className={settingStyle.setting_view_body}>

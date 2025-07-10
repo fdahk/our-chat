@@ -24,10 +24,17 @@
         height: 2rem;
         display: flex;
         align-items: center;
-        justify-content: start;
-        h1 {
+        justify-content: space-between;
+        padding: 5px 10px;
+        p {
             font-size: .9rem;
-            color: var(--text-color);
+            cursor: default;
+            color: var(--icon-color);
+        }
+        .icon_close {
+            font-size: 1rem;
+            cursor: pointer;
+            color: var(--icon-color);
         }
     }
 }
