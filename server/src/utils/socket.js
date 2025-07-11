@@ -26,7 +26,7 @@ export const initSocket = (server) => {
             const savedMsg = await Message.create(msg);
             
             // 广播消息
-            console.log(msg); // 调试
+            // console.log(msg); // 调试
             const parts = msg.conversationId.split('_'); // 注： 是下划线，卧槽，我真服了
             const senderId = parts[1] === `${msg.senderId}` ? parts[1] : parts[2];
             const receiverId = parts[1] === `${msg.senderId}` ? parts[2] : parts[1];

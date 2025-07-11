@@ -1,8 +1,8 @@
+// 注：
 import { configureStore } from '@reduxjs/toolkit';
 import { persistStore, persistReducer } from 'redux-persist';
 import { combineReducers } from '@reduxjs/toolkit';
 import storage from 'redux-persist/lib/storage';
-
 import UserReducer from './userStore'; // 注：这里导入的是持久化包装后的 reducer
 import chatReducer from './chatStore'; // 同上
 

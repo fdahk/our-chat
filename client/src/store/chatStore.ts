@@ -8,12 +8,13 @@ import { persistReducer } from 'redux-persist';
 import type { Friend, FriendInfoList } from '@/globalType/friend';
 
 // 聊天状态类型
-export interface ChatState {
+interface ChatState {
   globalMessages: Message[], 
   globalUserConversations: UserConversation[], 
   globalConversations: Conversation[], 
   globalFriendList: Friend[],
   globalFriendInfoList: FriendInfoList,
+  activeConversation: string | null,
 }
 
 
@@ -26,7 +27,9 @@ const initialState: ChatState = {
   globalConversations: [],
   globalFriendList: [],
   globalFriendInfoList: {},
+  activeConversation: null,
 };
+
 
 // createSlice 简化redux创建过程：
 // 自动生成 action creators（setUserInfo, logout）
@@ -68,6 +71,10 @@ const chatSlice = createSlice({
     initGlobalFriendInfoList(state, action: PayloadAction<FriendInfoList>) {
       state.globalFriendInfoList = action.payload;
     },
+    // 设置当前会话
+    setActiveConversation(state, action: PayloadAction<string>) {
+      state.activeConversation = action.payload;
+    },
   },
 });
 
@@ -83,7 +90,7 @@ const persistedChatReducer = persistReducer(persistConfig, chatSlice.reducer);
 
 //chatSlice.actions 是 createSlice 自动生成的一个对象，包含了所有的 action creators工厂函数，用于创建action修改state
 export const { initGlobalMessages, initGlobalUserConversations, initGlobalConversations, addGlobalMessage,
-                addUserConversation, addConversation, initGlobalFriendList, initGlobalFriendInfoList } = chatSlice.actions;
+                addUserConversation, addConversation, initGlobalFriendList, initGlobalFriendInfoList, setActiveConversation } = chatSlice.actions;
 
 //处理 所有action：根据 action.type 使用reducer函数（ Immer库）执行对应的状态更新逻辑
 //在组件中使用：通过 useSelector 获取状态，useDispatch 分发 action，实现状态管理

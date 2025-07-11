@@ -1,26 +1,15 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import storage from 'redux-persist/lib/storage'; // 使用 localStorage 作为存储
 import { persistReducer } from 'redux-persist';
-
+import type { User } from '@/globalType/user';
 // 用户状态类型， 注：对外导出，用于数据类型检查
-export interface UserState {
-  id: number | null;
-  username: string;
-  nickname: string;
-  email: string;
-  avatar: string;
-  bio: string;
-  phone: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  last_seen: string;
+interface UserState extends User {
   isAuthenticated: boolean;
 }
 
 // 初始状态
 const initialState: UserState = {
-  id: null,
+  id: 0,
   username: '',
   nickname: '',
   email: '',
@@ -65,7 +54,7 @@ const userSlice = createSlice({
     },
     logout: (state) => {
       // 退出登录 action
-      state.id = null;
+      state.id = 0;
       state.username = '';
       state.nickname = '';
       state.email = '';

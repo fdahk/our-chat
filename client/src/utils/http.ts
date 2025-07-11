@@ -49,6 +49,7 @@ http.interceptors.request.use(
 );
 
 // 响应拦截器
+// 注：只返回了data部分，没有返回success，组件中用try-catch或then处理逻辑
 http.interceptors.response.use(
   // 第一个参数：响应成功处理函数
   (response: AxiosResponse) => {

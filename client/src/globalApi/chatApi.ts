@@ -1,4 +1,4 @@
-import { get } from '@/utils/http';
+import { get,post } from '@/utils/http';
 import type { UserConversation, Conversation } from '@/globalType/chat';
 import type { Message } from '@/globalType/message';
 
@@ -17,5 +17,10 @@ export const getConversationList = async (userConversations: UserConversation[])
 // 获取会话消息
 export const getConversationMessages = async (conversationId: string) => {
   const res = await get<Message[]>(`/user/messages?conversationId=${conversationId}`);
+  return res;
+};
+// 更新会话时间（用于点击发送消息后保证对话渲染在最前面
+export const updateConversationTime = async (conversationId: string) => {
+  const res = await post<void>(`/user/updateConversationTime`, { conversationId });
   return res;
 };

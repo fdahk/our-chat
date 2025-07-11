@@ -1,28 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import type { Conversation, UserConversation } from '@/globalType/chat';
+import type { Conversation } from '@/globalType/chat';
 import type { Message } from '@/globalType/message';
 import { Input, Button, List } from 'antd';
 import chatViewStyle from './index.module.scss';
 import SocketService from '@/utils/socket';
 import { getConversationMessages } from '@/globalApi/chatApi';
-import { initGlobalMessages } from '@/store/chatStore';
+import { initGlobalMessages, setActiveConversation } from '@/store/chatStore';
 import type { ApiResponse } from '@/globalType/apiResponse';
-import type { Friend, FriendInfoList } from '@/globalType/friend';
+import type { RootState } from '@/store/rootStore';
 
 function ChatView() {
     const dispatch = useDispatch();
-    const [userConversations, setUserConversations] = useState<UserConversation[]>([]); // 用户会话列表
-    const [conversations, setConversations] = useState<Conversation[]>([]); // 会话列表 注：数据结构为 [{}, ...]
-    const [activeConversation, setActiveConversation] = useState<Conversation | null>(null); // 当前会话id
-    // const [messages, setMessages] = useState<ConvMessage>({}); //消息列表 注：数据结构为 { [conversationId: string]: Message[] , ... }
-    const [messages, setMessages] = useState<Message[]>([]); //消息列表 注：数据结构为 { [conversationId: string]: Message[] , ... }
+    const activeConversation = useSelector((state: any) => state.chat.activeConversation); // 当前会话id
+    const messages = useSelector((state: any) => state.chat.globalMessages); //消息列表 注：数据结构为 { [conversationId: string]: Message[] , ... }
     const [input, setInput] = useState(''); // 输入框内容
-    const [chatFriendList, setChatFriendList] = useState<Friend[]>([]); // 所有对话涉及的好友id
-    const [chatFriendInfoList, setChatFriendInfoList] = useState<FriendInfoList>({}); // 所有对话涉及的好友信息
-    // const userId = useSelector((state: UserState) => state.id); // 从redux中获取用户id
-    const user = JSON.parse(localStorage.getItem('persist:user') as string);
-    const userId: number = parseInt(user.id); // 注：一层转换后还是string，要再转换一次变成Number类型
+    const userId= useSelector((state: RootState) => state.user.id) as number; // 从redux中获取用户id
     // 注： RootState 类型是通过 ReturnType<typeof rootStore.getState> 推导出来的。
     // 但 redux-persist 的 persistReducer 会在 state 外层加上一些持久化相关的属性（如 _persist），
     // 导致类型变成 PersistPartial<RootState>，类型推断不再直接有 chat 属性(实际上能获取正确值，但类型推断报错)
@@ -37,36 +30,23 @@ function ChatView() {
     // const inputRef = useRef<HTMLTextAreaElement>(null); // 输入框的ref，用来实现滚动，注：antd组件已实现
     // 从localStorage（应用启动时已从后端中获取最新的会话列表和全局消息存到本地）中获取
     useEffect(() => {
-        // 错误写法：
-        // setChatList(JSON.parse(localStorage.getItem('persist:chat') as string).globalConversations);
-        // setMessages(JSON.parse(localStorage.getItem('persist:chat') as string).globalMessages);
-        // 注：redux-persist 存到 localStorage 里的是“对象的每个字段都被 JSON.stringify 过的字符串”。
-        // 你需要两次 parse：先 parse 整体，再 parse字段。
-        // 注：由于数据储存及更新方式为store到local，该操作是异步的，无法及时更新local，应当使用store的数据
-        // 由于store持久化配置，页面刷新时，store数据会自动恢复，所以不需要再从local获取数据
-        // const persistChat = JSON.parse(localStorage.getItem('persist:chat') as string);
-        // const localGlobalConversations = JSON.parse(persistChat.globalConversations);
-        // const localGlobalMessages = JSON.parse(persistChat.globalMessages);
-        setUserConversations(globalUserConversations);
-        setConversations(globalConversations);
-        setMessages(globalMessages); //及时更新消息
-        // 获取涉及的用户信息
-        setChatFriendList(globalFriendList);
-        setChatFriendInfoList(globalFriendInfoList);
-    }, [globalMessages, globalUserConversations, globalFriendList]);
+        //注：有上下级关系的数据，只监听上级，不能直接传入数组（可以传入引用、字段
+        //如果 arr 是一个“每次渲染都新建的数组”，每次渲染都会生成新数组，会报错
+        //引用：如果 arr 是 useState/useMemo/useCallback 得到的，引用只有在内容真正变化时才变：
+        //总结：传入arr时需要保证是引用稳定的，否则会报错
+    }, [globalMessages, globalUserConversations, globalFriendList]); 
 
     // 获取会话消息（懒加载）
     const handleClickConversation = async (conversationId: string) => {
         await getConversationMessages(conversationId).then((res: ApiResponse<Message[]>) => {
             // dispatch(initGlobalMessages(res.data ?? {})); // 注： 数据结构为 { [conversationId: string]: Message[] , ... }
             dispatch(initGlobalMessages(res.data ?? []));
-            setMessages(res.data ?? []);
         });
     };
     // 解析会话id，获取好友id
     const parseConversationId = (conversationId: string) => {
         const tp = conversationId.split('_');
-        return parseInt(tp[1]===userId.toString() ? tp[2] : tp[1]);
+        return parseInt(tp[1]===userId?.toString() ? tp[2] : tp[1]);
     };
 
     // 消息列表滚动条始终在底部
@@ -85,7 +65,7 @@ function ChatView() {
         if (!input.trim() || !activeConversation) return;
         // console.log('activeConv', activeConv); // 调试
         const msg:Message = {
-            conversationId: activeConversation.id,
+            conversationId: activeConversation,
             senderId: userId, //userId是number类型，需要转换为string类型
             content: input,
             type: 'text',
@@ -122,21 +102,22 @@ function ChatView() {
             <div className={chatViewStyle.chat_view_left}>
                 <div className={chatViewStyle.chat_view_left_header}>header</div>
                 <div className={chatViewStyle.chat_view_left_body}>
-                        {conversations.map((item) => (
+                        {globalConversations.map((item: Conversation) => (
                         <div
                             key={item.id}
-                            className={`${chatViewStyle.chat_view_left_body_item} ${activeConversation?.id === item.id ? chatViewStyle.active : ''}`}
+                            className={`${chatViewStyle.chat_view_left_body_item} ${activeConversation === item.id 
+                                ? chatViewStyle.active : ''}`}
                             onClick={() => {
-                                setActiveConversation(item);
+                                dispatch(setActiveConversation(item.id));
                                 handleClickConversation(item.id);
                             }}
                         >
                             <div className={chatViewStyle.item_avatar}>
-                                <img src={chatFriendInfoList[parseConversationId(item.id)]?.avatar 
-                                    ? `http://localhost:3007${chatFriendInfoList[parseConversationId(item.id)]?.avatar}` 
+                                <img src={globalFriendInfoList[parseConversationId(item.id)]?.avatar 
+                                    ? `http://localhost:3007${globalFriendInfoList[parseConversationId(item.id)]?.avatar}` 
                                     : 'src/assets/images/defaultAvatar.jpg'} alt="" />
                             </div>
-                            <div className={chatViewStyle.item_title}>{chatFriendInfoList[parseConversationId(item.id)]?.username || ''}</div>
+                            <div className={chatViewStyle.item_title}>{globalFriendInfoList[parseConversationId(item.id)]?.username || ''}</div>
                         </div>
                     ))}
                 </div>
@@ -145,7 +126,7 @@ function ChatView() {
             <div className={chatViewStyle.chat_view_right}>
                 {activeConversation ? (
                     <>
-                        <div className={chatViewStyle.chat_header}>{chatFriendInfoList[parseConversationId(activeConversation.id)]?.username || ''}</div> {/* 会话标题 */}
+                        <div className={chatViewStyle.chat_header}>{globalFriendInfoList[parseConversationId(activeConversation)]?.username || ''}</div> {/* 会话标题 */}
                         {/* 消息列表 */}
                         <div className={chatViewStyle.chat_body} ref={chatBodyRef}>
                             <List

@@ -35,7 +35,8 @@ router.get('/conversations', async (req, res) => {
         const placeholders = userConversationIds.map(id => `?`).join(',');
         const [list] = await mySql.execute(
             `SELECT * FROM conversations
-             WHERE id IN (${placeholders})`,
+             WHERE id IN (${placeholders})
+             ORDER BY updated_at DESC`, 
             userConversationIds
         );
         res.json({ success: true, data: list });
@@ -59,6 +60,21 @@ router.get('/messages', async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, message: '获取会话消息失败' });
+    }
+});
+
+// 更新会话时间
+router.post('/updateConversationTime', async (req, res) => {
+    const conversationId = req.body.conversationId;
+    try {
+        await mySql.execute(
+            `UPDATE conversations SET updated_at = NOW() WHERE id = ?`,
+            [conversationId]
+        );
+        res.json({ success: true }); 
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ success: false, message: '更新会话时间失败' });
     }
 });
 
