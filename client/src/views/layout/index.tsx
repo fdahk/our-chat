@@ -3,7 +3,6 @@ import { logout } from '@/store/userStore';
 import { useNavigate } from 'react-router-dom';
 import layoutStyle from './index.module.scss';
 import { Outlet, NavLink } from 'react-router-dom';
-import { clearGlobalMessages } from '@/store/chatStore';
 import { useState, useRef, useEffect } from 'react';
 import SettingView from '@/views/settingView';
 
@@ -47,8 +46,7 @@ function Layout() {
     // 点击退出登录
     const handleLogout = () => {
         dispatch(logout()); // 清空用户信息
-        localStorage.removeItem('token'); // 清空token
-        dispatch(clearGlobalMessages()); // 清空全局消息
+        localStorage.removeItem('token'); // 清空token  
         navigate('/login'); //注：跳转到登录页，layout组件销毁会触发useEffect，断开socket连接
     };
     // 关闭设置中心(给子组件)

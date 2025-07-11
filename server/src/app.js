@@ -3,7 +3,7 @@ import cors from 'cors'; //跨域中间件
 import { connectDb } from './dataBase/mongoDb.js';
 import registerRouter from './routes/register.js';
 import loginRouter from './routes/login.js';
-import conversationRouter from './routes/conversation.js';
+import conversationRouter from './routes/chat.js';
 import { initSocket } from './utils/socket.js';
 import uploadRouter from './routes/upload.js';
 import userRouter from './routes/user.js';

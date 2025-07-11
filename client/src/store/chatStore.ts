@@ -1,15 +1,19 @@
-//注：该redux是为了解决消息的实时性问题，当用户收到消息时，手更新redux状态，同时触发消息组件重新渲染
+//注：该redux是为了解决消息的实时性问题，当用户收到消息时，更新redux状态，再同步组件重新渲染
 // PayloadAction 是 TypeScript 类型，用于定义 action 的 payload 类型
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { Message } from '@/globalType/message';
-import type { Conversation } from '@/globalType/conversation';
+import type { Conversation, UserConversation } from '@/globalType/chat';
 import storage from 'redux-persist/lib/storage';
 import { persistReducer } from 'redux-persist';
+import type { Friend, FriendInfoList } from '@/globalType/friend';
 
 // 聊天状态类型
 export interface ChatState {
   globalMessages: Message[], 
+  globalUserConversations: UserConversation[], 
   globalConversations: Conversation[], 
+  globalFriendList: Friend[],
+  globalFriendInfoList: FriendInfoList,
 }
 
 
@@ -18,7 +22,10 @@ export interface ChatState {
 // 注：数据结构为 state.globalConversations: Conversation[]
 const initialState: ChatState = {
   globalMessages: [],
+  globalUserConversations: [],
   globalConversations: [],
+  globalFriendList: [],
+  globalFriendInfoList: {},
 };
 
 // createSlice 简化redux创建过程：
@@ -41,17 +48,26 @@ const chatSlice = createSlice({
       state.globalMessages.push(action.payload);
       // console.log("添加全局消息"); // 调试
     },
-    clearGlobalMessages(state) {
-      state.globalMessages = [];
-    },
     // 会话管理
+    initGlobalUserConversations(state, action: PayloadAction<UserConversation[]>) {
+      state.globalUserConversations = action.payload;
+    },
     initGlobalConversations(state, action: PayloadAction<Conversation[]>) {
       state.globalConversations = action.payload;
+    },
+    addUserConversation(state, action: PayloadAction<UserConversation>) {
+      state.globalUserConversations.push(action.payload);
     },
     addConversation(state, action: PayloadAction<Conversation>) {
       state.globalConversations.push(action.payload);
     },
-
+    // 好友管理
+    initGlobalFriendList(state, action: PayloadAction<{ friend_id: number, remark: string | null }[]>) {
+      state.globalFriendList = action.payload;
+    },
+    initGlobalFriendInfoList(state, action: PayloadAction<FriendInfoList>) {
+      state.globalFriendInfoList = action.payload;
+    },
   },
 });
 
@@ -66,8 +82,8 @@ const persistedChatReducer = persistReducer(persistConfig, chatSlice.reducer);
 
 
 //chatSlice.actions 是 createSlice 自动生成的一个对象，包含了所有的 action creators工厂函数，用于创建action修改state
-export const { initGlobalMessages, initGlobalConversations, addGlobalMessage, clearGlobalMessages,
-                addConversation } = chatSlice.actions;
+export const { initGlobalMessages, initGlobalUserConversations, initGlobalConversations, addGlobalMessage,
+                addUserConversation, addConversation, initGlobalFriendList, initGlobalFriendInfoList } = chatSlice.actions;
 
 //处理 所有action：根据 action.type 使用reducer函数（ Immer库）执行对应的状态更新逻辑
 //在组件中使用：通过 useSelector 获取状态，useDispatch 分发 action，实现状态管理

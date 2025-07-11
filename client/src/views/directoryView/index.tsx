@@ -1,20 +1,18 @@
 import directoryViewStyle from './index.module.scss';
 import { useState, useEffect } from 'react';
-import { getFriendList } from '@/globalApi/friendApi';
 import { useSelector } from 'react-redux';
 import FriendModal from '@/globalComponents/friendModal/friendModal';
+import type { Friend, FriendInfoList } from '@/globalType/friend';
 function DirectoryView() {
-    const user = useSelector((state: any) => state.user);
-    const [friendList, setFriendList] = useState<{ friend_id: number, remark: string | null }[]>([]);
-    const [friendInfo, setFriendInfo] = useState<{ [key: number]: { username: string, avatar: string, gender: string } }>({});
+    const [friendList, setFriendList] = useState<Friend[]>([]);
+    const [friendInfo, setFriendInfo] = useState<FriendInfoList>({});
     const [activeFriend, setActiveFriend] = useState<{ friend_id: number, remark: string | null } | null>(null);
+    const globalFriendList = useSelector((state: any) => state.chat.globalFriendList);
+    const globalFriendInfoList = useSelector((state: any) => state.chat.globalFriendInfoList);
     // 获取好友列表
     useEffect(() => {
-        getFriendList(user.id).then(res => {
-            setFriendList(res.data.friendId); //返回好友id
-            setFriendInfo(res.data.friendInfo); //返回好友信息
-        });
-        
+        setFriendList(globalFriendList);
+        setFriendInfo(globalFriendInfoList);
     }, []);
     // 点击好友
     const handleFriendClick = (friend: { friend_id: number, remark: string | null }) => {

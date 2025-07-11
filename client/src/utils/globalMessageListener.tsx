@@ -1,12 +1,13 @@
 // 全局 socket 监听器，监听 socket 消息，并更新全局消息状态,在app.tsx中使用
 import { useEffect} from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import SocketService from './socket';
-import { addGlobalMessage, initGlobalConversations } from '@/store/chatStore';
+import { addGlobalMessage, initGlobalUserConversations, initGlobalConversations, initGlobalFriendList, initGlobalFriendInfoList } from '@/store/chatStore';
 import type { Message } from '@/globalType/message';
-import { getConversationList } from '@/globalApi/chatApi';
+import { getUserConversationList, getConversationList } from '@/globalApi/chatApi';
+import { getFriendList } from '@/globalApi/friendApi';
 import type { ApiResponse } from '@/globalType/apiResponse';
-import type { Conversation } from '@/globalType/conversation';
+import type { UserConversation, Conversation } from '@/globalType/chat';
 
 export default function GlobalMessageListener() {
 
@@ -16,17 +17,25 @@ export default function GlobalMessageListener() {
   // console.log(userId); // 调试
   const dispatch = useDispatch();
   const socket = SocketService.getInstance();
-
+  const globalUserConversations = useSelector((state: any) => state.chat.globalUserConversations); // 从redux中获取全局用户会话列表
     // 注：这里监听的是全局消息，消息派发逻辑由后端实现，更新redux状态全局消息，同时触发组件重新渲染
-    useEffect(() => {
+    useEffect(() => { 
       // 首次启动应用先从后端获取会话列表和全局消息存到本地 
       // Promise 链式调用，比传统async/await更简洁，回调函数更是古代的写法
-      // 获取会话列表
-      getConversationList(userId).then((res: ApiResponse<Conversation[]>) => {
-        dispatch(initGlobalConversations(res.data ?? []));
+      // 获取用户会话列表
+      getUserConversationList(userId).then((res1: ApiResponse<UserConversation[]>) => {
+        dispatch(initGlobalUserConversations(res1.data ?? []));
+        // 获取会话列表
+        getConversationList(globalUserConversations).then((res2: ApiResponse<Conversation[]>) => {
+          dispatch(initGlobalConversations(res2.data ?? []));
+        });
       });
 
-
+      // 获取好友及好友信息列表
+      getFriendList(user.id).then(res => {
+        dispatch(initGlobalFriendList(res.data.friendId)); //返回好友id
+        dispatch(initGlobalFriendInfoList(res.data.friendInfo)); //返回好友信息
+    });
        // 连接socket
       socket.connect();
       socket.emit('join', userId); // 发送连接事件，后端处理连接后的配置（加入会话等
