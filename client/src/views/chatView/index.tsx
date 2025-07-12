@@ -105,7 +105,7 @@ function ChatView() {
             <div className={chatViewStyle.chat_view_left}>
                 <div className={chatViewStyle.chat_view_left_header}>header</div>
                 <div className={chatViewStyle.chat_view_left_body}>
-                        {globalConversations.map((item: Conversation) => (
+                        {Object.values(globalConversations).map((item: Conversation) => (
                             <DisplayItem
                                 key={item.id}
                                 id={item.id}

@@ -25,7 +25,7 @@ router.get('/conversations', async (req, res) => {
     const userConversationIds = JSON.parse(req.query.userConversationIds);
     // 边界处理
     if(userConversationIds.length === 0) {
-        res.json({ success: true, data: [] });
+        res.json({ success: true, data: {} });
         return;
     }
     try {
@@ -39,12 +39,16 @@ router.get('/conversations', async (req, res) => {
         // 推荐方法：动态拼接占位符
         // 注：当为空数组时，in() 会被mysql判定为语法错误
         const placeholders = userConversationIds.map(id => `?`).join(',');
-        const [list] = await mySql.execute(
+        let [list] = await mySql.execute(
             `SELECT * FROM conversations
              WHERE id IN (${placeholders})
              ORDER BY updated_at DESC`, 
             userConversationIds
         );
+        list = list.reduce((acc, item) => {
+            acc[item.id] = item;
+            return acc;
+        }, {});
         res.json({ success: true, data: list });
     } catch (error) {
         console.log(error);
@@ -59,9 +63,7 @@ router.get('/messages', async (req, res) => {
         return res.status(400).json({ success: false, message: '缺少 conversationId 参数' });
     }
     try {
-        const splited = conversationId.split('_')
-        const otherConversationId = `single_${parseInt(splited[2])}_${parseInt(splited[1])}`
-        const messages = await Message.find({ conversationId: {$in : [conversationId, otherConversationId]} })
+        const messages = await Message.find({ conversationId: {$in : [conversationId]} })
             .sort({ timestamp: 1 }) // 按时间排序，从旧到新
             .lean();
         res.json({ success: true, data: messages });
@@ -71,12 +73,12 @@ router.get('/messages', async (req, res) => {
     }
 });
 
-// 更新会话时间
+// 更新会话
 router.post('/updateConversationTime', async (req, res) => {
     const conversationId = req.body.conversationId;
-    const userId = conversationId.split('_')[1];
+    const userId = req.body.userId;
     try {
-        // 注： 单向删除会话记录，存在好友但未必有会话记录
+        // 注： 单向删除会话记录，存在好友但未必有用户会话记录
         const [res1] = await mySql.execute(
             `SELECT * FROM user_conversations WHERE conversation_id = ?`,
             [conversationId]
@@ -107,7 +109,6 @@ router.post('/updateConversationTime', async (req, res) => {
 // 获取最后一条消息
 router.get('/lastMessages', async (req, res) => {
     const userConversationIds = JSON.parse(req.query.userConversationIds);
-    
     // 聚合管道获取最新消息
     const lastMessagesArray = await Message.aggregate([
         { $match: { conversationId: { $in: userConversationIds } } },

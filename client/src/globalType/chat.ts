@@ -16,12 +16,12 @@ export interface UserConversation {
   }
   // 会话类型 
   export interface Conversation {
-    id: string;
-    conv_type: string;
-    title: string;
-    avatar: string;
-    created_at: string;
-    updated_at: string;
+      id: string;
+      conv_type: string;
+      title: string;
+      avatar: string;
+      created_at: string;
+      updated_at: string;
   }
   // 会话消息类型
   export interface ConvMessage {

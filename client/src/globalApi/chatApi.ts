@@ -1,6 +1,8 @@
 import { get,post } from '@/utils/http';
 import type { UserConversation, Conversation } from '@/globalType/chat';
 import type { Message } from '@/globalType/message';
+import { useSelector } from 'react-redux';
+import type { RootState } from '@/store/rootStore';
 
 // 获取用户会话列表
 export const getUserConversationList = async (userId: number) => {
@@ -13,7 +15,7 @@ export const getUserConversationList = async (userId: number) => {
 export const getConversationList = async (userConversations: UserConversation[]) => {
   // 性能优化：提取userConversations的conversation_id转换成id数组，减少请求参数大小
   const userConversationIds = userConversations.map(conversation => conversation.conversation_id);
-  const res = await get<Conversation[]>(`/user/conversations`, { params: { userConversationIds: JSON.stringify(userConversationIds) } });
+  const res = await get<Record<string, Conversation>>(`/user/conversations`, { params: { userConversationIds: JSON.stringify(userConversationIds) } });
   return res;
 };
 
@@ -27,7 +29,8 @@ export const getConversationMessages = async (conversationId: string) => {
 // 注：设计为用户可以单向删除会话记录，存在好友但未必有会话记录,可能需要创建会话记录
 // 不过无需担心，组件调用时使用了双方的id拼接了conversation_id
 export const updateConversationTime = async (conversationId:string) => {
-  const res = await post<void>(`/user/updateConversationTime`, { conversationId });
+  const userId = useSelector((state: RootState) => state.user.id);
+  const res = await post<void>(`/user/updateConversationTime`, { conversationId, userId });
   return res;
 };
 

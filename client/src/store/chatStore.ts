@@ -9,7 +9,7 @@ import type { Friend, FriendInfoList } from '@/globalType/friend';
 interface ChatState {
   globalMessages: Message[], 
   globalUserConversations: UserConversation[], 
-  globalConversations: Conversation[], 
+  globalConversations: Record<string, Conversation>, 
   globalFriendList: Friend[],
   globalFriendInfoList: FriendInfoList,
   activeConversation: string | null,
@@ -21,7 +21,7 @@ interface ChatState {
 const initialState: ChatState = {
   globalMessages: [],
   globalUserConversations: [],
-  globalConversations: [],
+  globalConversations: {},
   globalFriendList: [],
   globalFriendInfoList: {},
   activeConversation: null,
@@ -53,14 +53,14 @@ const chatSlice = createSlice({
     initGlobalUserConversations(state, action: PayloadAction<UserConversation[]>) {
       state.globalUserConversations = action.payload;
     },
-    initGlobalConversations(state, action: PayloadAction<Conversation[]>) {
+    initGlobalConversations(state, action: PayloadAction<Record<string, Conversation>>) {
       state.globalConversations = action.payload;
     },
     addUserConversation(state, action: PayloadAction<UserConversation>) {
       state.globalUserConversations.push(action.payload);
     },
     addConversation(state, action: PayloadAction<Conversation>) {
-      state.globalConversations.push(action.payload);
+      state.globalConversations[action.payload.id] = action.payload;
     },
     // 好友管理
     initGlobalFriendList(state, action: PayloadAction<{ friend_id: number, remark: string | null }[]>) {

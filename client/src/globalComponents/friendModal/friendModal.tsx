@@ -31,13 +31,15 @@ function FriendModal({
     // 点击发送消息
     // 注： 
     const handleClickSendMessage = () => {
-        updateConversationTime(`single_${userId}_${wxid}`).then(res => {
+        const conversationId = `single_${Math.min(userId, parseInt(wxid))}_${Math.max(userId, parseInt(wxid))}`;
+        updateConversationTime(conversationId).then(res => {
             // 用户友好式更新
             //注：有些字段数据库实际是不需要的（为null），前端正常加，渲染时的逻辑用不到这些字段
             //已存在就不要再添加了，这里的判断逻辑比较低效，先用着
-            if(!globalConversations.find(conversation => conversation.id === `single_${userId}_${wxid}`)) {
+
+            if(!globalConversations[conversationId as string]) {
                 dispatch(addConversation({
-                    id: `single_${userId}_${wxid}`,
+                    id: conversationId,
                     conv_type: 'single',
                     title: '',
                     avatar: '',

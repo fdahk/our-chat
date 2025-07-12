@@ -1,5 +1,6 @@
 import { Server } from 'socket.io'; //基于WebSocket的实时通信库
 import { Message } from '../dataBase/mongoDb.js';
+import { mySql } from '../dataBase/mySql.js';
 export const initSocket = (server) => {
     //创建WebSocket服务器，连接的建立依赖http，WebSocket的握手（连接建立）阶段，先通过http，然后升级为 WebSocket
     const io = new Server(server, {
@@ -13,27 +14,45 @@ export const initSocket = (server) => {
     
     // 监听WebSocket连接, 注：第二个参数前端不传默认1socket实例，只能获取到socket.id
     io.on('connection', (socket) => {
-        let myUserId = '';
+
         socket.on('join', (userId) => {
         socket.join(userId); // 加入房间
         console.log(`用户 ${userId} 加入房间`);
-        myUserId = userId;
         });
+
         // 发送消息
         socket.on('sendMessage', async (msg) => {
         try {
+            const splited = msg.conversationId.split('_');
+            const user1 = splited[1];
+            const user2 = splited[2];            
             // 存储到 MongoDB
             const savedMsg = await Message.create(msg);
+            // 检查是否用户删除了用户会话记录
+            const [res1] = await mySql.execute(
+                `SELECT * FROM user_conversations WHERE conversation_id = ? AND user_id = ?`,
+                [msg.conversationId, user1]
+            );
+            if (res1.length === 0) {
+                await mySql.execute(
+                    `INSERT INTO user_conversations (conversation_id, user_id) VALUES (?, ?)`,
+                    [msg.conversationId, user1]
+                );
+            }
+            const [res2] = await mySql.execute(
+                `SELECT * FROM user_conversations WHERE conversation_id = ? AND user_id = ?`,
+                [msg.conversationId, user2]
+            );
+            if (res2.length === 0) {
+                await mySql.execute(
+                    `INSERT INTO user_conversations (conversation_id, user_id) VALUES (?, ?)`,
+                    [msg.conversationId, user2]
+                );
+            }
             
             // 广播消息
-            // console.log(msg); // 调试
-            const parts = msg.conversationId.split('_'); // 注： 是下划线，卧槽，我真服了
-            const senderId = parts[1] === `${msg.senderId}` ? parts[1] : parts[2];
-            const receiverId = parts[1] === `${msg.senderId}` ? parts[2] : parts[1];
-            io.to(senderId).emit('receiveMessage', savedMsg);
-            io.to(receiverId).emit('receiveMessage', savedMsg);
-            // console.log('房间成员:', io.sockets.adapter.rooms.get(senderId)); // 调试
-            // console.log('消息存储成功:', savedMsg); // 调试
+            io.to(user1).emit('receiveMessage', savedMsg);
+            io.to(user2).emit('receiveMessage', savedMsg);
         } catch (err) {
             console.error('消息存储失败:', err);
             socket.emit('error', { message: '消息发送失败' });
