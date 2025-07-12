@@ -1,7 +1,7 @@
 // 全局 socket 监听器，监听 socket 消息，并更新全局消息状态,在app.tsx中使用
 import { useEffect} from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import SocketService from './socket';
+import SocketService from '../utils/socket';
 import { addGlobalMessage, initGlobalUserConversations, initGlobalConversations, initGlobalFriendList, initGlobalFriendInfoList } from '@/store/chatStore';
 import type { Message } from '@/globalType/message';
 import { getUserConversationList, getConversationList } from '@/globalApi/chatApi';
@@ -17,18 +17,21 @@ export default function GlobalMessageListener() {
   // console.log(userId); // 调试
   const dispatch = useDispatch();
   const socket = SocketService.getInstance();
-  const globalUserConversations = useSelector((state: any) => state.chat.globalUserConversations); // 从redux中获取全局用户会话列表
+  // 注：不能使用这个用于下面获取会话列表，因为redux状态更新是异步的，不能保证在获取会话列表时，redux状态已经更新
+  // const globalUserConversations = useSelector((state: any) => state.chat.globalUserConversations); // 从redux中获取全局用户会话列表
     // 注：这里监听的是全局消息，消息派发逻辑由后端实现，更新redux状态全局消息，同时触发组件重新渲染
     useEffect(() => { 
       // 首次启动应用先从后端获取会话列表和全局消息存到本地 
       // Promise 链式调用，比传统async/await更简洁，回调函数更是古代的写法
       // 获取用户会话列表
-      getUserConversationList(userId).then((res1: ApiResponse<UserConversation[]>) => {
-        dispatch(initGlobalUserConversations(res1.data ?? []));
+      getUserConversationList(userId).then(async (res1: ApiResponse<UserConversation[]>) => {
+        await dispatch(initGlobalUserConversations(res1.data ?? []));
         // 获取会话列表
-        getConversationList(globalUserConversations).then((res2: ApiResponse<Conversation[]>) => {
+        //注：必须使用最新的res1的值，redux更新是异步的，而且该组件获取的redux状态是初始值即使上面调用接口后更新了，这里的数据依然是旧的
+        getConversationList(res1.data ?? []).then((res2: ApiResponse<Conversation[]>) => {
           dispatch(initGlobalConversations(res2.data ?? []));
         });
+
       });
 
       // 获取好友及好友信息列表

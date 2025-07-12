@@ -9,7 +9,7 @@ import chatReducer from './chatStore'; // 同上
 const rootPersistConfig = {
   key: 'root',
   storage,
-  whitelist: ['user', 'chat'], // 需要持久化的 slice
+  whitelist: ['user'], // 需要持久化的 slice
 };
 
 // 合并所有reducer（每个reducer都自动管理自己的state

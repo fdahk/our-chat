@@ -11,30 +11,32 @@ import type { ApiResponse } from '@/globalType/apiResponse';
 import type { RootState } from '@/store/rootStore';
 
 function ChatView() {
+
     const dispatch = useDispatch();
-    const activeConversation = useSelector((state: any) => state.chat.activeConversation); // 当前会话id
-    const messages = useSelector((state: any) => state.chat.globalMessages); //消息列表 注：数据结构为 { [conversationId: string]: Message[] , ... }
+    const activeConversation = useSelector((state: RootState) => state.chat.activeConversation); // 当前会话id
+    const messages = useSelector((state: RootState) => state.chat.globalMessages); //消息列表 注：数据结构为 { [conversationId: string]: Message[] , ... }
     const [input, setInput] = useState(''); // 输入框内容
     const userId= useSelector((state: RootState) => state.user.id) as number; // 从redux中获取用户id
     // 注： RootState 类型是通过 ReturnType<typeof rootStore.getState> 推导出来的。
     // 但 redux-persist 的 persistReducer 会在 state 外层加上一些持久化相关的属性（如 _persist），
     // 导致类型变成 PersistPartial<RootState>，类型推断不再直接有 chat 属性(实际上能获取正确值，但类型推断报错)
     // 以下使用any类型，避免类型推断报错，但并非最佳实践
-    const globalMessages = useSelector((state: any) => state.chat.globalMessages); // 从redux中获取全局消息
-    const globalUserConversations = useSelector((state: any) => state.chat.globalUserConversations); // 从redux中获取全局用户会话列表
-    const globalConversations = useSelector((state: any) => state.chat.globalConversations); // 从redux中获取全局会话列表
-    const globalFriendList = useSelector((state: any) => state.chat.globalFriendList); // 从redux中获取全局好友列表
-    const globalFriendInfoList = useSelector((state: any) => state.chat.globalFriendInfoList); // 从redux中获取全局好友信息列表
+    const globalMessages = useSelector((state: RootState) => state.chat.globalMessages); // 从redux中获取全局消息
+    const globalUserConversations = useSelector((state: RootState) => state.chat.globalUserConversations); // 从redux中获取全局用户会话列表
+    const globalConversations = useSelector((state: RootState) => state.chat.globalConversations); // 从redux中获取全局会话列表
+    const globalFriendList = useSelector((state: RootState) => state.chat.globalFriendList); // 从redux中获取全局好友列表
+    const globalFriendInfoList = useSelector((state: RootState) => state.chat.globalFriendInfoList); // 从redux中获取全局好友信息列表
     const socket = SocketService.getInstance(); // 获取socket实例
     const chatBodyRef = useRef<HTMLDivElement>(null); // 消息列表的ref，用来实现滚动
     // const inputRef = useRef<HTMLTextAreaElement>(null); // 输入框的ref，用来实现滚动，注：antd组件已实现
     // 从localStorage（应用启动时已从后端中获取最新的会话列表和全局消息存到本地）中获取
-    useEffect(() => {
-        //注：有上下级关系的数据，只监听上级，不能直接传入数组（可以传入引用、字段
-        //如果 arr 是一个“每次渲染都新建的数组”，每次渲染都会生成新数组，会报错
-        //引用：如果 arr 是 useState/useMemo/useCallback 得到的，引用只有在内容真正变化时才变：
-        //总结：传入arr时需要保证是引用稳定的，否则会报错
-    }, [globalMessages, globalUserConversations, globalFriendList]); 
+    // useEffect(() => {
+    //     //注：有上下级关系的数据，只监听上级，不能直接传入数组（可以传入引用、字段
+    //     //如果 arr 是一个“每次渲染都新建的数组”，每次渲染都会生成新数组，会报错
+    //     //引用：如果 arr 是 useState/useMemo/useCallback 得到的，引用只有在内容真正变化时才变：
+    //     //总结：传入arr时需要保证是引用稳定的，否则会报错
+    //     dispatch(setActiveConversation(null));
+    // }, []); 
 
     // 获取会话消息（懒加载）
     const handleClickConversation = async (conversationId: string) => {
@@ -94,7 +96,6 @@ function ChatView() {
             setInput(prev => prev + '\n');
         }
     };
-
 
     return (
         <div className={chatViewStyle.chat_view_container}>

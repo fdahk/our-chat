@@ -22,7 +22,12 @@ router.get('/userConversations', async (req, res) => {
 
 // 获取会话列表
 router.get('/conversations', async (req, res) => {
-    const userConversationIds = req.query.userConversationIds;
+    const userConversationIds = JSON.parse(req.query.userConversationIds);
+    // 边界处理
+    if(userConversationIds.length === 0) {
+        res.json({ success: true, data: [] });
+        return;
+    }
     try {
         //注： mysql查询方式的差异
         // execute 方法（预编译/参数化）
@@ -32,6 +37,7 @@ router.get('/conversations', async (req, res) => {
         // query 方法更“宽松”，它会把数组自动展开成 IN (1,2,3)，所以不会报错。
         // 但这种方式没有参数化保护，有 SQL 注入风险（虽然你用的是 id，风险较低）。
         // 推荐方法：动态拼接占位符
+        // 注：当为空数组时，in() 会被mysql判定为语法错误
         const placeholders = userConversationIds.map(id => `?`).join(',');
         const [list] = await mySql.execute(
             `SELECT * FROM conversations
@@ -53,7 +59,9 @@ router.get('/messages', async (req, res) => {
         return res.status(400).json({ success: false, message: '缺少 conversationId 参数' });
     }
     try {
-        const messages = await Message.find({ conversationId: conversationId })
+        const splited = conversationId.split('_')
+        const otherConversationId = `single_${parseInt(splited[2])}_${parseInt(splited[1])}`
+        const messages = await Message.find({ conversationId: {$in : [conversationId, otherConversationId]} })
             .sort({ timestamp: 1 }) // 按时间排序，从旧到新
             .lean();
         res.json({ success: true, data: messages });
@@ -66,7 +74,25 @@ router.get('/messages', async (req, res) => {
 // 更新会话时间
 router.post('/updateConversationTime', async (req, res) => {
     const conversationId = req.body.conversationId;
+    const userId = conversationId.split('_')[1];
     try {
+        // 注： 单向删除会话记录，存在好友但未必有会话记录
+        const [res1] = await mySql.execute(
+            `SELECT * FROM user_conversations WHERE conversation_id = ?`,
+            [conversationId]
+        );
+        // 不存在会话记录：先创建会话记录在创建用户会话记录（后者有前者的外键
+        if(res1.length === 0) {
+            await mySql.execute(
+                `INSERT INTO conversations (id,conv_type) VALUES (?,?)`,
+                [conversationId,"single"]
+            );
+            await mySql.execute(
+                `INSERT INTO user_conversations (user_id, conversation_id) VALUES (?, ?)`,
+                [userId, conversationId]
+            );
+        }
+        // 更新会话时间,注：用户实际获取会话列表是从conversations表获取的
         await mySql.execute(
             `UPDATE conversations SET updated_at = NOW() WHERE id = ?`,
             [conversationId]

@@ -3,10 +3,11 @@ import { useState } from 'react';
 import { useSelector } from 'react-redux';
 import FriendModal from '@/globalComponents/friendModal/friendModal';
 import type { Friend } from '@/globalType/friend';
+import type { RootState } from '@/store/rootStore';
 function DirectoryView() {
     const [activeFriend, setActiveFriend] = useState<{ friend_id: number, remark: string | null } | null>(null);
-    const globalFriendList = useSelector((state: any) => state.chat.globalFriendList);
-    const globalFriendInfoList = useSelector((state: any) => state.chat.globalFriendInfoList);
+    const globalFriendList = useSelector((state: RootState) => state.chat.globalFriendList);
+    const globalFriendInfoList = useSelector((state: RootState) => state.chat.globalFriendInfoList);
     // 点击好友
     const handleFriendClick = (friend: { friend_id: number, remark: string | null }) => {
         setActiveFriend(friend);

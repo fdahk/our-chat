@@ -70,8 +70,8 @@ http.interceptors.response.use(
           message.error((data as any)?.message || '请求参数错误');
           break;
         case 401:
+          // 未登录或token过期
           message.error('未授权，请重新登录');
-          // 清除 token 并跳转登录页
           localStorage.removeItem('token');
           window.location.href = '/login';
           break;

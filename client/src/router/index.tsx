@@ -7,12 +7,16 @@ import RegisterView from "@/views/registerView/index.tsx";
 import DirectoryView from "@/views/directoryView/index.tsx";
 import ChatView from "@/views/chatView/index.tsx";
 // 三级路由组件
-
+import RequireAuth from "@/utils/requireAuth";
 const router = createBrowserRouter([
     // 一级路由首页
     {
         path: "",
-        element: <Layout/>,
+        element: (
+            <RequireAuth>
+                <Layout/>
+            </RequireAuth>
+        ),
         // redirect: "/chat", //React Router v6 没有 redirect 属性
         // 二级路由
         children: [

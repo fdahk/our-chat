@@ -56,7 +56,7 @@ const CropperModal: React.FC<CropperModalProps> = ({ open, image, onCancel, onOk
   };
 
   return (
-    <Modal open={open} onCancel={onCancel} onOk={handleOk} width={400} destroyOnClose>
+    <Modal open={open} onCancel={onCancel} onOk={handleOk} width={400} destroyOnHidden>
       <div style={{ position: 'relative', width: '100%', height: 300, background: '#333' }}>
         <Cropper
           image={image}

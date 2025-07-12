@@ -3,8 +3,6 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { Message } from '@/globalType/message';
 import type { Conversation, UserConversation } from '@/globalType/chat';
-import storage from 'redux-persist/lib/storage';
-import { persistReducer } from 'redux-persist';
 import type { Friend, FriendInfoList } from '@/globalType/friend';
 
 // 聊天状态类型
@@ -19,8 +17,6 @@ interface ChatState {
 
 
 // 初始状态
-// 注：数据结构为 state.globalMessages: { [conversationId: string]: Message[] , ... }
-// 注：数据结构为 state.globalConversations: Conversation[]
 const initialState: ChatState = {
   globalMessages: [],
   globalUserConversations: [],
@@ -72,19 +68,20 @@ const chatSlice = createSlice({
       state.globalFriendInfoList = action.payload;
     },
     // 设置当前会话
-    setActiveConversation(state, action: PayloadAction<string>) {
+    setActiveConversation(state, action: PayloadAction<string | null>) {
       state.activeConversation = action.payload;
     },
   },
 });
 
+// 注：废除持久化
 // 配置 persist 持久化
-const persistConfig = {
-  key: 'chat',
-  storage,
-  whitelist: ['globalMessages', 'globalConversations'],
-};
-const persistedChatReducer = persistReducer(persistConfig, chatSlice.reducer);
+// const persistConfig = {
+//   key: 'chat',
+//   storage,
+//   whitelist: ['globalMessages', 'globalConversations'],
+// };
+// const persistedChatReducer = persistReducer(persistConfig, chatSlice.reducer);
 
 
 
@@ -99,7 +96,7 @@ export const { initGlobalMessages, initGlobalUserConversations, initGlobalConver
 // 必须导出持久化包装的 reducer给rootStore使用，rootStore是整个 React 应用唯一的数据源
 // 在rootStore 里用哪个 reducer，组件中使用 useSelector、useDispatch 访问到的就是哪个 reducer 管理的状态
 // 必须提供rootstore 持久化包装后的 reducer，redux-persist 才能拦截所有 action，自动存储和恢复状态。
-export default persistedChatReducer; 
+export default chatSlice.reducer; 
 
 //reducer作用详解：
 // 组件中 useSelector 读取状态

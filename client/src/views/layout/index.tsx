@@ -5,11 +5,12 @@ import layoutStyle from './index.module.scss';
 import { Outlet, NavLink } from 'react-router-dom';
 import { useState, useRef, useEffect } from 'react';
 import SettingView from '@/views/settingView';
+import type { RootState } from '@/store/rootStore';
 
 function Layout() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
-    const user = useSelector((state: any) => state.user);
+    const user = useSelector((state: RootState) => state.user);
     // 导航栏选项列表
     const itemList = [
         {
@@ -47,6 +48,9 @@ function Layout() {
     const handleLogout = () => {
         dispatch(logout()); // 清空用户信息
         localStorage.removeItem('token'); // 清空token  
+        localStorage.removeItem('persist:user'); // 清空用户信息
+        // localStorage.removeItem('persist:chat'); // 以废除
+        localStorage.removeItem('persist:root'); // 清空根状态
         navigate('/login'); //注：跳转到登录页，layout组件销毁会触发useEffect，断开socket连接
     };
     // 关闭设置中心(给子组件)

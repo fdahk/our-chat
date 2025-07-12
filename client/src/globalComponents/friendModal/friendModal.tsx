@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { updateConversationTime } from '@/globalApi/chatApi';
 import type { RootState } from '@/store/rootStore';
 import { useNavigate } from 'react-router-dom';
-import { setActiveConversation } from '@/store/chatStore';
+import { addConversation, addUserConversation, setActiveConversation } from '@/store/chatStore';
 
 interface FriendModalProps {
     style?: React.CSSProperties; //css原型
@@ -27,9 +27,36 @@ function FriendModal({
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const userId = useSelector((state: RootState) => state.user.id);
+    const globalConversations = useSelector((state: RootState) => state.chat.globalConversations);
     // 点击发送消息
+    // 注： 
     const handleClickSendMessage = () => {
         updateConversationTime(`single_${userId}_${wxid}`).then(res => {
+            // 用户友好式更新
+            //注：有些字段数据库实际是不需要的（为null），前端正常加，渲染时的逻辑用不到这些字段
+            //已存在就不要再添加了，这里的判断逻辑比较低效，先用着
+            if(!globalConversations.find(conversation => conversation.id === `single_${userId}_${wxid}`)) {
+                dispatch(addConversation({
+                    id: `single_${userId}_${wxid}`,
+                    conv_type: 'single',
+                    title: '',
+                    avatar: '',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                }))
+                dispatch(addUserConversation({
+                    id: `single_${userId}_${wxid}`,
+                    user_id: userId,
+                    conversation_id: `single_${userId}_${wxid}`,
+                    last_read_message_id: '',
+                    unread_count: 0,
+                    is_muted: 0,
+                    is_pinned: 0,
+                    is_archived: 0,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                }))
+            }
             dispatch(setActiveConversation(`single_${userId}_${wxid}`));
             navigate(`/chat`);
         });
