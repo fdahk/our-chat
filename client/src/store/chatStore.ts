@@ -13,6 +13,7 @@ interface ChatState {
   globalFriendList: Friend[],
   globalFriendInfoList: FriendInfoList,
   activeConversation: string | null,
+  lastMessages: Record<string, Message>, // TS工具类型
 }
 
 
@@ -24,6 +25,7 @@ const initialState: ChatState = {
   globalFriendList: [],
   globalFriendInfoList: {},
   activeConversation: null,
+  lastMessages: {},
 };
 
 
@@ -68,8 +70,15 @@ const chatSlice = createSlice({
       state.globalFriendInfoList = action.payload;
     },
     // 设置当前会话
-    setActiveConversation(state, action: PayloadAction<string | null>) {
+    initActiveConversation(state, action: PayloadAction<string | null>) {
       state.activeConversation = action.payload;
+    },
+    // 设置最后一条消息
+    initLastMessages(state, action: PayloadAction<Record<string, Message>>) {
+      state.lastMessages = action.payload;
+    },
+    addLastMessage(state, action: PayloadAction<{ conversationId: string, message: Message }>) {
+      state.lastMessages[action.payload.conversationId] = action.payload.message;
     },
   },
 });
@@ -87,7 +96,8 @@ const chatSlice = createSlice({
 
 //chatSlice.actions 是 createSlice 自动生成的一个对象，包含了所有的 action creators工厂函数，用于创建action修改state
 export const { initGlobalMessages, initGlobalUserConversations, initGlobalConversations, addGlobalMessage,
-                addUserConversation, addConversation, initGlobalFriendList, initGlobalFriendInfoList, setActiveConversation } = chatSlice.actions;
+                addUserConversation, addConversation, initGlobalFriendList, initGlobalFriendInfoList, initActiveConversation, 
+                initLastMessages, addLastMessage } = chatSlice.actions;
 
 //处理 所有action：根据 action.type 使用reducer函数（ Immer库）执行对应的状态更新逻辑
 //在组件中使用：通过 useSelector 获取状态，useDispatch 分发 action，实现状态管理

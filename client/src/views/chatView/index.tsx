@@ -3,12 +3,13 @@ import { useSelector, useDispatch } from 'react-redux';
 import type { Conversation } from '@/globalType/chat';
 import type { Message } from '@/globalType/message';
 import { Input, Button, List } from 'antd';
-import chatViewStyle from './index.module.scss';
+import chatViewStyle from './style.module.scss';
 import SocketService from '@/utils/socket';
 import { getConversationMessages } from '@/globalApi/chatApi';
-import { initGlobalMessages, setActiveConversation } from '@/store/chatStore';
+import { initGlobalMessages, initActiveConversation } from '@/store/chatStore';
 import type { ApiResponse } from '@/globalType/apiResponse';
 import type { RootState } from '@/store/rootStore';
+import DisplayItem from '@/globalComponents/displayItem/displayItem';
 
 function ChatView() {
 
@@ -26,6 +27,7 @@ function ChatView() {
     const globalConversations = useSelector((state: RootState) => state.chat.globalConversations); // 从redux中获取全局会话列表
     const globalFriendList = useSelector((state: RootState) => state.chat.globalFriendList); // 从redux中获取全局好友列表
     const globalFriendInfoList = useSelector((state: RootState) => state.chat.globalFriendInfoList); // 从redux中获取全局好友信息列表
+    const lastMessages = useSelector((state: RootState) => state.chat.lastMessages); // 从redux中获取最后一条消息
     const socket = SocketService.getInstance(); // 获取socket实例
     const chatBodyRef = useRef<HTMLDivElement>(null); // 消息列表的ref，用来实现滚动
     // const inputRef = useRef<HTMLTextAreaElement>(null); // 输入框的ref，用来实现滚动，注：antd组件已实现
@@ -40,6 +42,7 @@ function ChatView() {
 
     // 获取会话消息（懒加载）
     const handleClickConversation = async (conversationId: string) => {
+        dispatch(initActiveConversation(conversationId));
         await getConversationMessages(conversationId).then((res: ApiResponse<Message[]>) => {
             // dispatch(initGlobalMessages(res.data ?? {})); // 注： 数据结构为 { [conversationId: string]: Message[] , ... }
             dispatch(initGlobalMessages(res.data ?? []));
@@ -96,7 +99,6 @@ function ChatView() {
             setInput(prev => prev + '\n');
         }
     };
-
     return (
         <div className={chatViewStyle.chat_view_container}>
             {/* 左侧：对话列表 */}
@@ -104,22 +106,17 @@ function ChatView() {
                 <div className={chatViewStyle.chat_view_left_header}>header</div>
                 <div className={chatViewStyle.chat_view_left_body}>
                         {globalConversations.map((item: Conversation) => (
-                        <div
-                            key={item.id}
-                            className={`${chatViewStyle.chat_view_left_body_item} ${activeConversation === item.id 
-                                ? chatViewStyle.active : ''}`}
-                            onClick={() => {
-                                dispatch(setActiveConversation(item.id));
-                                handleClickConversation(item.id);
-                            }}
-                        >
-                            <div className={chatViewStyle.item_avatar}>
-                                <img src={globalFriendInfoList[parseConversationId(item.id)]?.avatar 
+                            <DisplayItem
+                                key={item.id}
+                                id={item.id}
+                                avatar={globalFriendInfoList[parseConversationId(item.id)]?.avatar 
                                     ? `http://localhost:3007${globalFriendInfoList[parseConversationId(item.id)]?.avatar}` 
-                                    : 'src/assets/images/defaultAvatar.jpg'} alt="" />
-                            </div>
-                            <div className={chatViewStyle.item_title}>{globalFriendInfoList[parseConversationId(item.id)]?.username || ''}</div>
-                        </div>
+                                    : 'src/assets/images/defaultAvatar.jpg'}
+                                title={globalFriendInfoList[parseConversationId(item.id)].username}
+                                content={lastMessages[item.id]?.content || ''}
+                                isActive={activeConversation === item.id}
+                                handleClick={handleClickConversation}
+                            />
                     ))}
                 </div>
             </div>

@@ -1,4 +1,4 @@
-import settingStyle from './index.module.scss';
+import settingStyle from './style.module.scss';
 import { Image as AntdImage } from "antd";
 import { useSelector } from 'react-redux';
 import { useState, useRef } from 'react';

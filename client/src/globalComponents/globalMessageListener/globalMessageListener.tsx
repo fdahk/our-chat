@@ -1,10 +1,11 @@
 // 全局 socket 监听器，监听 socket 消息，并更新全局消息状态,在app.tsx中使用
 import { useEffect} from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import SocketService from '../utils/socket';
-import { addGlobalMessage, initGlobalUserConversations, initGlobalConversations, initGlobalFriendList, initGlobalFriendInfoList } from '@/store/chatStore';
+import SocketService from '@/utils/socket';
+import { addGlobalMessage, initGlobalUserConversations, initGlobalConversations,
+   initGlobalFriendList, initGlobalFriendInfoList, initLastMessages } from '@/store/chatStore';
 import type { Message } from '@/globalType/message';
-import { getUserConversationList, getConversationList } from '@/globalApi/chatApi';
+import { getUserConversationList, getConversationList, getLastMessage } from '@/globalApi/chatApi';
 import { getFriendList } from '@/globalApi/friendApi';
 import type { ApiResponse } from '@/globalType/apiResponse';
 import type { UserConversation, Conversation } from '@/globalType/chat';
@@ -30,6 +31,10 @@ export default function GlobalMessageListener() {
         //注：必须使用最新的res1的值，redux更新是异步的，而且该组件获取的redux状态是初始值即使上面调用接口后更新了，这里的数据依然是旧的
         getConversationList(res1.data ?? []).then((res2: ApiResponse<Conversation[]>) => {
           dispatch(initGlobalConversations(res2.data ?? []));
+        });
+        // 获取最后一条消息
+        getLastMessage(res1.data ?? []).then((res3: ApiResponse<Record<string, Message>>) => {
+          dispatch(initLastMessages(res3.data ?? {}));
         });
 
       });

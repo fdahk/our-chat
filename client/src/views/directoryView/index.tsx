@@ -1,9 +1,10 @@
-import directoryViewStyle from './index.module.scss';
+import directoryViewStyle from './style.module.scss';
 import { useState } from 'react';
 import { useSelector } from 'react-redux';
 import FriendModal from '@/globalComponents/friendModal/friendModal';
 import type { Friend } from '@/globalType/friend';
 import type { RootState } from '@/store/rootStore';
+import DisplayItem from '@/globalComponents/displayItem/displayItem';
 function DirectoryView() {
     const [activeFriend, setActiveFriend] = useState<{ friend_id: number, remark: string | null } | null>(null);
     const globalFriendList = useSelector((state: RootState) => state.chat.globalFriendList);
@@ -18,21 +19,21 @@ function DirectoryView() {
             <div className={directoryViewStyle.directory_view_left}>
                 {/* 搜索 */}
                 <div className={directoryViewStyle.directory_view_left_header}>header</div>
+
                 {/* 好友列表 */}
                 <div className={directoryViewStyle.directory_view_left_body}>
                     {globalFriendList.map((item: Friend) => (
-                        <div
+                        <DisplayItem
                             key={item.friend_id}
-                            className={`${directoryViewStyle.directory_view_left_body_item}`}
-                            onClick={() => handleFriendClick(item)}
-                        >
-                            <div className={directoryViewStyle.item_avatar}>
-                                <img src={globalFriendInfoList[item.friend_id]?.avatar 
-                                    ? `http://localhost:3007${globalFriendInfoList[item.friend_id].avatar}` 
-                                    : 'src/assets/images/defaultAvatar.jpg'} alt="" />
-                            </div>
-                            <div className={directoryViewStyle.item_title}>{item.remark || globalFriendInfoList[item.friend_id].username}</div>
-                        </div>
+                            id={item.friend_id.toString()}
+                            title={item.remark || globalFriendInfoList[item.friend_id].username}
+                            content={''}
+                            isActive={activeFriend?.friend_id === item.friend_id}
+                            handleClick={() => handleFriendClick(item)}
+                            avatar={globalFriendInfoList[item.friend_id]?.avatar 
+                                ? `http://localhost:3007${globalFriendInfoList[item.friend_id].avatar}` 
+                                : 'src/assets/images/defaultAvatar.jpg'}
+                        />
                     ))}
                 </div>
             </div>

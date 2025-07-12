@@ -104,4 +104,28 @@ router.post('/updateConversationTime', async (req, res) => {
     }
 });
 
+// 获取最后一条消息
+router.get('/lastMessages', async (req, res) => {
+    const userConversationIds = JSON.parse(req.query.userConversationIds);
+    
+    // 聚合管道获取最新消息
+    const lastMessagesArray = await Message.aggregate([
+        { $match: { conversationId: { $in: userConversationIds } } },
+        { $sort: { timestamp: -1 } },
+        { $group: {
+            _id: "$conversationId",
+            lastMessage: { $first: "$$ROOT" }
+        }},
+        { $replaceRoot: { newRoot: "$lastMessage" } }
+    ]);
+    
+    // 转换为以conversationId为键的对象
+    const lastMessages = {};
+    lastMessagesArray.forEach(message => {
+        lastMessages[message.conversationId] = message;
+    });
+    
+    res.json({ success: true, data: lastMessages });
+});
+
 export default router;

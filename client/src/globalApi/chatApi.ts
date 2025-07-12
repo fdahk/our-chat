@@ -30,3 +30,10 @@ export const updateConversationTime = async (conversationId:string) => {
   const res = await post<void>(`/user/updateConversationTime`, { conversationId });
   return res;
 };
+
+// 获取最后一条消息
+export const getLastMessage = async (userConversations: UserConversation[]) => {
+  const userConversationIds = userConversations.map(conversation => conversation.conversation_id);
+  const res = await get<Record<string, Message>>(`/user/lastMessages`, { params: { userConversationIds: JSON.stringify(userConversationIds) } });
+  return res;
+};

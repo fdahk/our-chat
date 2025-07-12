@@ -21,7 +21,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { registerUser, checkUsernameExists, checkEmailExists} from './api';
-import styles from './index.module.scss';
+import styles from './style.module.scss';
 import { type RegisterForm } from './type';
 const { Title, Text } = Typography;
 

@@ -1,9 +1,9 @@
-import styles from './friendModal.module.scss';
+import styles from './style.module.scss';
 import { useDispatch, useSelector } from 'react-redux';
 import { updateConversationTime } from '@/globalApi/chatApi';
 import type { RootState } from '@/store/rootStore';
 import { useNavigate } from 'react-router-dom';
-import { addConversation, addUserConversation, setActiveConversation } from '@/store/chatStore';
+import { addConversation, addUserConversation, initActiveConversation } from '@/store/chatStore';
 
 interface FriendModalProps {
     style?: React.CSSProperties; //css原型
@@ -57,7 +57,7 @@ function FriendModal({
                     updated_at: new Date().toISOString(),
                 }))
             }
-            dispatch(setActiveConversation(`single_${userId}_${wxid}`));
+            dispatch(initActiveConversation(`single_${userId}_${wxid}`));
             navigate(`/chat`);
         });
     }

@@ -1,7 +1,7 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '@/store/userStore';
 import { useNavigate } from 'react-router-dom';
-import layoutStyle from './index.module.scss';
+import layoutStyle from './style.module.scss';
 import { Outlet, NavLink } from 'react-router-dom';
 import { useState, useRef, useEffect } from 'react';
 import SettingView from '@/views/settingView';

@@ -1,0 +1,35 @@
+.directory_view_container {
+    flex: 1;
+    height: 100%;
+    display: flex;
+    background-color: white;
+}
+
+// 左侧
+.directory_view_left {
+    width: 200px;
+    height: 100%;
+    background-color: white;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid rgba(0, 0, 0, 0.2);
+    .directory_view_left_header {
+        height: 50px;
+        display: flex;
+    }
+    .directory_view_left_body {
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+
+    }
+}
+// 右侧
+.directory_view_right {
+    flex: 1;
+    height: 100%;
+    background-color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
