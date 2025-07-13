@@ -9,7 +9,8 @@ import { getConversationMessages } from '@/globalApi/chatApi';
 import { initGlobalMessages, initActiveConversation } from '@/store/chatStore';
 import type { ApiResponse } from '@/globalType/apiResponse';
 import type { RootState } from '@/store/rootStore';
-import DisplayItem from '@/globalComponents/displayItem/displayItem';
+import DisplayItem from '@/globalComponents/displayItem';
+import SearchModal from '@/globalComponents/searchModal';
 
 function ChatView() {
 
@@ -99,11 +100,14 @@ function ChatView() {
             setInput(prev => prev + '\n');
         }
     };
+    const handleSearchChange = (value: string) => {
+        console.log(value);
+    }
     return (
         <div className={chatViewStyle.chat_view_container}>
             {/* 左侧：对话列表 */}
             <div className={chatViewStyle.chat_view_left}>
-                <div className={chatViewStyle.chat_view_left_header}>header</div>
+                <SearchModal searchChange={handleSearchChange} placeholder="搜索" />
                 <div className={chatViewStyle.chat_view_left_body}>
                         {Object.values(globalConversations).map((item: Conversation) => (
                             <DisplayItem

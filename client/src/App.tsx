@@ -4,7 +4,7 @@ import { Provider } from 'react-redux';
 import { rootStore, rootPersistor } from './store/rootStore';
 import { PersistGate } from 'redux-persist/integration/react';
 import router from './router';
-import GlobalMessageListener from './globalComponents/globalMessageListener/globalMessageListener';
+import GlobalMessageListener from './globalComponents/globalMessageListener';
 import ThemeProvider from './style/antD'; // antD全局主题配置
 function App() {
     return (

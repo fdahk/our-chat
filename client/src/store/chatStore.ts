@@ -3,14 +3,14 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { Message } from '@/globalType/message';
 import type { Conversation, UserConversation } from '@/globalType/chat';
-import type { Friend, FriendInfoList } from '@/globalType/friend';
+import type { FriendList, FriendInfoList } from '@/globalType/friend';
 
 // 聊天状态类型
 interface ChatState {
   globalMessages: Message[], 
   globalUserConversations: UserConversation[], 
   globalConversations: Record<string, Conversation>, 
-  globalFriendList: Friend[],
+  globalFriendList: FriendList,
   globalFriendInfoList: FriendInfoList,
   activeConversation: string | null,
   lastMessages: Record<string, Message>, // TS工具类型
@@ -22,7 +22,7 @@ const initialState: ChatState = {
   globalMessages: [],
   globalUserConversations: [],
   globalConversations: {},
-  globalFriendList: [],
+  globalFriendList: {},
   globalFriendInfoList: {},
   activeConversation: null,
   lastMessages: {},
@@ -63,7 +63,7 @@ const chatSlice = createSlice({
       state.globalConversations[action.payload.id] = action.payload;
     },
     // 好友管理
-    initGlobalFriendList(state, action: PayloadAction<{ friend_id: number, remark: string | null }[]>) {
+    initGlobalFriendList(state, action: PayloadAction<FriendList>) {
       state.globalFriendList = action.payload;
     },
     initGlobalFriendInfoList(state, action: PayloadAction<FriendInfoList>) {

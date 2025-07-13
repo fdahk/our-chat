@@ -5,7 +5,7 @@ interface DisplayItemProps {
     avatar: string;
     title: string;
     content: string;
-    isActive: boolean;
+    isActive?: boolean;
     handleClick: (id: string) => void;
     style?: CSSProperties;
 }

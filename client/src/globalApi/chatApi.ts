@@ -28,8 +28,7 @@ export const getConversationMessages = async (conversationId: string) => {
 // 更新会话时间（用于点击发送消息后保证对话渲染在最前面
 // 注：设计为用户可以单向删除会话记录，存在好友但未必有会话记录,可能需要创建会话记录
 // 不过无需担心，组件调用时使用了双方的id拼接了conversation_id
-export const updateConversationTime = async (conversationId:string) => {
-  const userId = useSelector((state: RootState) => state.user.id);
+export const updateConversationTime = async ({conversationId, userId}: {conversationId: string, userId: number}) => {
   const res = await post<void>(`/user/updateConversationTime`, { conversationId, userId });
   return res;
 };

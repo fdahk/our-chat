@@ -1,4 +1,4 @@
-.directory_view_container {
+.container {
     flex: 1;
     height: 100%;
     display: flex;
@@ -6,30 +6,64 @@
 }
 
 // 左侧
-.directory_view_left {
+.left {
     width: 200px;
     height: 100%;
     background-color: white;
     display: flex;
     flex-direction: column;
     border-right: 1px solid rgba(0, 0, 0, 0.2);
-    .directory_view_left_header {
-        height: 50px;
+    .left_header {
+        height: 70px;
+        width: 100%;
         display: flex;
+        padding: 15px 10px;
     }
-    .directory_view_left_body {
+    .left_body {
         display: flex;
         flex-direction: column;
         overflow-y: auto;
-
+    }
+}
+.left_header_add_user_container {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    margin-left: 10px;
+    background-color: var(--button-color-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    .left_header_add_user {
+        font-size: 20px;
+        color: var(--text-color);
+        line-height: 30px;
+        text-align: center;
     }
 }
 // 右侧
-.directory_view_right {
+.right {
     flex: 1;
     height: 100%;
     background-color: white;
     display: flex;
     align-items: center;
     justify-content: center;
+}
+// 搜索结果不存在时
+.noResult {
+    width: 100%;
+    height: 60px;
+    background-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    p {
+        width: 160px;
+        height: 60px;
+        font-size: .9rem;
+        word-break: break-all;
+        color: var(--icon-color);
+    }
 }

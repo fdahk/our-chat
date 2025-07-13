@@ -1,9 +1,11 @@
 import styles from './style.module.scss';
 import { useDispatch, useSelector } from 'react-redux';
-import { updateConversationTime } from '@/globalApi/chatApi';
+import { getConversationMessages, updateConversationTime } from '@/globalApi/chatApi';
 import type { RootState } from '@/store/rootStore';
 import { useNavigate } from 'react-router-dom';
-import { addConversation, addUserConversation, initActiveConversation } from '@/store/chatStore';
+import { addConversation, addUserConversation, initActiveConversation, initGlobalMessages } from '@/store/chatStore';
+import type { ApiResponse } from '@/globalType/apiResponse';
+import type { Message } from '@/globalType/message';
 
 interface FriendModalProps {
     style?: React.CSSProperties; //css原型
@@ -30,26 +32,24 @@ function FriendModal({
     const globalConversations = useSelector((state: RootState) => state.chat.globalConversations);
     // 点击发送消息
     // 注： 
-    const handleClickSendMessage = () => {
+    const handleClickSendMessage = async () => {
         const conversationId = `single_${Math.min(userId, parseInt(wxid))}_${Math.max(userId, parseInt(wxid))}`;
-        updateConversationTime(conversationId).then(res => {
+        updateConversationTime({conversationId, userId}).then(res => {
             // 用户友好式更新
             //注：有些字段数据库实际是不需要的（为null），前端正常加，渲染时的逻辑用不到这些字段
-            //已存在就不要再添加了，这里的判断逻辑比较低效，先用着
-
             if(!globalConversations[conversationId as string]) {
                 dispatch(addConversation({
                     id: conversationId,
                     conv_type: 'single',
-                    title: '',
-                    avatar: '',
+                    title: username,
+                    avatar: avatar,
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString(),
                 }))
                 dispatch(addUserConversation({
-                    id: `single_${userId}_${wxid}`,
+                    id: '',
                     user_id: userId,
-                    conversation_id: `single_${userId}_${wxid}`,
+                    conversation_id: conversationId,
                     last_read_message_id: '',
                     unread_count: 0,
                     is_muted: 0,
@@ -59,10 +59,16 @@ function FriendModal({
                     updated_at: new Date().toISOString(),
                 }))
             }
-            dispatch(initActiveConversation(`single_${userId}_${wxid}`));
-            navigate(`/chat`);
         });
+        // 获取会话消息
+        await getConversationMessages(conversationId).then((res: ApiResponse<Message[]>) => {
+            dispatch(initGlobalMessages(res.data ?? []));
+        });
+        // 设置当前会话
+        dispatch(initActiveConversation(conversationId));
+        navigate(`/chat`);        
     }
+    
     // 点击语音聊天
     const handleClickVoiceChat = () => {
         console.log('voice chat');
