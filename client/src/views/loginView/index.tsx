@@ -43,7 +43,6 @@ function LoginView() {
         password: values.password,
         remember: values.remember,
       });
-      console.log(result);
       // 存储token到本地
       localStorage.setItem('token', result.data.token);
       // 存储用户信息到 redux
@@ -60,10 +59,10 @@ function LoginView() {
         updated_at: result.data.updated_at,
         last_seen: result.data.last_seen,
       }));
-
       // 跳转到主页
       navigate('/chat');
     } catch (error) {
+      console.log(error);
       message.error('登录失败，请重试');
     } finally {
       setLoading(false);
@@ -113,6 +112,7 @@ function LoginView() {
               <Input 
                 prefix={<UserOutlined />}
                 placeholder="用户名"
+                autoComplete='username'
                 allowClear
               />
             </Form.Item>
@@ -127,6 +127,7 @@ function LoginView() {
               <Input.Password
                 prefix={<LockOutlined />}
                 placeholder="密码"
+                autoComplete='current-password'
                 iconRender={visible =>
                   visible
                     ? <EyeTwoTone twoToneColor="#07c160" /> //双色图标，只用style无效，且不支持css变量

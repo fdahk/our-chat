@@ -1,6 +1,6 @@
-import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import storage from 'redux-persist/lib/storage'; // 使用 localStorage 作为存储
-import { persistReducer } from 'redux-persist';
+// 用于创建slice 提供了 useSelector 和 useDispatch hooks，方便在 React 组件中访问 Redux 状态和派发 actions
+// 默认包含了 redux-thunk，可以处理异步 action。您也可以自定义中间件
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit"; 
 import type { User } from '@/globalType/user';
 // 用户状态类型， 注：对外导出，用于数据类型检查
 interface UserState extends User {
@@ -23,13 +23,6 @@ const initialState: UserState = {
   isAuthenticated: false,
 };
 
-// 配置 persist 持久化
-const persistConfig = {
-  key: 'user',      // 存储在 localStorage 的 key
-  storage,          // 存储方式
-  // 只持久化这些字段
-  whitelist: ['id', 'username', 'nickname', 'email', 'avatar', 'bio', 'phone', 'status', 'created_at', 'updated_at', 'last_seen', 'isAuthenticated'] 
-};
 
 // 创建 slice
 const userSlice = createSlice({
@@ -78,10 +71,8 @@ const userSlice = createSlice({
   },
 });
 
-// 持久化包装 reducer
-// 页面刷新后，状态会自动恢复
-const persistedUserReducer = persistReducer(persistConfig, userSlice.reducer);
-export default persistedUserReducer;
+
+export default userSlice.reducer; //导出用于在rootStore中合并
 //废除这个store，应在rootStore中合并并统一配置
 // // 配置 store
 // const userStore = configureStore({
@@ -111,7 +102,8 @@ export default persistedUserReducer;
 // export default userStore;
 // export type RootState = ReturnType<typeof store.getState>; // 获取 store 状态类型，用于数据类型检查 export  UserState，命名麻烦不如直接导出算了
 // export type UserDispatch = typeof userStore.dispatch; // dispatch 是一个hook函数，用于派发 actions
-export const { login, logout, updateProfile } = userSlice.actions; // 导出action creators
+// userSlice.actions 包含所有clice的action creators，导出后可用dispatch获取action
+export const { login, logout, updateProfile } = userSlice.actions; 
 
 // 可选：导出类型
 // export type { UserState };

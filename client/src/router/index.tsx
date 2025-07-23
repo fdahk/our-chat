@@ -1,4 +1,6 @@
 import { createBrowserRouter, Navigate } from "react-router-dom"; 
+// 消息监听组件 
+import GlobalMessageListener from "@/globalComponents/globalMessageListener";
 // 一级路由组件
 import Layout from "@/views/layout/index.tsx";
 import LoginView from "@/views/loginView/index.tsx";
@@ -14,6 +16,7 @@ const router = createBrowserRouter([
         path: "",
         element: (
             <RequireAuth>
+                <GlobalMessageListener/>
                 <Layout/>
             </RequireAuth>
         ),

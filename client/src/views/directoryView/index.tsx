@@ -12,6 +12,7 @@ function DirectoryView() {
     const globalFriendList = useSelector((state: RootState) => state.chat.globalFriendList);
     const globalFriendInfoList = useSelector((state: RootState) => state.chat.globalFriendInfoList);
     const userId = useSelector((state: RootState) => state.user.id);
+    const [isCheckingFriendReq, setIsCheckingFriendReq] = useState(false);
     // 点击好友
     const handleFriendClick = (friend: { friend_id: number, remark: string | null }) => {
         setActiveFriend(friend);
@@ -48,6 +49,10 @@ function DirectoryView() {
             // 用户不存在
             setHasResult(false);
         }
+    }
+    // 点击新朋友卡片
+    const handleClickNewFriend = () => {
+        setIsCheckingFriendReq(true);
     }
     // 监听全局点击事件
     useEffect(() => {
@@ -123,48 +128,71 @@ function DirectoryView() {
                             </div>
                         ) 
                         : (
-                            // JS对象键（无论你写的是数字还是字符串），Object.keys() 返回的永远是字符串数组
-                            Object.keys(globalFriendList).map((item: string) => (
-                        // 注：includes分大小写
-                        // 不做类型转换：比如 [1, 2, 3].includes('1') 返回 false。
-                        // NaN：数组的 includes 可以正确判断 NaN，而 indexOf 不行。
-                        (globalFriendInfoList[Number(item)]?.username.includes(searchValue) || globalFriendInfoList[Number(item)].username.includes(searchValue)) 
-                        && (
-                            <DisplayItem
-                                key={item}
-                                id={item}
-                                title={globalFriendList[Number(item)] || globalFriendInfoList[Number(item)].username}
-                                content={''}
-                                isActive={activeFriend?.friend_id === Number(item)}
-                                handleClick={() => handleFriendClick({ friend_id: Number(item), remark: globalFriendList[Number(item)] })}
-                                avatar={globalFriendInfoList[Number(item)]?.avatar 
-                                    ? `http://localhost:3007${globalFriendInfoList[Number(item)].avatar}` 
-                                    : 'src/assets/images/defaultAvatar.jpg'}
-                            />
+                            <>
+                                <DisplayItem
+                                    id={''}
+                                    avatar={'src/assets/images/newFriend.png'}
+                                    title={'新朋友'}
+                                    content={''}
+                                    handleClick={handleClickNewFriend}
+                                />
+                                {Object.keys(globalFriendList)
+                                    .filter(item => {
+                                        const friendInfo = globalFriendInfoList[Number(item)];
+                                        return friendInfo?.username.includes(searchValue);
+                                    })
+                                    .map((item: string) => {
+                                        const friendId = Number(item);
+                                        const friendInfo = globalFriendInfoList[friendId];
+                                        
+                                        return (
+                                            <DisplayItem
+                                                key={item}
+                                                id={item}
+                                                title={globalFriendList[friendId] || friendInfo?.username}
+                                                content={''}
+                                                isActive={activeFriend?.friend_id === friendId}
+                                                handleClick={() => handleFriendClick({ 
+                                                    friend_id: friendId, 
+                                                    remark: globalFriendList[friendId] 
+                                                })}
+                                                avatar={friendInfo?.avatar 
+                                                    ? `http://localhost:3007${friendInfo.avatar}` 
+                                                    : 'src/assets/images/defaultAvatar.jpg'}
+                                            />
+                                        );
+                                    })}
+                            </>
                         )
-                    )))
                     }
                 </div>
             </div>
             {/* 右侧 */}
             <div className={directoryViewStyle.right}>
+                {/* 好友信息 */}
                 {activeFriend && (
                     <FriendModal
-                    style={{
-                        backgroundColor: 'transparent',
-                        width: '400px',
-                        height: '300px',
-                        boxShadow: 'none',
-                    }}
-                    avatar={globalFriendInfoList[activeFriend?.friend_id as number]?.avatar 
-                        ? `http://localhost:3007${globalFriendInfoList[activeFriend?.friend_id as number].avatar}` 
-                        : 'src/assets/images/defaultAvatar.jpg'}
-                    username={globalFriendInfoList[activeFriend?.friend_id as number]?.username}
-                    wxid={activeFriend?.friend_id.toString() as string} 
-                    region="中国" 
-                    remark={activeFriend?.remark as string | null}
-                    gender={globalFriendInfoList[activeFriend?.friend_id as number].gender as string}
+                        style={{
+                            backgroundColor: 'transparent',
+                            width: '400px',
+                            height: '300px',
+                            boxShadow: 'none',
+                        }}
+                        avatar={globalFriendInfoList[activeFriend?.friend_id as number]?.avatar 
+                            ? `http://localhost:3007${globalFriendInfoList[activeFriend?.friend_id as number].avatar}` 
+                            : 'src/assets/images/defaultAvatar.jpg'}
+                        username={globalFriendInfoList[activeFriend?.friend_id as number]?.username}
+                        wxid={activeFriend?.friend_id.toString() as string} 
+                        region="中国" 
+                        remark={activeFriend?.remark as string | null}
+                        gender={globalFriendInfoList[activeFriend?.friend_id as number].gender as string}
                     />
+                )}
+                {/* 检查新朋友 */}
+                {isCheckingFriendReq && (
+                    <div className={directoryViewStyle.checkingFriendReq}>
+                        <p>正在检查新朋友</p>
+                    </div>
                 )}
             </div>
         </div>

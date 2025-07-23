@@ -14,10 +14,9 @@ export const initSocket = (server) => {
     
     // 监听WebSocket连接, 注：第二个参数前端不传默认1socket实例，只能获取到socket.id
     io.on('connection', (socket) => {
-
         socket.on('join', (userId) => {
         socket.join(userId); // 加入房间
-        console.log(`用户 ${userId} 加入房间`);
+        console.log(`用户 ${userId} 类型 ${typeof userId} 加入房间`);
         });
 
         // 发送消息
@@ -51,8 +50,14 @@ export const initSocket = (server) => {
             }
             
             // 广播消息
-            io.to(user1).emit('receiveMessage', savedMsg);
-            io.to(user2).emit('receiveMessage', savedMsg);
+            try {
+                io.to(parseInt(user1)).emit('receiveMessage', savedMsg);
+                io.to(parseInt(user2)).emit('receiveMessage', savedMsg);      
+                console.log('消息广播成功', typeof user1, typeof user2);          
+            } catch (err) {
+                console.error('消息广播失败:', err);
+            }
+
         } catch (err) {
             console.error('消息存储失败:', err);
             socket.emit('error', { message: '消息发送失败' });

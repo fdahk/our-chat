@@ -1,8 +1,6 @@
 import { get,post } from '@/utils/http';
 import type { UserConversation, Conversation } from '@/globalType/chat';
 import type { Message } from '@/globalType/message';
-import { useSelector } from 'react-redux';
-import type { RootState } from '@/store/rootStore';
 
 // 获取用户会话列表
 export const getUserConversationList = async (userId: number) => {

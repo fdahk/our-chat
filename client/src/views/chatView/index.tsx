@@ -23,10 +23,7 @@ function ChatView() {
     // 但 redux-persist 的 persistReducer 会在 state 外层加上一些持久化相关的属性（如 _persist），
     // 导致类型变成 PersistPartial<RootState>，类型推断不再直接有 chat 属性(实际上能获取正确值，但类型推断报错)
     // 以下使用any类型，避免类型推断报错，但并非最佳实践
-    const globalMessages = useSelector((state: RootState) => state.chat.globalMessages); // 从redux中获取全局消息
-    const globalUserConversations = useSelector((state: RootState) => state.chat.globalUserConversations); // 从redux中获取全局用户会话列表
     const globalConversations = useSelector((state: RootState) => state.chat.globalConversations); // 从redux中获取全局会话列表
-    const globalFriendList = useSelector((state: RootState) => state.chat.globalFriendList); // 从redux中获取全局好友列表
     const globalFriendInfoList = useSelector((state: RootState) => state.chat.globalFriendInfoList); // 从redux中获取全局好友信息列表
     const lastMessages = useSelector((state: RootState) => state.chat.lastMessages); // 从redux中获取最后一条消息
     const socket = SocketService.getInstance(); // 获取socket实例
@@ -116,7 +113,7 @@ function ChatView() {
                                 avatar={globalFriendInfoList[parseConversationId(item.id)]?.avatar 
                                     ? `http://localhost:3007${globalFriendInfoList[parseConversationId(item.id)]?.avatar}` 
                                     : 'src/assets/images/defaultAvatar.jpg'}
-                                title={globalFriendInfoList[parseConversationId(item.id)].username}
+                                title={globalFriendInfoList[parseConversationId(item.id)]?.username}
                                 content={lastMessages[item.id]?.content || ''}
                                 isActive={activeConversation === item.id}
                                 handleClick={handleClickConversation}

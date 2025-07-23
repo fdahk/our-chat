@@ -34,7 +34,6 @@ function RegisterView() {
 
   const handleRegister = async (values: RegisterForm) => {
     setLoading(true);
-    // console.log(values.phone || null); // debug
     try {
       // 注册API调用
       const result = await registerUser({

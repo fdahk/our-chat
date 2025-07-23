@@ -83,17 +83,6 @@ const chatSlice = createSlice({
   },
 });
 
-// 注：废除持久化
-// 配置 persist 持久化
-// const persistConfig = {
-//   key: 'chat',
-//   storage,
-//   whitelist: ['globalMessages', 'globalConversations'],
-// };
-// const persistedChatReducer = persistReducer(persistConfig, chatSlice.reducer);
-
-
-
 //chatSlice.actions 是 createSlice 自动生成的一个对象，包含了所有的 action creators工厂函数，用于创建action修改state
 export const { initGlobalMessages, initGlobalUserConversations, initGlobalConversations, addGlobalMessage,
                 addUserConversation, addConversation, initGlobalFriendList, initGlobalFriendInfoList, initActiveConversation, 
