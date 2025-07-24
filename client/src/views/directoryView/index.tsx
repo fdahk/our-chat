@@ -1,20 +1,28 @@
 import directoryViewStyle from './style.module.scss';
 import { useEffect, useRef, useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import FriendModal from '@/globalComponents/friendModal';
 import type { RootState } from '@/store/rootStore';
 import DisplayItem from '@/globalComponents/displayItem';
 import SearchModal from '@/globalComponents/searchModal';
-import { searchUser } from '@/globalApi/friendApi';
+import { searchUser, replyFriendReq } from '@/globalApi/friendApi';
 import AddFriendModal from '@/globalComponents/addFriendModal';
+import { setFriendReqStatus } from '@/store/friendStore';
+import {type Message } from '@/globalType/message';
+import SocketService from '@/utils/socket';
+import { addGlobalFriend, addGlobalFriendInfo } from '@/store/chatStore';
 function DirectoryView() {
     const [activeFriend, setActiveFriend] = useState<{ friend_id: number, remark: string | null } | null>(null);
     const globalFriendList = useSelector((state: RootState) => state.chat.globalFriendList);
     const globalFriendInfoList = useSelector((state: RootState) => state.chat.globalFriendInfoList);
+    const globalFriendReqList = useSelector((state: RootState) => state.friendReq);
+    const dispatch = useDispatch();
     const userId = useSelector((state: RootState) => state.user.id);
     const [isCheckingFriendReq, setIsCheckingFriendReq] = useState(false);
+    const socket = SocketService.getInstance();
     // 点击好友
     const handleFriendClick = (friend: { friend_id: number, remark: string | null }) => {
+        setIsCheckingFriendReq(false);
         setActiveFriend(friend);
     }
     // 搜索
@@ -52,7 +60,44 @@ function DirectoryView() {
     }
     // 点击新朋友卡片
     const handleClickNewFriend = () => {
+        setActiveFriend(null);
         setIsCheckingFriendReq(true);
+    }
+    // 回复好友请求
+    const handleReplyFriendReq = async (friend_id: number, status: string) => {
+        replyFriendReq({userId, friend_id, status}).then( async () => {
+            dispatch(setFriendReqStatus({friend_id, status}));
+            if(status === "accepted") {
+                const otherInfo = await searchUser({keyword: friend_id, userId});
+                const conversationId = `single_${Math.min(userId, friend_id)}_${Math.max(userId, friend_id)}`;                
+                // 创建会话记录
+                
+                // 创建初始消息 
+                const msg:Message = {
+                    conversationId: conversationId,
+                    senderId: friend_id, 
+                    content: '你好，我是' + otherInfo.data.friendInfo.username,
+                    type: 'text',
+                    status: 'sent',
+                    mentions: [],
+                    isEdited: false,
+                    isDeleted: false,
+                    extra: {},
+                    editHistory: [],
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    timestamp: new Date().toISOString(),
+                };
+                socket.emit('sendMessage', msg);
+                // 更新好友列表
+                dispatch(addGlobalFriend({friend_id, remark: null}));
+                dispatch(addGlobalFriendInfo({friend_id, friendInfo: {
+                    username: otherInfo.data.friendInfo.username,
+                    avatar: otherInfo.data.friendInfo.avatar,
+                    gender: otherInfo.data.friendInfo.gender,
+                }}));
+            }
+        })
     }
     // 监听全局点击事件
     useEffect(() => {
@@ -74,6 +119,7 @@ function DirectoryView() {
             setHasResult(true);
         }
     }, [searchValue]);
+    // TSX
     return (
         <div className={directoryViewStyle.container}>
             {/* 左侧 */}
@@ -139,7 +185,7 @@ function DirectoryView() {
                                 {Object.keys(globalFriendList)
                                     .filter(item => {
                                         const friendInfo = globalFriendInfoList[Number(item)];
-                                        return friendInfo?.username.includes(searchValue);
+                                        return friendInfo?.username.includes(searchValue) && globalFriendReqList[Number(item)].status === 'accepted';
                                     })
                                     .map((item: string) => {
                                         const friendId = Number(item);
@@ -190,8 +236,56 @@ function DirectoryView() {
                 )}
                 {/* 检查新朋友 */}
                 {isCheckingFriendReq && (
-                    <div className={directoryViewStyle.checkingFriendReq}>
-                        <p>正在检查新朋友</p>
+                    <div className={directoryViewStyle.friendReqBox}>
+                        <div className={directoryViewStyle.friendReqHeader}>
+                            <p className={directoryViewStyle.title}>新的朋友</p>
+                        </div>
+                        <div className={directoryViewStyle.friendReqList}>
+                            {
+                                Object.keys(globalFriendReqList).map((item: string) => {
+                                    const friendInfo = globalFriendInfoList[Number(item)];
+                                    return (
+                                        <div className={directoryViewStyle.friendReqItem} key={item}>
+                                            <DisplayItem 
+                                            id={item} title={friendInfo?.username} content={''} 
+                                            avatar={friendInfo?.avatar 
+                                            ? `http://localhost:3007${friendInfo.avatar}` 
+                                            : 'src/assets/images/defaultAvatar.jpg'} 
+                                            style={{width: '55px', height: '55px', backgroundColor: 'transparent'}}/>
+                                            {/* 请求状态 */}
+                                            <div className={directoryViewStyle.rightBox}>
+                                                {
+                                                    globalFriendReqList[Number(item)].status === 'pending'
+                                                    ? (
+                                                    <div className={directoryViewStyle.rightBox_btn}>
+                                                        <div className={directoryViewStyle.rightBox_btn_reject} 
+                                                        onClick={() => handleReplyFriendReq(Number(item), 'blocked')}>
+                                                            拒绝
+                                                        </div>
+
+                                                        <div className={directoryViewStyle.rightBox_btn_accept} 
+                                                        onClick={() => handleReplyFriendReq(Number(item), 'accepted')}>
+                                                            同意
+                                                        </div>
+                                                    </div>            
+                                                    )
+                                                    : (
+                                                        <div className={directoryViewStyle.rightBox_status}>
+                                                            {
+                                                                globalFriendReqList[Number(item)].status === 'sent'
+                                                                ? <p>等待验证</p>
+                                                                : <p>{globalFriendReqList[Number(item)].status === 'accepted' ? '已同意' : '已拒绝'}</p>
+                                                            }
+                                                        </div>
+                                                    )
+                                                }
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            }                            
+                        </div>
+
                     </div>
                 )}
             </div>

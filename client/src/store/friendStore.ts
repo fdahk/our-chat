@@ -1,8 +1,17 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { User } from '@/globalType/user';
 
+export interface FriendReq {
+    id: number;
+    user_id: number;
+    friend_id: number;
+    remark: string | null;
+    status: string;
+    created_at: string;
+    updated_at: string;
+}
 interface FriendReqList {
-    [key: number]: User;
+    // key是好友id，value是好友请求
+    [key: number]: FriendReq;
 }
 
 const initialState: FriendReqList = {};
@@ -12,13 +21,17 @@ const friendReqSlice = createSlice({
     initialState,
     reducers: {
         initFriendReqList: (state, action: PayloadAction<FriendReqList>) => {
-            state = action.payload;
+            return action.payload;
         },
-        addFriendReq: (state, action: PayloadAction<User>) => {
-            state[action.payload.id] = action.payload;
+        addFriendReq: (state, action: PayloadAction<FriendReq>) => {
+            console.log('添加好友请求', action.payload);
+            state[action.payload.friend_id] = action.payload;
+        },
+        setFriendReqStatus: (state, action: PayloadAction<{friend_id: number, status: string}>) => {
+            state[action.payload.friend_id].status = action.payload.status;
         }
     },
 });
 
-export const { initFriendReqList, addFriendReq } = friendReqSlice.actions;
+export const { initFriendReqList, addFriendReq, setFriendReqStatus } = friendReqSlice.actions;
 export default friendReqSlice.reducer;

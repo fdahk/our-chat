@@ -27,7 +27,7 @@ export const initSocket = (server) => {
             const user2 = splited[2];            
             // 存储到 MongoDB
             const savedMsg = await Message.create(msg);
-            // 检查是否用户删除了用户会话记录
+            // 检查是否用户删除了用户会话记录，删除了就添加
             const [res1] = await mySql.execute(
                 `SELECT * FROM user_conversations WHERE conversation_id = ? AND user_id = ?`,
                 [msg.conversationId, user1]
@@ -63,7 +63,17 @@ export const initSocket = (server) => {
             socket.emit('error', { message: '消息发送失败' });
         }
         });
-    
+
+        // 接收好友请求
+        socket.on('sendFriendReq', async (friendReq) => {
+            try {
+                console.log('发送好友请求', friendReq);
+                io.to(friendReq.user_id).emit('receiveFriendReq', friendReq);
+            } catch (error) {
+                console.error('发送好友请求失败:', error);
+            }
+        });
+
         // 断开连接
         socket.on('disconnect', () => {
         console.log('用户断开:', socket.id);

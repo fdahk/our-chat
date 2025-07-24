@@ -67,3 +67,78 @@
         color: var(--icon-color);
     }
 }
+
+.friendReqBox {
+    width: 100%;
+    height: 100%;
+    background-color: transparent;
+    display: flex;
+    flex-direction: column;
+    .friendReqHeader {
+        width: 100%;
+        height: 70px;
+        background-color: transparent;
+        display: flex;
+        align-items: center;
+        justify-content: start;
+        .title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: black;
+            margin-left: 20px;
+        }
+        
+    }
+    .friendReqList {
+        width: 100%;
+        flex: 1;
+        background-color: transparent;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        padding: 0 80px;
+        .friendReqItem {
+            width: 100%;
+            display: flex;
+            min-width: 0;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+            .rightBox {
+                height: 100%; 
+                display: flex;
+                align-items: center;
+                .rightBox_btn {
+                    width: 110px;
+                    height: 100%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 10px;
+                    .rightBox_btn_reject {
+                        width: 50px;
+                        padding: 2px 0;
+                        background-color: var(--button-color-hover);
+                        color: black;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    }
+                    .rightBox_btn_accept {
+                        width: 50px;
+                        padding: 2px 0;
+                        background-color: var(--primary-color);
+                        color: black;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    }
+                }
+            }            
+        }
+
+    }
+}

@@ -12,3 +12,11 @@ export const searchUser = ({keyword, userId}: {keyword: number, userId: number})
 export const addFriend = ({userId, friend_id}: {userId: number, friend_id: number}) => {
     return put(`/user/addFriend`, { userId, friend_id });
 }
+//获取好友请求
+export const getFriendReqs = (userId: number) => {
+    return get(`/user/getFriendReqs`, { params: { userId } });
+}
+//回复好友请求 
+export const replyFriendReq = ({userId, friend_id, status}: {userId: number, friend_id: number, status: string}) => {
+    return put(`/user/replyFriendReq`, { userId, friend_id, status });
+}

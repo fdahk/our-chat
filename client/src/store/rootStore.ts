@@ -9,7 +9,7 @@ import friendReqReducer from './friendStore'; // 同上
 const rootPersistConfig = {
   key: 'root',
   storage,
-  whitelist: ['user'], // 需要持久化的 slice
+  whitelist: ['user', 'friendReq'], // 需要持久化的 slice
 };
 
 // 合并所有reducer（每个reducer都自动管理自己的state）使root能处理所有模块状态的 reducer

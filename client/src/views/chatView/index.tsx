@@ -69,7 +69,7 @@ function ChatView() {
         // console.log('activeConv', activeConv); // 调试
         const msg:Message = {
             conversationId: activeConversation,
-            senderId: userId, //userId是number类型，需要转换为string类型
+            senderId: userId,
             content: input,
             type: 'text',
             status: 'sent',

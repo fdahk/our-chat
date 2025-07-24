@@ -73,7 +73,7 @@ router.get('/messages', async (req, res) => {
     }
 });
 
-// 更新会话
+// 更新会话（同时负责创建会话记录
 router.post('/updateConversationTime', async (req, res) => {
     const conversationId = req.body.conversationId;
     const userId = req.body.userId;

@@ -1,8 +1,10 @@
 import { forwardRef, useState } from 'react';
 import styles from './style.module.scss';
 import { addFriend } from '@/globalApi/friendApi';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import type { RootState } from '@/store/rootStore';
+import SocketService from '@/utils/socket';
+import { addFriendReq } from '@/store/friendStore';
 
 interface AddFriendModalProps {
     avatar: string;
@@ -14,11 +16,34 @@ interface AddFriendModalProps {
 
 const AddFriendModal = forwardRef<HTMLDivElement, AddFriendModalProps>(
   ({ avatar, username, wxid, region, gender }, ref) => {
+    const socket = SocketService.getInstance();
+    const dispatch = useDispatch();
     const userId = useSelector((state: RootState) => state.user.id);
+    const userInfo = useSelector((state: RootState) => state.user);
     const [isSent, setIsSent] = useState(false);
     // 发起好友请求
-    const handleAddFriend = () => {
+    const handleAddFriend = async () => {
         addFriend({userId, friend_id: Number(wxid)});
+        // 注意视角切换，别搞反了
+        socket.emit('sendFriendReq', {
+          id: 0,
+          friend_id: userId, 
+          user_id: Number(wxid), 
+          status: 'pending', 
+          created_at: new Date().toISOString(), 
+          updated_at: new Date().toISOString(),
+          username: userInfo.username,
+          avatar: userInfo.avatar,
+      });  
+      dispatch(addFriendReq({
+        id: 0,
+        friend_id: Number(wxid),
+        user_id: userId,
+        status: 'sent',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        remark: null,
+      }));
         setIsSent(true);
     }
     return (

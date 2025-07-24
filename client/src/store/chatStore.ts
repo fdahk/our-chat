@@ -3,7 +3,7 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { Message } from '@/globalType/message';
 import type { Conversation, UserConversation } from '@/globalType/chat';
-import type { FriendList, FriendInfoList } from '@/globalType/friend';
+import type { FriendList, FriendInfoList, FriendInfo } from '@/globalType/friend';
 
 // 聊天状态类型
 interface ChatState {
@@ -20,10 +20,10 @@ interface ChatState {
 // 初始状态
 const initialState: ChatState = {
   globalMessages: [],
-  globalUserConversations: [],
-  globalConversations: {},
-  globalFriendList: {},
-  globalFriendInfoList: {},
+  globalUserConversations: [], //用户的会话id列表，用于查询会话
+  globalConversations: {}, //会话列表
+  globalFriendList: {}, //用户的好友id列表，用于查询好友信息
+  globalFriendInfoList: {}, //用户的好友信息列表
   activeConversation: null,
   lastMessages: {},
 };
@@ -66,8 +66,14 @@ const chatSlice = createSlice({
     initGlobalFriendList(state, action: PayloadAction<FriendList>) {
       state.globalFriendList = action.payload;
     },
+    addGlobalFriend(state, action: PayloadAction<{friend_id: number, remark: string | null}>) {
+      state.globalFriendList[action.payload.friend_id] = action.payload.remark;
+    },
     initGlobalFriendInfoList(state, action: PayloadAction<FriendInfoList>) {
       state.globalFriendInfoList = action.payload;
+    },
+    addGlobalFriendInfo(state, action: PayloadAction<{friend_id: number, friendInfo: FriendInfo}>) {
+      state.globalFriendInfoList[action.payload.friend_id] = action.payload.friendInfo;
     },
     // 设置当前会话
     initActiveConversation(state, action: PayloadAction<string | null>) {
@@ -85,7 +91,7 @@ const chatSlice = createSlice({
 
 //chatSlice.actions 是 createSlice 自动生成的一个对象，包含了所有的 action creators工厂函数，用于创建action修改state
 export const { initGlobalMessages, initGlobalUserConversations, initGlobalConversations, addGlobalMessage,
-                addUserConversation, addConversation, initGlobalFriendList, initGlobalFriendInfoList, initActiveConversation, 
+                addUserConversation, addConversation, initGlobalFriendList, addGlobalFriend, initGlobalFriendInfoList, addGlobalFriendInfo, initActiveConversation, 
                 initLastMessages, addLastMessage } = chatSlice.actions;
 
 //处理 所有action：根据 action.type 使用reducer函数（ Immer库）执行对应的状态更新逻辑

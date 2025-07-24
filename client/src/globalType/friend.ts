@@ -4,6 +4,7 @@ export interface Friend {
     remark: string | null;
 }
 export interface FriendList {
+    // key: 好友ID  value: remark
     [key: number]: string | null;
 }
 // 好友信息类型
