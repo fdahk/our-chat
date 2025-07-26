@@ -1,0 +1,61 @@
+.file-uploader {
+    .ant-upload-drag {
+      border: 2px dashed #d9d9d9;
+      border-radius: 6px;
+      background: #fafafa;
+      transition: border-color 0.3s;
+      
+      &:hover {
+        border-color: #1890ff;
+      }
+    }
+  
+    .file-list {
+      margin-top: 16px;
+      
+      .file-item {
+        display: flex;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid #f0f0f0;
+        
+        &:last-child {
+          border-bottom: none;
+        }
+        
+        .file-info {
+          flex: 1;
+          margin-left: 8px;
+          
+          .file-name {
+            font-weight: 500;
+            margin-bottom: 4px;
+          }
+          
+          .file-size {
+            color: #666;
+            font-size: 12px;
+          }
+        }
+        
+        .file-status {
+          margin-right: 8px;
+        }
+        
+        .file-actions {
+          display: flex;
+          gap: 8px;
+        }
+      }
+    }
+  
+    .progress-wrapper {
+      margin-top: 4px;
+    }
+  
+    .error-message {
+      color: #ff4d4f;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+  }

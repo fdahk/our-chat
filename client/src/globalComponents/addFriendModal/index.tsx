@@ -60,8 +60,8 @@ const AddFriendModal = forwardRef<HTMLDivElement, AddFriendModalProps>(
                 ? <i className={`iconfont icon-user ${styles.iconUser}`} />
                 : <i className={`iconfont icon-user ${styles.iconUser}`} style={{ color: 'var(--warning-color)' }} />}
             </div>
-            <div className={styles.wxid}>微信号：{wxid}</div>
-            <div className={styles.region}>地区：{region}</div>
+            <div className={styles.wxid}> 微信号：{wxid} </div>
+            <div className={styles.region}> 地区：{region} </div>
           </div>
         </div>
         {/* 底部 */}

@@ -10,6 +10,7 @@ import DirectoryView from "@/views/directoryView/index.tsx";
 import ChatView from "@/views/chatView/index.tsx";
 // 三级路由组件
 import RequireAuth from "@/utils/requireAuth";
+import TestView from "@/views/test/index.tsx";
 const router = createBrowserRouter([
     // 一级路由首页
     {
@@ -34,6 +35,10 @@ const router = createBrowserRouter([
             {
                 path: "directory",
                 element: <DirectoryView/>,
+            },
+            {
+                path: "test",
+                element: <TestView/>,
             }
         ]
     },

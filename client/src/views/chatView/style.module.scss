@@ -75,8 +75,29 @@
         display: flex;
         align-items: center;
         flex-direction: column;
-        // min-height: 80px;
-        .input_area_box {
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+        .input_area_header {
+            background-color: white;
+            display: flex;
+            justify-content: space-between;
+            height: 30px;
+            width: 100%;
+            padding: 0 20px;
+            .input_area_header_left {
+                display: flex;
+                gap: 15px;
+            }   
+            .input_area_header_right {
+                display: flex;
+                gap: 15px;
+            }
+            .input_area_icon {
+                cursor: pointer;
+                font-size: 22px;
+                color: rgba(0, 0, 0, 0.5);
+            }
+        }
+        .input_area_body {
             width: 100%;
             display: flex;
             align-items: center;
@@ -85,13 +106,30 @@
                 flex: 1;
                 resize: none;
                 scrollbar-width: none;
+                border: none;
+                padding: 0 20px;
             }
-            .send_button {
-                width: 50px;
-                height: 100%;
-            }            
+            // 去除antD自带样式
+            :global(.ant-input-outlined:focus),
+            :global(.ant-input-outlined:focus-within) {
+              border-color: transparent !important;
+              box-shadow: none !important;
+              outline: none !important;
+              background-color: transparent !important;
+            }
         }
- 
+        .input_area_footer {
+            background-color: white;
+            height: 50px;
+            width: 100%;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: end;
+            .send_button {
+                width: 70px;
+                height: 100%;
+            }                  
+        }
     }
 
 }

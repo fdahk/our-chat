@@ -24,6 +24,12 @@
   --icon-color: #b2a9ac;
   --text-color: #333333;
   --warning-color: #f56c6c;
+  /* antD 样式 */
+  --antd-input-border-color: transparent;
+  --antd-input-hover-border-color: transparent;
+  --antd-input-focus-border-color: transparent;
+  --antd-input-box-shadow: none;
+  --antd-input-focus-box-shadow: none;
 }
 
 

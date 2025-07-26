@@ -28,3 +28,12 @@
 
 7.24：
   添加好友后发起首次消息，存在外键问题： 在回复请求的后端api处直接添加会话记录
+7.26：
+  // 去除antD自带样式
+  :global(.ant-input-outlined:focus),
+  :global(.ant-input-outlined:focus-within) {
+    border-color: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+    background-color: transparent !important;
+  }

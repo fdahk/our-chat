@@ -19,6 +19,14 @@ function ChatView() {
     const messages = useSelector((state: RootState) => state.chat.globalMessages); //消息列表 注：数据结构为 { [conversationId: string]: Message[] , ... }
     const [input, setInput] = useState(''); // 输入框内容
     const userId= useSelector((state: RootState) => state.user.id) as number; // 从redux中获取用户id
+    const inputAreaIcons = [
+        {label: '表情', icon: "icon-meh", method: "handleClickEmoji"},
+        {label: '文件', icon: "icon-folder", method: "handleClickFile"},
+        {label: '截图', icon: "icon-scissor", method: "handleClickScreenshot"},
+        {label: '聊天记录', icon: "icon-comment", method: "handleClickChatRecord"},
+       {label: '语音聊天', icon: "icon-phone", method: "handleClickVoice"},        
+        {label: '视频聊天', icon: "icon-videocameraadd", method: "handleClickVideo"},
+    ]
     // 注： RootState 类型是通过 ReturnType<typeof rootStore.getState> 推导出来的。
     // 但 redux-persist 的 persistReducer 会在 state 外层加上一些持久化相关的属性（如 _persist），
     // 导致类型变成 PersistPartial<RootState>，类型推断不再直接有 chat 属性(实际上能获取正确值，但类型推断报错)
@@ -100,6 +108,53 @@ function ChatView() {
     const handleSearchChange = (value: string) => {
         console.log(value);
     }
+    //头部按钮点击事件
+    const handleClickHeaderIcon = (method: string) => {
+        switch(method) {
+            case 'handleClickEmoji':
+                handleClickEmoji();
+                break;
+            case 'handleClickFile':
+                handleClickFile();
+                break;
+            case 'handleClickScreenshot':
+                handleClickScreenshot();
+                break;
+            case 'handleClickChatRecord':
+                handleClickChatRecord();
+                break;
+            case 'handleClickVoice':
+                handleClickVoice();
+                break;
+            case 'handleClickVideo':
+                handleClickVideo();
+                break;
+        }
+    }
+    // 表情
+    const handleClickEmoji = () => {
+        console.log('handleClickEmoji');
+    }
+    // 文件
+    const handleClickFile = () => {
+        console.log('handleClickFile');
+    }
+    // 截图
+    const handleClickScreenshot = () => {
+        console.log('handleClickScreenshot');
+    }
+    // 聊天记录
+    const handleClickChatRecord = () => {
+        console.log('handleClickChatRecord');
+    }
+    // 语音聊天
+    const handleClickVoice = () => {
+        console.log('handleClickVoice');
+    }
+    // 视频聊天
+    const handleClickVideo = () => {
+        console.log('handleClickVideo');
+    }
     return (
         <div className={chatViewStyle.chat_view_container}>
             {/* 左侧：对话列表 */}
@@ -141,7 +196,23 @@ function ChatView() {
                         </div>
                         {/* 输入框 */}
                         <div className={chatViewStyle.input_area_container}>
-                            <div className={chatViewStyle.input_area_box}>
+                            {/* header */}
+                            <div className={chatViewStyle.input_area_header}>
+                                {/* 左侧 */}
+                                <div className={chatViewStyle.input_area_header_left}>
+                                {inputAreaIcons.slice(0, 4).map((item) => (
+                                        <i key={item.label} className={`iconfont ${item.icon} ${chatViewStyle.input_area_icon}`} onClick={() => handleClickHeaderIcon(item.method)}></i>
+                                ))}
+                                </div>
+                                {/* 右侧 */}
+                                <div className={chatViewStyle.input_area_header_right}>
+                                {inputAreaIcons.slice(4, 6).map((item) => (
+                                        <i key={item.label} className={`iconfont ${item.icon} ${chatViewStyle.input_area_icon}`} onClick={() => handleClickHeaderIcon(item.method)}></i>
+                                ))}
+                                </div>
+                            </div>
+                            {/* body */}
+                            <div className={chatViewStyle.input_area_body}>
                                 <Input.TextArea
                                     value={input}
                                     onChange={e => setInput(e.target.value)}
@@ -149,11 +220,16 @@ function ChatView() {
                                     autoSize={{ minRows: 2, maxRows: 4 }}
                                     placeholder="请输入消息"
                                     className={chatViewStyle.input_textarea}
+                                    style={{border: "none"}}
                                 />
+
+                            </div>
+                            <div className={chatViewStyle.input_area_footer}>
                                 <Button type="primary" onClick={sendMessage} className={chatViewStyle.send_button}>
                                     发送
                                 </Button>
                             </div>
+
                         </div>
                     </>
                 ) : (

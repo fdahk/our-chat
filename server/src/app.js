@@ -8,6 +8,7 @@ import { initSocket } from './utils/socket.js';
 import uploadRouter from './routes/upload.js';
 import userRouter from './routes/user.js';
 import friendRouter from './routes/friend.js';
+import uploadAdvancedRouter from './routes/uploadAdvanced.js';
 const app = express(); //Express监听（http）服务器
 const PORT = process.env.PORT || 3007; //获取端口
 
@@ -42,4 +43,5 @@ app.use('/user', conversationRouter);
 app.use('/user/uploads', uploadRouter);
 app.use('/user', userRouter);
 app.use('/user', friendRouter);
+app.use('/api/upload', uploadAdvancedRouter);
 initSocket(server); // 初始化socket.io
