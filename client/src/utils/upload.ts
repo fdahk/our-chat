@@ -5,9 +5,8 @@
 // - 保证前端上传流程的健壮性和灵活性
 // - 支持大文件分片、秒传、类型校验、进度等高级功能
 // - 类型安全的文件结构和配置
-// - 大文件分片、断点续传、秒传等高级能力
-// - 文件校验、格式化、唯一标识等基础能力
-// - 与后端的统一通信接口
+// - 大文件分片、断点续传、秒传等
+// - 文件校验、格式化、唯一标识等
 
 import CryptoJS from 'crypto-js';
 
@@ -32,7 +31,7 @@ export interface UploadConfig {
   chunkSize: number;         // 分片大小，单位字节，默认5MB
   concurrent: number;        // 并发上传分片数
   maxRetries: number;        // 最大重试次数
-  allowedTypes?: string[];   // 允许的文件类型（如['image', 'pdf']）
+  allowedTypes?: string[];   // 允许的文件类型
   maxSize?: number;          // 最大文件大小（字节）
   compress?: boolean;        // 是否对图片进行压缩
   quality?: number;          // 压缩质量（0-100）
@@ -117,21 +116,56 @@ export const validateFile = (file: File, config: UploadConfig) => {
   return errors; // 返回所有校验错误
 };
 
-// 统一的HTTP请求工具（用于与后端API交互）
+// JS原生fetch HTTP请求
+// export const request = async (url: string, options: RequestInit = {}) => {
+//     // fetch 是原生 JS 提供的网络请求 API,支持跨域（需要后端允许）比 XMLHttpRequest 更现代、语法更简洁
+//     // fetch(url, options)
+//     // options：可选参数对象（如 method、headers、body 等）
+//     // 常见返回值处理:
+//     // response.json()：解析返回的 JSON 数据
+//     // response.text()：解析返回的文本数据
+//     // response.blob()：解析返回的二进制数据（如图片、文件）
+//   const response = await fetch(`http://127.0.0.1:3007/api${url}`, {
+//     ...options,
+//     headers: {
+//       ...options.headers,
+//     }
+//   });
+
+//   // 错误处理
+//   if (!response.ok) {
+//     throw new Error(`HTTP error! status: ${response.status}`);
+//   }
+
+//   // 返回JSON结果
+//   return response.json();
+// };
+
+
+// 使用封装了的 axios http请求，
+import { post, get } from './http';
 export const request = async (url: string, options: RequestInit = {}) => {
-  // 所有上传相关请求都加上/api前缀
-  const response = await fetch(`http://127.0.0.1:3007/api${url}`, {
-    ...options,
-    headers: {
-      ...options.headers,
+    url = 'api' + url; // 添加前缀
+    const method = options.method || 'GET';
+    // post 
+    if (method === 'POST') {
+      let data;
+      const headers = options.headers as Record<string, string>;
+      
+      if (options.body instanceof FormData) {
+        // 文件上传：FormData 对象
+        data = options.body;
+      } else if (options.body && headers?.['Content-Type']?.includes('application/json')) {
+        // 其他数据：JSON 数据
+        data = JSON.parse(options.body as string);
+      } else {
+        // 不处理
+        data = options.body;
+      }
+      
+      return await post(url, data);
+    } else {
+      // GET 请求
+      return await get(url);
     }
-  });
-
-  // 错误处理
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-
-  // 返回JSON结果
-  return response.json();
 };

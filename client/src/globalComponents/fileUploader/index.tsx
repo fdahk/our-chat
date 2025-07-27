@@ -1,5 +1,5 @@
-// 文件上传组件 - 提供完整的文件上传功能
-// 功能特性：
+// 文件上传组件
+// 功能：
 // 1. 单文件/多文件上传
 // 2. 大文件分片上传，突破浏览器和服务器对单次请求大小的限制
 // 3. 文件秒传（MD5校验）
@@ -7,23 +7,16 @@
 // 5. 实时进度显示
 // 6. 文件压缩上传
 // 7. 错误处理和重试机制
-// 
-// 在整个文件上传模块中的作用：
-// - 作为前端用户界面，提供友好的文件选择和上传体验
-// - 处理文件验证、分片、进度跟踪等前端逻辑
-// - 与后端API交互，实现完整的文件上传流程
-// - 提供状态管理和错误处理机制
-
 import React, { useState, useCallback } from 'react';
-// Ant Design UI组件库导入
+// antD UI组件库：文件上传 按钮 进度条 全局提示 列表 卡片容器 标签 间距
 import { Upload, Button, Progress, message, List, Card, Tag, Space } from 'antd';
-// Ant Design图标库导入
+// antD图标库
 import { 
-  UploadOutlined,  // 上传图标
-  DeleteOutlined,  // 删除图标
-  FileOutlined     // 文件图标
+  UploadOutlined,  // 上传
+  DeleteOutlined,  // 删除
+  FileOutlined     // 文件
 } from '@ant-design/icons';
-// 导入自定义的上传工具函数和类型定义
+// 工具函数和类型定义
 import { 
   type FileItem,        // 文件项类型定义
   type UploadConfig,    // 上传配置类型定义
@@ -38,8 +31,7 @@ import {
 
 import './style.module.scss';
 
-// 文件上传组件属性接口
-// 定义了组件接收的配置参数和回调函数
+// props参数
 interface FileUploaderProps {
   config?: Partial<UploadConfig>;           // 可选的配置参数（部分配置）
   multiple?: boolean;                       // 是否允许多文件选择
@@ -47,8 +39,6 @@ interface FileUploaderProps {
   onError?: (error: string) => void;        // 上传失败回调函数
 }
 
-// 文件上传组件主函数
-// 实现完整的文件上传功能，包括文件选择、验证、上传、进度跟踪等
 const FileUploader: React.FC<FileUploaderProps> = ({
   config = {},        // 默认空配置对象
   multiple = true,    // 默认允许多文件选择
@@ -69,9 +59,9 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   // 将用户传入的配置与默认配置合并，用户配置优先级更高
   const uploadConfig = { ...defaultConfig, ...config };
 
-  // ==================== 核心功能函数 ====================
+  // ==================== 核心功能 ====================
 
-  // 文件选择处理函数
+  // 文件选择处理
   // 作用：处理用户选择的文件，进行初步验证和状态初始化
   // 意义：确保只有符合要求的文件进入上传队列，避免无效文件进入上传流程
   // @param selectedFiles - 用户选择的文件列表
@@ -301,16 +291,17 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         }
 
         // 创建分片上传的FormData
+        // 注：由于后端解析顺序的问题，上传类型参数放在查询参数处，其他参数正常放在请求体中
         const formData = new FormData();
         formData.append('chunk', chunks[i]);                    // 分片数据
-        formData.append('fileId', fileId);                      // 文件ID
-        formData.append('chunkIndex', i.toString());            // 分片索引
+        // formData.append('fileId', fileId);                      // 文件ID
+        // formData.append('chunkIndex', i.toString());            // 分片索引
         formData.append('totalChunks', chunks.length.toString()); // 总分片数
         formData.append('fileName', fileName);                  // 文件名
-        formData.append('uploadType', 'chunk');                 // 上传类型标识
+        // formData.append('uploadType', 'chunk');                 // 上传类型标识
 
         // 上传分片
-        await request('/upload/chunk', {
+        await request(`/upload/chunk?uploadType=chunk&fileId=${fileId}&chunkIndex=${i}`, {
           method: 'POST',
           body: formData
         });
