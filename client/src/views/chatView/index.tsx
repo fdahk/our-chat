@@ -11,7 +11,7 @@ import type { ApiResponse } from '@/globalType/apiResponse';
 import type { RootState } from '@/store/rootStore';
 import DisplayItem from '@/globalComponents/displayItem';
 import SearchModal from '@/globalComponents/searchModal';
-
+import FileUploader from '@/globalComponents/fileUploader';
 function ChatView() {
 
     const dispatch = useDispatch();
@@ -108,7 +108,7 @@ function ChatView() {
     const handleSearchChange = (value: string) => {
         console.log(value);
     }
-    //头部按钮点击事件
+    // 按钮点击事件
     const handleClickHeaderIcon = (method: string) => {
         switch(method) {
             case 'handleClickEmoji':
@@ -136,9 +136,47 @@ function ChatView() {
         console.log('handleClickEmoji');
     }
     // 文件
+    const [fileUploaderVisible, setFileUploaderVisible] = useState(false);
     const handleClickFile = () => {
-        console.log('handleClickFile');
+        setFileUploaderVisible(true);
     }
+    // 文件上传成功后发送消息
+    const handleFileUploadSuccess = (files: any[]) => {
+        console.log('文件上传成功:', files);
+        try {
+            files.forEach(file => {
+                const fileMessage: Message = {
+                    conversationId: activeConversation!,
+                    senderId: userId,
+                    content: `发送了文件: ${file.originalName || file.filename}`,
+                    type: 'file',
+                    status: 'sent',
+                    mentions: [],
+                    isEdited: false,
+                    isDeleted: false,
+                    extra: {},
+                    fileInfo: {
+                        fileName: file.originalName || file.filename,
+                        fileSize: file.size,
+                        fileUrl: file.url,
+                        fileType: file.type || 'application/octet-stream',
+                        fileMD5: file.md5
+                    },
+                    timestamp: new Date().toISOString(),
+                    editHistory: [],
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                };
+                
+                // 通过socket发送文件消息
+                socket.emit('sendMessage', fileMessage);
+            });            
+        } catch (error) {
+            console.error('文件上传失败:', error);
+        }
+        // 关闭文件上传弹窗
+        setFileUploaderVisible(false);
+    };
     // 截图
     const handleClickScreenshot = () => {
         console.log('handleClickScreenshot');
@@ -155,6 +193,72 @@ function ChatView() {
     const handleClickVideo = () => {
         console.log('handleClickVideo');
     }
+
+    // 渲染消息内容的函数
+    const renderMessageContent = (msg: Message) => {
+        console.log('msg', msg);
+        // 文件消息
+        if (msg.type === 'file' && msg.fileInfo) {
+            console.log('文件处理msg', msg);
+            const { fileName, fileSize, fileUrl, fileType } = msg.fileInfo;
+            
+            // 格式化文件大小
+            const formatFileSize = (bytes: number) => {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            };
+
+            // 根据文件类型显示不同内容
+            if (fileType.startsWith('image/')) {
+                return (
+                    <div className={chatViewStyle.file_message}>
+                        <img 
+                            src={`http://localhost:3007${fileUrl}`} 
+                            alt={fileName}
+                            style={{ maxWidth: '200px', maxHeight: '150px', borderRadius: '8px' }}
+                            onClick={() => window.open(`http://localhost:3007${fileUrl}`, '_blank')}
+                        />
+                        <div className={chatViewStyle.file_info}>
+                            <span>{fileName}</span>
+                            <span>{formatFileSize(fileSize)}</span>
+                        </div>
+                    </div>
+                );
+            } else {
+                return (
+                    <div className={chatViewStyle.file_message}>
+                        <div className={chatViewStyle.file_icon}>
+                            <i className="iconfont icon-folder" style={{ fontSize: '24px' }}></i>
+                        </div>
+                        <div className={chatViewStyle.file_info}>
+                            <div>{fileName}</div>
+                            <div>{formatFileSize(fileSize)}</div>
+                        </div>
+                        <button 
+                            onClick={() => {
+                                const link = document.createElement('a');
+                                link.href = `http://localhost:3007${fileUrl}`;
+                                link.download = fileName;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                            }}
+                            className={chatViewStyle.download_btn}
+                        >
+                            下载
+                        </button>
+                    </div>
+                );
+            }
+        }
+        
+        // 文本消息
+        return <div className={chatViewStyle.message_content}>{msg.content}</div>;
+    };
+
     return (
         <div className={chatViewStyle.chat_view_container}>
             {/* 左侧：对话列表 */}
@@ -186,12 +290,13 @@ function ChatView() {
                             <List
                                 className={chatViewStyle.message_list}
                                 dataSource={messages}
-                                renderItem={(msg: Message) =>{ 
+                                renderItem={(msg: Message) => {
                                     return (
-                                    <List.Item className={msg.senderId === userId ? chatViewStyle.self_msg : chatViewStyle.other_msg}>
-                                        <div className={chatViewStyle.message_content}>{msg.content}</div>
-                                    </List.Item>
-                                )}}
+                                        <List.Item className={msg.senderId === userId ? chatViewStyle.self_msg : chatViewStyle.other_msg}>
+                                            {renderMessageContent(msg)}
+                                        </List.Item>
+                                    )
+                                }}
                             />
                         </div>
                         {/* 输入框 */}
@@ -235,6 +340,21 @@ function ChatView() {
                 ) : (
                     <div className={chatViewStyle.no_chat}>请选择一个会话</div>
                 )}
+                {/* 文件上传弹窗 */}
+                {fileUploaderVisible && 
+                <div className={chatViewStyle.file_uploader_container}>
+                    <i className={`iconfont icon-close ${chatViewStyle.icon_close}`} onClick={() => setFileUploaderVisible(false)}></i>
+                    <FileUploader
+                    config={{
+                        maxSize: 100 * 1024 * 1024,        // 最大文件大小：100MB
+                        chunkSize: 5 * 1024 * 1024         // 分片大小：5MB（默认分片大小）
+                    }}
+                        multiple={false}                      // 单文件上传
+                        onSuccess={handleFileUploadSuccess}            // 上传成功回调
+                        // onError={handleError}                // 上传失败回调
+                    />
+                </div>
+                }
             </div>
         </div>
     );

@@ -26,7 +26,9 @@ export const initSocket = (server) => {
             const user1 = splited[1];
             const user2 = splited[2];            
             // 存储到 MongoDB
+            console.log('msg', msg);
             const savedMsg = await Message.create(msg);
+            console.log('savedMsg', savedMsg);
             // 检查是否用户删除了用户会话记录，删除了就添加
             const [res1] = await mySql.execute(
                 `SELECT * FROM user_conversations WHERE conversation_id = ? AND user_id = ?`,

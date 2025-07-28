@@ -26,6 +26,7 @@
 
 // 右侧
 .chat_view_right {
+    position: relative;
     flex: 1;
     height: 100%;
     background-color: white;
@@ -132,4 +133,29 @@
         }
     }
 
+}
+
+.file_uploader_container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 270px;
+    height: 340px;
+    background-color: white;
+    box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.2);
+    .icon_close {
+        z-index: 1000;
+        position: absolute;
+        top: 0px;
+        right: 0px;
+        padding: 3px 5px;
+        font-size: 1rem;
+        cursor: pointer;
+        color: var(--text-color);
+        &:hover {
+            background-color: var(--warning-color);
+            color: var(--text-color);
+        }
+    }
 }

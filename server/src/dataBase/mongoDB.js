@@ -87,6 +87,7 @@ const messageSchema = new mongoose.Schema({
   isEdited: { type: Boolean, default: false },
   isDeleted: { type: Boolean, default: false },
   extra: { type: Object, default: {} },
+  fileInfo: { type: Object, default: {} },
   editHistory: { type: Array, default: [] },
   timestamp: { type: Date, default: Date.now},
   createdAt: { type: Date, default: Date.now },

@@ -95,11 +95,14 @@ const FileUploader: React.FC<FileUploaderProps> = ({
 
       newFiles.push(fileItem); // 添加到新文件数组
     });
-
+    
     // 更新文件列表状态
-    // 如果允许多选，则追加到现有列表；否则替换整个列表
-    setFiles(prev => multiple ? [...prev, ...newFiles] : newFiles);
-  }, [uploadConfig, multiple]); // 依赖项：配置变化或多选设置变化时重新创建函数
+    if(!multiple) {
+      setFiles(() => [newFiles[newFiles.length - 1]]);
+      return;
+    }
+    setFiles(() => newFiles);
+  }, [uploadConfig]); 
 
   // 检查文件是否已存在（秒传功能）
   // 通过计算文件MD5并与服务器已有文件对比，实现秒传
@@ -138,10 +141,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({
     }
   };
 
-  // 单文件上传函数
-  // 处理小文件的直接上传，支持进度跟踪和错误处理
-  // @param fileItem - 要上传的文件项
-  const uploadSingleFile = async (fileItem: FileItem) => {
+  // 修改单文件上传函数，返回成功结果
+  const uploadSingleFile = async (fileItem: FileItem): Promise<FileItem | null> => {
     try {
       // 更新文件状态为上传中
       setFiles(prev => prev.map(f => 
@@ -153,21 +154,27 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       // 检查是否可以秒传
       const checkResult = await checkFileExists(fileItem);
       if (checkResult.exists) {
-        // 秒传成功，直接更新状态为完成
+        const successFile = { 
+          ...fileItem, 
+          status: 'success', 
+          progress: 100, 
+          url: checkResult.url, 
+          md5: checkResult.md5 
+        };
+        
+        // 更新状态
         setFiles(prev => prev.map(f => 
-          f.id === fileItem.id 
-            ? { ...f, status: 'success', progress: 100, url: checkResult.url, md5: checkResult.md5 }
-            : f
+          f.id === fileItem.id ? successFile : f
         ));
+        
         message.success(`${fileItem.name} 秒传成功！`);
-        return; // 秒传成功，无需继续上传
+        return successFile; // 返回成功结果
       }
 
       // 创建FormData对象，用于文件上传
       const formData = new FormData();
       formData.append('file', fileItem.file);
       
-      // 如果是图片且需要压缩，添加压缩质量参数
       if (uploadConfig.compress && fileItem.type.startsWith('image/')) {
         formData.append('quality', uploadConfig.quality?.toString() || '80');
       }
@@ -175,83 +182,80 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       // 使用XMLHttpRequest来支持进度监听
       const xhr = new XMLHttpRequest();
       
-      // 监听上传进度事件
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-          // 计算上传进度百分比
-          const progress = Math.round((e.loaded / e.total) * 100);
-          // 更新文件进度状态
-          setFiles(prev => prev.map(f => 
-            f.id === fileItem.id 
-              ? { ...f, progress }
-              : f
-          ));
-        }
-      };
-
-      // 监听上传完成事件
-      xhr.onload = () => {
-        if (xhr.status === 200) {
-          const response = JSON.parse(xhr.responseText);
-          if (response.success) {
-            // 上传成功，更新文件状态
+      return new Promise((resolve, reject) => {
+        // 监听上传进度事件
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const progress = Math.round((e.loaded / e.total) * 100);
             setFiles(prev => prev.map(f => 
               f.id === fileItem.id 
-                ? { 
-                    ...f, 
-                    status: 'success', 
-                    progress: 100,
-                    url: response.data.url,    // 文件访问URL
-                    md5: response.data.md5     // 文件MD5
-                  }
+                ? { ...f, progress }
                 : f
             ));
-            message.success(`${fileItem.name} 上传成功！`);
-          } else {
-            // 服务器返回错误
-            throw new Error(response.message);
           }
-        } else {
-          // HTTP状态码错误
-          throw new Error(`HTTP ${xhr.status}`);
-        }
-      };
+        };
 
-      // 监听上传错误事件
-      xhr.onerror = () => {
-        setFiles(prev => prev.map(f => 
-          f.id === fileItem.id 
-            ? { ...f, status: 'error', error: '上传失败' }
-            : f
-        ));
-      };
+        // 监听上传完成事件
+        xhr.onload = () => {
+          if (xhr.status === 200) {
+            const response = JSON.parse(xhr.responseText);
+            if (response.success) {
+              const successFile = {
+                ...fileItem,
+                status: 'success',
+                progress: 100,
+                url: response.data.url,
+                md5: response.data.md5
+              };
+              
+              // 更新状态
+              setFiles(prev => prev.map(f => 
+                f.id === fileItem.id ? successFile : f
+              ));
+              
+              message.success(`${fileItem.name} 上传成功！`);
+              resolve(successFile); // 返回成功结果
+            } else {
+              reject(new Error(response.message));
+            }
+          } else {
+            reject(new Error(`HTTP ${xhr.status}`));
+          }
+        };
 
-      // 确定上传端点
-      // 如果是图片且需要压缩，使用压缩上传接口
-      const endpoint = uploadConfig.compress && fileItem.type.startsWith('image/')
-        ? 'http://localhost:3007/api/upload/compress'
-        : 'http://localhost:3007/api/upload/single';
+        // 监听上传错误事件
+        xhr.onerror = () => {
+          setFiles(prev => prev.map(f => 
+            f.id === fileItem.id 
+              ? { ...f, status: 'error', error: '上传失败' }
+              : f
+          ));
+          reject(new Error('上传失败'));
+        };
 
-      // 发送上传请求
-      xhr.open('POST', endpoint);
-      xhr.send(formData);
+        // 确定上传端点
+        const endpoint = uploadConfig.compress && fileItem.type.startsWith('image/')
+          ? 'http://localhost:3007/api/upload/compress'
+          : 'http://localhost:3007/api/upload/single';
+
+        // 发送上传请求
+        xhr.open('POST', endpoint);
+        xhr.send(formData);
+      });
 
     } catch (error) {
-      // 处理上传过程中的错误
       const errorMsg = error instanceof Error ? error.message : '上传失败';
       setFiles(prev => prev.map(f => 
         f.id === fileItem.id 
           ? { ...f, status: 'error', error: errorMsg }
           : f
       ));
-      message.error(`${fileItem.name} ${errorMsg}`);
+      return null; // 返回null表示失败
     }
   };
 
-  // 分片上传函数（用于大文件）
-  // 将大文件分割成小块，逐个上传，支持断点续传
-  // @param fileItem - 要上传的文件项
-  const uploadFileWithChunks = async (fileItem: FileItem) => {
+  // 修改分片上传函数，返回成功结果
+  const uploadFileWithChunks = async (fileItem: FileItem): Promise<FileItem | null> => {
     try {
       // 更新文件状态为上传中
       setFiles(prev => prev.map(f => 
@@ -263,54 +267,52 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       // 检查是否可以秒传
       const checkResult = await checkFileExists(fileItem);
       if (checkResult.exists) {
+        const successFile = {
+          ...fileItem,
+          status: 'success',
+          progress: 100,
+          url: checkResult.url,
+          md5: checkResult.md5
+        };
+        
         setFiles(prev => prev.map(f => 
-          f.id === fileItem.id 
-            ? { ...f, status: 'success', progress: 100, url: checkResult.url, md5: checkResult.md5 }
-            : f
+          f.id === fileItem.id ? successFile : f
         ));
+        
         message.success(`${fileItem.name} 秒传成功！`);
-        return;
+        return successFile;
       }
 
       // 创建文件分片
       const chunks = createChunks(fileItem.file, uploadConfig.chunkSize);
       const fileId = fileItem.id;
-      const fileName = `${Date.now()}-${fileItem.name}`; // 生成唯一文件名
+      const fileName = `${Date.now()}-${fileItem.name}`;
 
-      // 检查断点续传 - 获取已上传的分片信息
+      // 检查断点续传
       const resumeResponse = await request(`/upload/resume/${fileId}`);
       const uploadedChunks = resumeResponse.success ? resumeResponse.data.uploadedChunks : [];
 
-      let uploadedCount = uploadedChunks.length; // 已上传分片数量
+      let uploadedCount = uploadedChunks.length;
 
       // 逐个上传分片
       for (let i = 0; i < chunks.length; i++) {
-        // 跳过已上传的分片（断点续传）
         if (uploadedChunks.includes(i)) {
           continue;
         }
 
-        // 创建分片上传的FormData
-        // 注：由于后端解析顺序的问题，上传类型参数放在查询参数处，其他参数正常放在请求体中
         const formData = new FormData();
-        formData.append('chunk', chunks[i]);                    // 分片数据
-        // formData.append('fileId', fileId);                      // 文件ID
-        // formData.append('chunkIndex', i.toString());            // 分片索引
-        formData.append('totalChunks', chunks.length.toString()); // 总分片数
-        formData.append('fileName', fileName);                  // 文件名
-        // formData.append('uploadType', 'chunk');                 // 上传类型标识
+        formData.append('chunk', chunks[i]);
+        formData.append('totalChunks', chunks.length.toString());
+        formData.append('fileName', fileName);
 
-        // 上传分片
         await request(`/upload/chunk?uploadType=chunk&fileId=${fileId}&chunkIndex=${i}`, {
           method: 'POST',
           body: formData
         });
 
         uploadedCount++;
-        // 计算整体进度
         const progress = Math.round((uploadedCount / chunks.length) * 100);
         
-        // 更新文件进度
         setFiles(prev => prev.map(f => 
           f.id === fileItem.id 
             ? { ...f, progress }
@@ -318,81 +320,79 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         ));
       }
 
-      // 所有分片上传完成后，请求服务器合并分片
+      // 合并分片
       const mergeResponse = await request('/upload/merge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          fileId,                    // 文件ID
-          fileName,                  // 文件名
-          totalChunks: chunks.length // 总分片数
+          fileId,
+          fileName,
+          totalChunks: chunks.length
         })
       });
 
       if (mergeResponse.success) {
-        // 合并成功，更新文件状态
+        const successFile = {
+          ...fileItem,
+          status: 'success',
+          progress: 100,
+          url: mergeResponse.data.url,
+          md5: mergeResponse.data.md5
+        };
+        
         setFiles(prev => prev.map(f => 
-          f.id === fileItem.id 
-            ? { 
-                ...f, 
-                status: 'success', 
-                progress: 100,
-                url: mergeResponse.data.url,
-                md5: mergeResponse.data.md5
-              }
-            : f
+          f.id === fileItem.id ? successFile : f
         ));
+        
         message.success(`${fileItem.name} 上传成功！`);
+        return successFile;
+      } else {
+        throw new Error('合并分片失败');
       }
 
     } catch (error) {
-      // 处理分片上传过程中的错误
       const errorMsg = error instanceof Error ? error.message : '上传失败';
       setFiles(prev => prev.map(f => 
         f.id === fileItem.id 
           ? { ...f, status: 'error', error: errorMsg }
           : f
       ));
-      message.error(`${fileItem.name} ${errorMsg}`);
+      return null;
     }
   };
 
-  // 开始上传函数
-  // 批量处理所有等待上传的文件，根据文件大小选择上传方式
+  // 修改startUpload函数
   const startUpload = async () => {
-    // 获取所有等待上传的文件
     const waitingFiles = files.filter(f => f.status === 'waiting');
     if (waitingFiles.length === 0) {
       message.warning('没有待上传的文件');
       return;
     }
 
-    setUploading(true); // 设置整体上传状态
+    setUploading(true);
 
     try {
       // 根据文件大小选择上传方式
       const uploadPromises = waitingFiles.map(file => {
         if (file.size > uploadConfig.chunkSize) {
-          // 大文件使用分片上传
           return uploadFileWithChunks(file);
         } else {
-          // 小文件使用单文件上传
           return uploadSingleFile(file);
         }
       });
 
-      // 并行上传所有文件
-      await Promise.all(uploadPromises);
+      // 等待所有上传完成，过滤掉失败的结果
+      const results = await Promise.all(uploadPromises);
+      const successFiles = results.filter((result): result is FileItem => result !== null);
       
-      // 获取上传成功的文件
-      const successFiles = files.filter(f => f.status === 'success');
-      onSuccess?.(successFiles); // 调用成功回调函数
+      console.log('上传成功的文件:', successFiles);
+      onSuccess?.(successFiles);
       
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : '批量上传失败';
-      onError?.(errorMsg); // 调用错误回调函数
+      onError?.(errorMsg);
     } finally {
-      setUploading(false); // 重置上传状态
+      setUploading(false);
     }
   };
 

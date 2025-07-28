@@ -1,18 +1,11 @@
 // 文件上传工具函数与类型定义
-// 作用：为前端文件上传组件提供类型、分片、校验、MD5、请求等底层能力
-// 在整个文件上传模块中的意义：
-// - 统一管理上传相关的工具函数，便于维护和复用
-// - 保证前端上传流程的健壮性和灵活性
-// - 支持大文件分片、秒传、类型校验、进度等高级功能
-// - 类型安全的文件结构和配置
-// - 大文件分片、断点续传、秒传等
-// - 文件校验、格式化、唯一标识等
 
+// crypto-js 是一个纯 JavaScript 实现的加密库
+// 支持多种加密算法：哈希加密：MD5、SHA1、SHA256  对称加密： AES、DES 等
+// 可以在浏览器和 Node.js 环境中使用
 import CryptoJS from 'crypto-js';
 
-// ===================== 类型定义 =====================
-
-// 单个文件的结构定义
+// 单个文件的结构
 export interface FileItem {
   id: string;                // 文件唯一ID（前端生成）
   file: File;                // 原生File对象
@@ -26,7 +19,7 @@ export interface FileItem {
   error?: string;            // 错误信息
 }
 
-// 上传配置项类型定义
+// 上传配置项类型
 export interface UploadConfig {
   chunkSize: number;         // 分片大小，单位字节，默认5MB
   concurrent: number;        // 并发上传分片数
@@ -37,7 +30,6 @@ export interface UploadConfig {
   quality?: number;          // 压缩质量（0-100）
 }
 
-// ===================== 默认配置 =====================
 
 // 默认上传配置
 export const defaultConfig: UploadConfig = {
@@ -49,26 +41,32 @@ export const defaultConfig: UploadConfig = {
   quality: 80                 // 默认压缩质量80
 };
 
-// ===================== 工具函数 =====================
-
 // 计算文件的MD5值（用于秒传）
+// 返回一个 Promise，最终值是字符串（MD5 值）
 export const calculateFileMD5 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader(); // 创建文件读取器
+    const reader = new FileReader(); // 创建文件读取器，FileReader：浏览器内置的 API，可以读取文件格式：文本、二进制、DataURL 等
+    // onload：文件读取完成时触发的事件，e：事件对象，包含读取结果
     reader.onload = (e) => {
       const arrayBuffer = e.target?.result as ArrayBuffer; // 读取为ArrayBuffer
       const wordArray = CryptoJS.lib.WordArray.create(arrayBuffer); // 转为CryptoJS格式
-      const md5 = CryptoJS.MD5(wordArray).toString(); // 计算MD5
+      const md5 = CryptoJS.MD5(wordArray).toString(); // 计算MD5，toString()：将结果转换为十六进制字符串
       resolve(md5);
     };
-    reader.onerror = reject;
-    reader.readAsArrayBuffer(file); // 以二进制方式读取
+    reader.onerror = reject; //onerror：文件读取失败时触发的事件，直接调用 reject 函数
+    reader.readAsArrayBuffer(file); // 以二进制方式开始读取，注：这行代码实际上是最早执行的，上面的代码都是在读取完后自动触发的
   });
 };
 
 // 将文件分片，返回Blob数组
 export const createChunks = (file: File, chunkSize: number) => {
-  const chunks: Blob[] = [];
+  // 为什么采用二进制格式：二进制格式是处理文件的唯一正确方式
+  // MD5 计算需要原始二进制数据，
+  // 分片上传需要精确的字节级操作，二进制分片可以实现
+  // HTTP 协议本身就是基于二进制的，文件上传时，浏览器会将文件转换为二进制流
+  // 性能优势：二进制处理很高效、 二进制分片只引用原始数据，不复制、而文本处理需要解码和编码
+  //通用性：可以处理任何类型的文件，本质都是二进制文件
+  const chunks: Blob[] = []; // Blob: Binary Large Object
   let start = 0;
   // 循环切分文件
   while (start < file.size) {
@@ -97,7 +95,6 @@ export const formatFileSize = (bytes: number) => {
 // 校验文件是否合法（类型、大小等）
 export const validateFile = (file: File, config: UploadConfig) => {
   const errors: string[] = [];
-
   // 校验文件大小
   if (config.maxSize && file.size > config.maxSize) {
     errors.push(`文件大小超过限制 ${formatFileSize(config.maxSize)}`);

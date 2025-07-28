@@ -113,6 +113,7 @@ const storage = multer.diskStorage({
     // 定义文件存储目录
     destination: (req, file, cb) => {
         // const uploadType = req.body.uploadType || 'default';  // 获取上传类型
+        // 这里只能调用query，前端参数此时只有URL参数被解析
         const uploadType = req.query.uploadType || 'default';  // 获取上传类型,只有分片上传时，uploadType 为 chunk，其他都是undefined
         // 如果是分片上传，存储到chunks目录，否则存储到主目录
         const targetDir = uploadType === 'chunk' ? chunksDir : uploadDir;
