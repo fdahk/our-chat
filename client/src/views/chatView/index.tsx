@@ -142,7 +142,6 @@ function ChatView() {
     }
     // 文件上传成功后发送消息
     const handleFileUploadSuccess = (files: any[]) => {
-        console.log('文件上传成功:', files);
         try {
             files.forEach(file => {
                 const fileMessage: Message = {
@@ -196,10 +195,8 @@ function ChatView() {
 
     // 渲染消息内容的函数
     const renderMessageContent = (msg: Message) => {
-        console.log('msg', msg);
         // 文件消息
         if (msg.type === 'file' && msg.fileInfo) {
-            console.log('文件处理msg', msg);
             const { fileName, fileSize, fileUrl, fileType } = msg.fileInfo;
             
             // 格式化文件大小

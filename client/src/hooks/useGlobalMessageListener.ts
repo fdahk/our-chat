@@ -14,7 +14,7 @@ import type { RootState } from '@/store/rootStore';
 import { initFriendReqList, addFriendReq } from '@/store/friendStore';
 import type { FriendReq } from '@/store/friendStore';
 
-export default function GlobalMessageListener() {
+export default function useGlobalMessageListener() {
     const userId = useSelector((state: RootState) => state.user.id);
     const dispatch = useDispatch();
     const socket = SocketService.getInstance();
@@ -114,6 +114,5 @@ export default function GlobalMessageListener() {
        };
 
   }, []);
-
-  return null;
+  
 }

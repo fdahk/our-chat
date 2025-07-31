@@ -6,11 +6,12 @@ import { Outlet, NavLink } from 'react-router-dom';
 import { useState, useRef, useEffect } from 'react';
 import SettingView from '@/views/settingView';
 import type { RootState } from '@/store/rootStore';
-
+import useGlobalMessageListener from '@/hooks/useGlobalMessageListener';
 function Layout() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const user = useSelector((state: RootState) => state.user);
+    useGlobalMessageListener(); // 全局消息监听
     // 导航栏选项列表
     const itemList = [
         {
