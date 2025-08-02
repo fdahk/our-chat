@@ -5,6 +5,7 @@ import storage from 'redux-persist/lib/storage';
 import UserReducer from './userStore'; // 导入 reducer
 import chatReducer from './chatStore'; // 同上
 import friendReqReducer from './friendStore'; // 同上
+import callReducer from './callStore';
 
 const rootPersistConfig = {
   key: 'root',
@@ -17,6 +18,7 @@ const rootReducers = {
   user: UserReducer,
   chat: chatReducer,
   friendReq: friendReqReducer,
+  call: callReducer,
 };
 // 合并所有reducer
 const rootReducer = combineReducers(rootReducers);

@@ -12,6 +12,8 @@ import type { RootState } from '@/store/rootStore';
 import DisplayItem from '@/globalComponents/displayItem';
 import SearchModal from '@/globalComponents/searchModal';
 import FileUploader from '@/globalComponents/fileUploader';
+import { useVoiceCall } from '@/hooks/useVoiceCall';
+import type { CallUser } from '@/globalType/call';
 function ChatView() {
 
     const dispatch = useDispatch();
@@ -147,7 +149,7 @@ function ChatView() {
                 const fileMessage: Message = {
                     conversationId: activeConversation!,
                     senderId: userId,
-                    content: `发送了文件: ${file.originalName || file.filename}`,
+                    content: '发送了文件',
                     type: 'file',
                     status: 'sent',
                     mentions: [],
@@ -186,8 +188,30 @@ function ChatView() {
     }
     // 语音聊天
     const handleClickVoice = () => {
-        console.log('handleClickVoice');
-    }
+        if (!activeConversation) {
+            console.warn('没有选择聊天对象');
+            return;
+        }
+
+        const friendId = parseConversationId(activeConversation);
+        const friendInfo = globalFriendInfoList[friendId];
+        
+        if (!friendInfo) {
+            console.warn('无法获取好友信息');
+            return;
+        }
+
+        const targetUser: CallUser = {
+            id: friendId,
+            username: friendInfo.username,
+            nickname: friendInfo.username,
+            avatar: friendInfo.avatar 
+                ? `http://localhost:3007${friendInfo.avatar}` 
+                : 'src/assets/images/defaultAvatar.jpg',
+        };
+
+        initiateCall(targetUser);
+    };
     // 视频聊天
     const handleClickVideo = () => {
         console.log('handleClickVideo');
@@ -255,6 +279,8 @@ function ChatView() {
         // 文本消息
         return <div className={chatViewStyle.message_content}>{msg.content}</div>;
     };
+
+    const { initiateCall } = useVoiceCall(); // 添加这行
 
     return (
         <div className={chatViewStyle.chat_view_container}>

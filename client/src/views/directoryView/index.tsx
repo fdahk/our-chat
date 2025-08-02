@@ -42,6 +42,7 @@ function DirectoryView() {
     const [friendInfo, setFriendInfo] = useState<{id: number, username: string, avatar: string, gender: string}>();
     const [hasResult, setHasResult] = useState(true);
     const handleClickSearchFriend = async () => {
+        if(isCheckingFriendReq) setIsCheckingFriendReq(false);
         if(searchValue.length < 1) return;
         const res = await searchUser({keyword: Number(searchValue), userId});
         if(res.data.exist) {

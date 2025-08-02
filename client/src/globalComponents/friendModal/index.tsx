@@ -6,6 +6,8 @@ import { useNavigate } from 'react-router-dom';
 import { addConversation, addUserConversation, initActiveConversation, initGlobalMessages } from '@/store/chatStore';
 import type { ApiResponse } from '@/globalType/apiResponse';
 import type { Message } from '@/globalType/message';
+import { useVoiceCall } from '@/hooks/useVoiceCall';
+import {type CallUser } from '@/globalType/call';
 
 interface FriendModalProps {
     style?: React.CSSProperties; //css原型
@@ -30,6 +32,7 @@ function FriendModal({
     const dispatch = useDispatch();
     const userId = useSelector((state: RootState) => state.user.id);
     const globalConversations = useSelector((state: RootState) => state.chat.globalConversations);
+    const { initiateCall } = useVoiceCall();
     // 点击发送消息
     const handleClickSendMessage = async () => {
         const conversationId = `single_${Math.min(userId, parseInt(wxid))}_${Math.max(userId, parseInt(wxid))}`;
@@ -71,8 +74,16 @@ function FriendModal({
     
     // 点击语音聊天
     const handleClickVoiceChat = () => {
-        console.log('voice chat');
-    }
+        const targetUser: CallUser = {
+          id: parseInt(wxid),
+          username: username,
+          nickname: remark || username,
+          avatar: avatar,
+        };
+      
+        // 🔧 使用新的函数名
+        initiateCall(targetUser);
+      };
     // 点击视频聊天
     const handleClickVideoChat = () => {
         console.log('video chat');

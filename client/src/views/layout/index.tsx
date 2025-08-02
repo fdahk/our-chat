@@ -7,6 +7,8 @@ import { useState, useRef, useEffect } from 'react';
 import SettingView from '@/views/settingView';
 import type { RootState } from '@/store/rootStore';
 import useGlobalMessageListener from '@/hooks/useGlobalMessageListener';
+import VoiceCallModal from '@/globalComponents/voiceCallModal';
+
 function Layout() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
@@ -133,6 +135,9 @@ function Layout() {
             {settingVisible && (
                 <SettingView onClose={handleCloseSetting}/>
             )}
+            
+            {/* 语音通话弹窗 */}
+            <VoiceCallModal />
         </div>
     )
 }

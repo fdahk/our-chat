@@ -37,3 +37,10 @@
     outline: none !important;
     background-color: transparent !important;
   }
+
+8.2：
+    语音通话功能
+    注意事项：
+        必须遵循 标准WebRTC协商流程：offer/answer在邀请阶段就开始
+        简化Socket事件：只有4个核心事件
+
