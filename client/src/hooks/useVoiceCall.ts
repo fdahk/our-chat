@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState } from '../store/rootStore';
 import { WebRTCManager } from '../utils/webrtc';
+import { WebRTCDiagnostics } from '../utils/webrtcDiagnostics';
 import SocketService from '../utils/socket';
 import {
   startCall,
@@ -62,6 +63,14 @@ export const useVoiceCall = () => {
   useEffect(() => {
     console.log('初始化语音通话服务');
     
+    // 运行初始诊断
+    WebRTCDiagnostics.runFullDiagnostics().then(result => {
+      if (!result.success) {
+        console.warn('WebRTC诊断发现问题:', result.issues);
+        // 不阻止初始化，只是警告
+      }
+    });
+    
     webrtcRef.current = new WebRTCManager();
     const webrtc = webrtcRef.current;
     
@@ -83,7 +92,7 @@ export const useVoiceCall = () => {
     };
     
     // 连接状态变化回调
-    webrtc.onConnectionStateChange = (state) => {
+    webrtc.onConnectionStateChange = async (state) => {
       console.log('WebRTC连接状态变化:', state);
       
       if (state === 'connected') {
@@ -91,6 +100,12 @@ export const useVoiceCall = () => {
         startDurationTimer();
         message.success('通话连接成功');
       } else if (state === 'failed' || state === 'disconnected') {
+        // 运行诊断找出问题
+        const issues = await webrtc.diagnoseConnection();
+        if (issues.length > 0) {
+          console.error('连接问题诊断:', issues);
+          dispatch(setError('连接问题: ' + issues.join(', ')));
+        }
         handleConnectionFailed();
       }
     };
@@ -147,7 +162,7 @@ export const useVoiceCall = () => {
       }
     };
 
-    // 通话被接受 - 防重复版本
+    // 通话被接受 - 修复版本
     const handleCallAccept = async (event: CallAcceptEvent) => {
       const eventKey = `accept_${event.callId}`;
       
@@ -158,11 +173,16 @@ export const useVoiceCall = () => {
       }
       processedEvents.current.add(eventKey);
       
-      console.log('通话被接受:', event.callId);
+      console.log('通话被接受:', event.callId, '当前callId:', callState.callId);
       
       try {
-        if (!webrtcRef.current || event.callId !== callState.callId) {
-          console.warn('忽略无关的accept事件');
+        if (!webrtcRef.current) {
+          console.error('WebRTC管理器不存在');
+          return;
+        }
+        
+        if (event.callId !== callState.callId) {
+          console.warn('忽略无关的accept事件', { eventCallId: event.callId, currentCallId: callState.callId });
           return;
         }
 
@@ -170,27 +190,44 @@ export const useVoiceCall = () => {
         const state = webrtcRef.current.getDetailedState();
         console.log('处理Answer前的详细状态:', state);
 
-        // 如果状态不正确，等待一段时间再重试
-        if (state?.signalingState !== 'have-local-offer') {
-          console.log('等待PeerConnection状态稳定...');
-          await new Promise(resolve => setTimeout(resolve, 500));
-          
-          const retryState = webrtcRef.current.getDetailedState();
-          console.log('重试时的状态:', retryState);
-          
-          if (retryState?.signalingState !== 'have-local-offer') {
-            throw new Error(`PeerConnection状态异常: ${retryState?.signalingState}, 期望: have-local-offer`);
-          }
+        // 检查Answer有效性
+        if (!event.answer || event.answer.type !== 'answer') {
+          console.error('无效的Answer:', event.answer);
+          throw new Error('收到无效的Answer');
         }
 
-        // 处理answer
-        await webrtcRef.current.handleAnswer(event.answer);
-        console.log(' Answer处理完成，等待连接建立');
+        // 状态检查和重试逻辑
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        while (retryCount < maxRetries) {
+          const currentState = webrtcRef.current.getDetailedState();
+          console.log(`尝试 ${retryCount + 1}/${maxRetries}, 当前状态:`, currentState);
+          
+          if (currentState?.signalingState === 'have-local-offer') {
+            // 状态正确，处理Answer
+            await webrtcRef.current.handleAnswer(event.answer);
+            console.log('Answer处理完成，等待连接建立');
+            return;
+          } else if (currentState?.signalingState === 'stable') {
+            console.log('连接已稳定，跳过Answer处理');
+            return;
+          } else {
+            console.log(`状态不正确: ${currentState?.signalingState}, 等待中...`);
+            await new Promise(resolve => setTimeout(resolve, 300));
+            retryCount++;
+          }
+        }
+        
+        throw new Error(`经过${maxRetries}次重试后，PeerConnection状态仍然异常`);
         
       } catch (error) {
-        console.error(' 处理Answer失败:', error);
+        console.error('处理Answer失败:', error);
         dispatch(setError('连接建立失败: ' + (error as Error).message));
         message.error('连接建立失败');
+        
+        // 清理事件标记，允许重试
+        processedEvents.current.delete(eventKey);
       }
     };
 

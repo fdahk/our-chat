@@ -104,11 +104,22 @@ export class WebRTCManager {
   }
 
   /**
-   * 获取用户音频流
+   * 获取用户音频流 - 增强版本
    */
   async getUserMedia(): Promise<MediaStream> {
     try {
       console.log('请求麦克风权限');
+      
+      // 检查浏览器支持
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('浏览器不支持WebRTC功能');
+      }
+      
+      // 检查HTTPS要求（生产环境）
+      if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+        console.warn('WebRTC需要HTTPS环境，当前为HTTP，可能导致功能异常');
+      }
+      
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -124,7 +135,19 @@ export class WebRTCManager {
       return stream;
     } catch (error) {
       console.error('获取音频流失败:', error);
-      throw new Error('无法获取麦克风权限，请检查浏览器设置');
+      
+      // 详细错误处理
+      if (error instanceof Error) {
+        if (error.name === 'NotAllowedError') {
+          throw new Error('麦克风权限被拒绝，请在浏览器设置中允许麦克风访问');
+        } else if (error.name === 'NotFoundError') {
+          throw new Error('未找到麦克风设备，请检查硬件连接');
+        } else if (error.name === 'NotReadableError') {
+          throw new Error('麦克风被其他应用占用，请关闭其他音频应用');
+        }
+      }
+      
+      throw new Error('无法获取麦克风权限，请检查浏览器设置和硬件连接');
     }
   }
 
@@ -426,6 +449,71 @@ export class WebRTCManager {
       isNegotiating: this.isNegotiating,
       hasLocalStream: !!this.localStream,
       hasRemoteStream: !!this.remoteStream,
+      hasLocalDescription: !!this.peerConnection.localDescription,
+      hasRemoteDescription: !!this.peerConnection.remoteDescription,
+      pendingIceCandidatesCount: this.pendingIceCandidates.length,
     };
+  }
+
+  /**
+   * WebRTC连接诊断工具
+   */
+  async diagnoseConnection(): Promise<string[]> {
+    const issues: string[] = [];
+    
+    if (!this.peerConnection) {
+      issues.push('PeerConnection未初始化');
+      return issues;
+    }
+
+    const state = this.getDetailedState();
+    
+    // 检查基本状态
+    if (state?.connectionState === 'failed') {
+      issues.push('WebRTC连接失败');
+    }
+    
+    if (state?.iceConnectionState === 'failed') {
+      issues.push('ICE连接失败，可能是网络问题或NAT穿透失败');
+    }
+    
+    if (state?.iceConnectionState === 'disconnected') {
+      issues.push('ICE连接断开');
+    }
+
+    // 检查媒体流
+    if (!state?.hasLocalStream) {
+      issues.push('缺少本地音频流，请检查麦克风权限');
+    }
+
+    // 检查描述
+    if (state?.signalingState === 'have-local-offer' && !state?.hasRemoteDescription) {
+      issues.push('等待远程Answer，可能网络延迟或对方未响应');
+    }
+
+    // 检查ICE候选
+    if (state?.iceGatheringState === 'gathering' && state?.pendingIceCandidatesCount > 10) {
+      issues.push('ICE候选过多未处理，可能存在网络问题');
+    }
+
+    // 获取连接统计信息
+    try {
+      const stats = await this.peerConnection.getStats();
+      let hasActiveCandidate = false;
+      
+      stats.forEach((report) => {
+        if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+          hasActiveCandidate = true;
+        }
+      });
+      
+      if (!hasActiveCandidate && state?.iceConnectionState !== 'new') {
+        issues.push('没有成功的ICE候选对，网络连接可能存在问题');
+      }
+    } catch (error) {
+      issues.push('无法获取连接统计信息');
+    }
+
+    return issues;
   }
 }
