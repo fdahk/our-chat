@@ -15,45 +15,18 @@ import {
   updateDuration,
   setError,
 } from '../store/callStore';
-import type { CallUser, ICECandidate } from '../globalType/call';
+import type { CallUser, CallAcceptEvent, CallRejectEvent, CallEndEvent, CallIceEvent, CallStartEvent } from '../globalType/call';
 import { message } from 'antd';
 
-// Socket事件类型定义
-interface CallStartEvent {
-  callId: string;
-  from: CallUser;
-  to: CallUser;
-  offer: RTCSessionDescriptionInit;
-}
-
-interface CallAcceptEvent {
-  callId: string;
-  from: number;
-  to: number;
-  answer: RTCSessionDescriptionInit;
-}
-
-interface CallRejectEvent {
-  callId: string;
-}
-
-interface CallEndEvent {
-  callId: string;
-}
-
-interface CallIceEvent {
-  callId: string;
-  candidate: ICECandidate;
-}
 
 export const useVoiceCall = () => {
   const dispatch = useDispatch();
   const callState = useSelector((state: RootState) => state.call);
   const currentUser = useSelector((state: RootState) => state.user);
   
-  const webrtcRef = useRef<WebRTCManager | null>(null);
-  const socketRef = useRef(SocketService.getInstance());
-  const durationTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const webrtcRef = useRef<WebRTCManager | null>(null); // WebRTC 管理器类引用
+  const socketRef = useRef(SocketService.getInstance()); // Socket引用
+  const durationTimerRef = useRef<NodeJS.Timeout | null>(null); // 通话时长计时器
 
   // 添加事件处理标记，防止重复处理
   const processedEvents = useRef<Set<string>>(new Set());
@@ -68,6 +41,7 @@ export const useVoiceCall = () => {
     // 远程流回调
     webrtc.onRemoteStream = (stream) => {
       console.log('收到远程音频流');
+      // 存到store，方便其他组件共享处理音频流
       dispatch(setRemoteStream(stream));
     };
     
@@ -125,7 +99,7 @@ export const useVoiceCall = () => {
           throw new Error('用户未登录');
         }
 
-        // 更新状态，保存offer
+        // 更新store状态，保存offer
         dispatch(receiveCall({
           callId: event.callId,
           localUser: {
@@ -147,16 +121,22 @@ export const useVoiceCall = () => {
       }
     };
 
-    // 通话被接受 - 防重复版本
+    // 通话被接受
     const handleCallAccept = async (event: CallAcceptEvent) => {
-      const eventKey = `accept_${event.callId}`;
       
+      // debug
+      if(webrtcRef.current?.getDetailedState()?.signalingState === 'have-local-offer') return;
+
+      const eventKey = `accept_${event.callId}`;
+      console.log('进程状态', processedEvents.current);
+
       // 防重复处理
       if (processedEvents.current.has(eventKey)) {
         console.log('重复的accept事件，跳过处理');
         return;
       }
       processedEvents.current.add(eventKey);
+      console.log('处理后的进程状态', processedEvents.current);
       
       console.log('通话被接受:', event.callId);
       
@@ -171,17 +151,17 @@ export const useVoiceCall = () => {
         console.log('处理Answer前的详细状态:', state);
 
         // 如果状态不正确，等待一段时间再重试
-        if (state?.signalingState !== 'have-local-offer') {
-          console.log('等待PeerConnection状态稳定...');
-          await new Promise(resolve => setTimeout(resolve, 500));
+        // if (state?.signalingState !== 'have-local-offer') {
+        //   console.log('等待PeerConnection状态稳定...');
+        //   await new Promise(resolve => setTimeout(resolve, 500));
           
-          const retryState = webrtcRef.current.getDetailedState();
-          console.log('重试时的状态:', retryState);
+        //   const retryState = webrtcRef.current.getDetailedState();
+        //   console.log('重试时的状态:', retryState);
           
-          if (retryState?.signalingState !== 'have-local-offer') {
-            throw new Error(`PeerConnection状态异常: ${retryState?.signalingState}, 期望: have-local-offer`);
-          }
-        }
+        //   if (retryState?.signalingState !== 'have-local-offer') {
+        //     throw new Error(`PeerConnection状态异常: ${retryState?.signalingState}, 期望: have-local-offer`);
+        //   }
+        // }
 
         // 处理answer
         await webrtcRef.current.handleAnswer(event.answer);
@@ -314,9 +294,10 @@ export const useVoiceCall = () => {
       }));
 
       // 2. 重置WebRTC状态，确保干净开始
-      console.log('重置WebRTC状态');
-      webrtcRef.current.reset();
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // console.log('重置WebRTC状态');
+      // webrtcRef.current.reset();
+      // await new Promise(resolve => setTimeout(resolve, 100));
+      // console.log('状态重置完成');
 
       // 3. 获取本地音频流
       console.log('获取麦克风权限');
@@ -457,7 +438,7 @@ export const useVoiceCall = () => {
       const interval = setInterval(() => {
         const state = webrtcRef.current?.getDetailedState();
         if (state && callState.isActive) {
-          console.log('WebRTC状态监控:', state);
+          // console.log('WebRTC状态监控:', state);
         }
       }, 2000);
       

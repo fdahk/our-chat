@@ -81,7 +81,6 @@ function FriendModal({
           avatar: avatar,
         };
       
-        // 🔧 使用新的函数名
         initiateCall(targetUser);
       };
     // 点击视频聊天

@@ -1,19 +1,25 @@
 import React, { useEffect, useRef } from 'react';
+// Modal（模态框）、Typography （排版）、Space（间距）等组件
 import { Modal, Button, Avatar, Typography, Space } from 'antd';
 import { PhoneOutlined, AudioMutedOutlined, AudioOutlined } from '@ant-design/icons';
 import { useVoiceCall } from '../../hooks/useVoiceCall';
 import styles from './style.module.scss';
 
-const { Text, Title } = Typography;
+const { Text, Title } = Typography; // Typography 组件
 
 export const VoiceCallModal: React.FC = () => {
+
+  // 获取通话的状态和挂断、接受、拒绝通话等方法
   const { callState, acceptCall, rejectCall, terminateCall, toggleMute } = useVoiceCall();
+
+  // 获取音频远程播放器的ref
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
 
   // 播放远程音频
   useEffect(() => {
     if (callState.remoteStream && remoteAudioRef.current) {
       console.log('设置远程音频流');
+      // 将远程音频流（ callState.remoteStream ）绑定到页面中的 <audio> 元素（通过 remoteAudioRef 引用），实现远程通话音频的播放
       remoteAudioRef.current.srcObject = callState.remoteStream;
       
       // 尝试自动播放
@@ -37,7 +43,7 @@ export const VoiceCallModal: React.FC = () => {
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
-
+  //获取对方信息进行渲染
   const getDisplayUser = () => {
     if (!callState.localUser || !callState.remoteUser) return null;
     return callState.remoteUser; // 始终显示对方的信息
@@ -157,12 +163,12 @@ export const VoiceCallModal: React.FC = () => {
     <>
       <Modal
         open={callState.isActive}
-        footer={null}
+        footer={null} //不能有底部 footer={null}
         closable={false}
-        centered
+        centered //居中弹窗
         width={400}
         className={styles.voiceCallModal}
-        maskClosable={false}
+        maskClosable={false} //点击遮罩层不能关闭
       >
         {renderCallContent()}
       </Modal>
@@ -170,8 +176,8 @@ export const VoiceCallModal: React.FC = () => {
       {/* 远程音频播放器 */}
       <audio 
         ref={remoteAudioRef} 
-        autoPlay 
-        playsInline 
+        autoPlay //自动播放
+        playsInline //在浏览器控制台展示播放器控件
         style={{ display: 'none' }}
       />
     </>
