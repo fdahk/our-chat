@@ -57,7 +57,7 @@ export const useVoiceCall = () => {
     };
     
     // 连接状态变化回调
-    webrtc.onConnectionStateChange = (state) => {
+    webrtc.onConnectionStateChange = async (state) => {
       console.log('WebRTC连接状态变化:', state);
       
       if (state === 'connected') {
@@ -138,11 +138,16 @@ export const useVoiceCall = () => {
       processedEvents.current.add(eventKey);
       console.log('处理后的进程状态', processedEvents.current);
       
-      console.log('通话被接受:', event.callId);
+      console.log('通话被接受:', event.callId, '当前callId:', callState.callId);
       
       try {
-        if (!webrtcRef.current || event.callId !== callState.callId) {
-          console.warn('忽略无关的accept事件');
+        if (!webrtcRef.current) {
+          console.error('WebRTC管理器不存在');
+          return;
+        }
+        
+        if (event.callId !== callState.callId) {
+          console.warn('忽略无关的accept事件', { eventCallId: event.callId, currentCallId: callState.callId });
           return;
         }
 
@@ -168,9 +173,12 @@ export const useVoiceCall = () => {
         console.log(' Answer处理完成，等待连接建立');
         
       } catch (error) {
-        console.error(' 处理Answer失败:', error);
+        console.error('处理Answer失败:', error);
         dispatch(setError('连接建立失败: ' + (error as Error).message));
         message.error('连接建立失败');
+        
+        // 清理事件标记，允许重试
+        processedEvents.current.delete(eventKey);
       }
     };
 

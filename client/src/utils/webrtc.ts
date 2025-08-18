@@ -264,7 +264,19 @@ export class WebRTCManager {
       return stream;
     } catch (error) {
       console.error('获取音频流失败:', error);
-      throw new Error('无法获取麦克风权限，请检查浏览器设置');
+      
+      // 详细错误处理
+      if (error instanceof Error) {
+        if (error.name === 'NotAllowedError') {
+          throw new Error('麦克风权限被拒绝，请在浏览器设置中允许麦克风访问');
+        } else if (error.name === 'NotFoundError') {
+          throw new Error('未找到麦克风设备，请检查硬件连接');
+        } else if (error.name === 'NotReadableError') {
+          throw new Error('麦克风被其他应用占用，请关闭其他音频应用');
+        }
+      }
+      
+      throw new Error('无法获取麦克风权限，请检查浏览器设置和硬件连接');
     }
   }
 

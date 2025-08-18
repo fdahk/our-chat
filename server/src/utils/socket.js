@@ -144,15 +144,22 @@ export const initSocket = (server) => {
             }
         });
 
-        // ICE候选交换
+        // ICE候选交换 - 修复版本
         socket.on('call:ice', (event) => {
             try {
                 console.log('转发ICE候选:', event.callId);
                 
-                // 广播给双方 (除了发送方)
+                // 从callId解析双方用户ID
                 const [, user1, user2] = event.callId.split('_');
-                socket.to(parseInt(user1)).emit('call:ice', event);
-                socket.to(parseInt(user2)).emit('call:ice', event);
+                const userId1 = parseInt(user1);
+                const userId2 = parseInt(user2);
+                
+                // 转发给双方（不包括发送方自己）
+                // 注意：socket.to() 不包括当前socket，io.to() 包括
+                io.to(userId1).emit('call:ice', event);
+                io.to(userId2).emit('call:ice', event);
+                
+                console.log(`ICE候选转发给用户: ${userId1}, ${userId2}`);
                 
             } catch (error) {
                 console.error('转发ICE候选失败:', error);
