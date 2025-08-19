@@ -30,6 +30,12 @@ export const useVoiceCall = () => {
 
   // 添加事件处理标记，防止重复处理
   const processedEvents = useRef<Set<string>>(new Set());
+  
+  // 使用ref存储当前callId，避免闭包问题
+  const currentCallIdRef = useRef<string | null>(null);
+  
+  // 防止重复发送accept的标记
+  const acceptSentRef = useRef<Set<string>>(new Set());
 
   // 初始化WebRTC管理器
   useEffect(() => {
@@ -41,18 +47,29 @@ export const useVoiceCall = () => {
     // 远程流回调
     webrtc.onRemoteStream = (stream) => {
       console.log('收到远程音频流');
+      // 轨道：audio/video
+      console.log('远程流轨道数量:', stream.getTracks().length);
+      stream.getTracks().forEach(track => {
+        console.log(`远程轨道: ${track.kind}, enabled: ${track.enabled}`);
+      });
       // 存到store，方便其他组件共享处理音频流
       dispatch(setRemoteStream(stream));
     };
     
     // ICE候选回调
     webrtc.onICECandidate = (candidate) => {
-      if (callState.callId) {
-        console.log('发送ICE候选');
+      // 使用ref获取最新的callId，避免闭包问题
+      const currentCallId = currentCallIdRef.current;
+      if (currentCallId) {
+        console.log('生成ICE候选，发送给对端');
+        console.log('候选类型:', candidate.candidate?.split(' ')[7]); // host/srflx/relay等
         socketRef.current.emit('call:ice', {
-          callId: callState.callId,
+          callId: currentCallId,
           candidate,
         });
+      } else {
+        console.warn('收到ICE候选但没有活跃通话，忽略');
+        console.log('当前callId ref:', currentCallIdRef.current);
       }
     };
     
@@ -61,11 +78,18 @@ export const useVoiceCall = () => {
       console.log('WebRTC连接状态变化:', state);
       
       if (state === 'connected') {
+        console.log('WebRTC连接建立成功，开始通话');
         dispatch(connectCall());
         startDurationTimer();
         message.success('通话连接成功');
-      } else if (state === 'failed' || state === 'disconnected') {
+      } else if (state === 'connecting') {
+        console.log('WebRTC正在建立连接...');
+      } else if (state === 'failed') {
+        console.error('WebRTC连接失败');
         handleConnectionFailed();
+      } else if (state === 'disconnected') {
+        console.warn('WebRTC连接断开');
+        // 注意：断开不立即清理，给浏览器重连机会
       }
     };
     
@@ -99,7 +123,7 @@ export const useVoiceCall = () => {
           throw new Error('用户未登录');
         }
 
-        // 更新store状态，保存offer
+        // 更新store状态，保存offer,SDP保存在点击接受通话中处理
         dispatch(receiveCall({
           callId: event.callId,
           localUser: {
@@ -123,20 +147,21 @@ export const useVoiceCall = () => {
 
     // 通话被接受
     const handleCallAccept = async (event: CallAcceptEvent) => {
-      
-      // debug
-      if(webrtcRef.current?.getDetailedState()?.signalingState === 'have-local-offer') return;
+      console.log('收到通话接受事件:', event.callId);
 
-      const eventKey = `accept_${event.callId}`;
-      console.log('进程状态', processedEvents.current);
-
-      // 防重复处理
-      if (processedEvents.current.has(eventKey)) {
+      // 更严格的重复处理检查
+      if (processedEvents.current.has(`accept_${event.callId}`)) {
         console.log('重复的accept事件，跳过处理');
         return;
       }
-      processedEvents.current.add(eventKey);
-      console.log('处理后的进程状态', processedEvents.current);
+      
+      // 检查WebRTC状态，如果已经是stable说明已经处理过Answer
+      if (webrtcRef.current?.getDetailedState()?.signalingState === 'stable') {
+        console.log('WebRTC状态已是stable，跳过重复的Answer处理');
+        return;
+      }
+      
+      processedEvents.current.add(`accept_${event.callId}`);
       
       console.log('通话被接受:', event.callId, '当前callId:', callState.callId);
       
@@ -147,38 +172,30 @@ export const useVoiceCall = () => {
         }
         
         if (event.callId !== callState.callId) {
-          console.warn('忽略无关的accept事件', { eventCallId: event.callId, currentCallId: callState.callId });
+          console.warn('忽略无关的accept事件', { 
+            eventCallId: event.callId, 
+            currentCallId: callState.callId 
+          });
           return;
         }
 
-        // 详细状态检查
+        // 详细状态检查和日志
         const state = webrtcRef.current.getDetailedState();
         console.log('处理Answer前的详细状态:', state);
 
-        // 如果状态不正确，等待一段时间再重试
-        // if (state?.signalingState !== 'have-local-offer') {
-        //   console.log('等待PeerConnection状态稳定...');
-        //   await new Promise(resolve => setTimeout(resolve, 500));
-          
-        //   const retryState = webrtcRef.current.getDetailedState();
-        //   console.log('重试时的状态:', retryState);
-          
-        //   if (retryState?.signalingState !== 'have-local-offer') {
-        //     throw new Error(`PeerConnection状态异常: ${retryState?.signalingState}, 期望: have-local-offer`);
-        //   }
-        // }
-
-        // 处理answer
+        // 处理Answer - 移除了过于严格的状态检查
+        // WebRTC标准允许在某些情况下状态可能不是严格的have-local-offer
+        console.log('开始处理Answer...');
         await webrtcRef.current.handleAnswer(event.answer);
-        console.log(' Answer处理完成，等待连接建立');
+        console.log('Answer处理完成，等待连接建立');
         
       } catch (error) {
         console.error('处理Answer失败:', error);
         dispatch(setError('连接建立失败: ' + (error as Error).message));
         message.error('连接建立失败');
         
-        // 清理事件标记，允许重试
-        processedEvents.current.delete(eventKey);
+        // fixed2：清理事件标记，允许重试
+        processedEvents.current.delete(`accept_${event.callId}`);
       }
     };
 
@@ -205,12 +222,27 @@ export const useVoiceCall = () => {
     // ICE候选交换
     const handleCallIce = async (event: CallIceEvent) => {
       try {
-        if (webrtcRef.current && event.callId === callState.callId) {
-          console.log('处理ICE候选');
-          await webrtcRef.current.addIceCandidate(event.candidate);
+        if (!webrtcRef.current) {
+          console.warn('WebRTC管理器不存在，忽略ICE候选');
+          return;
         }
+        
+        if (event.callId !== callState.callId) {
+          console.warn('ICE候选callId不匹配，忽略', {
+            eventCallId: event.callId,
+            currentCallId: callState.callId
+          });
+          return;
+        }
+        
+        console.log('收到对端ICE候选，正在处理...');
+        console.log('候选类型:', event.candidate.candidate?.split(' ')[7]);
+        await webrtcRef.current.addIceCandidate(event.candidate);
+        console.log('ICE候选处理成功');
+        
       } catch (error) {
         console.warn('处理ICE候选失败:', error);
+        // ICE候选失败不应该中断通话，继续尝试其他候选
       }
     };
 
@@ -232,6 +264,12 @@ export const useVoiceCall = () => {
       socket.off('call:ice', handleCallIce);
     };
   }, [callState.callId, currentUser, dispatch]);
+
+  // 同步callId到ref，避免ICE候选回调中的闭包问题
+  useEffect(() => {
+    currentCallIdRef.current = callState.callId;
+    console.log('callId已同步到ref:', callState.callId);
+  }, [callState.callId]);
 
   // 工具函数
   const startDurationTimer = useCallback(() => {
@@ -269,6 +307,11 @@ export const useVoiceCall = () => {
     dispatch(setLocalStream(null));
     dispatch(setRemoteStream(null));
     
+    // 清理所有事件处理标记
+    processedEvents.current.clear();
+    acceptSentRef.current.clear();
+    currentCallIdRef.current = null;
+    
     setTimeout(() => {
       dispatch(resetCall());
     }, 3000);
@@ -302,18 +345,19 @@ export const useVoiceCall = () => {
       }));
 
       // 2. 重置WebRTC状态，确保干净开始
-      // console.log('重置WebRTC状态');
-      // webrtcRef.current.reset();
-      // await new Promise(resolve => setTimeout(resolve, 100));
-      // console.log('状态重置完成');
+      console.log('重置WebRTC状态，确保干净的连接开始');
+      webrtcRef.current.reset();
+      await new Promise(resolve => setTimeout(resolve, 200));
+      console.log('WebRTC状态重置完成');
 
       // 3. 获取本地音频流
-      console.log('获取麦克风权限');
+      console.log('获取麦克风权限...');
       const localStream = await webrtcRef.current.getUserMedia();
       dispatch(setLocalStream(localStream));
+      console.log('麦克风权限获取成功');
 
-      // 4. 创建offer (不要提前添加stream，让createOffer自己处理)
-      console.log('创建通话请求');
+      // 4. 创建offer (WebRTC管理器会自动处理轨道添加)
+      console.log('创建通话请求(Offer)...');
       const offer = await webrtcRef.current.createOffer();
       
       // 5. 验证offer创建后的状态
@@ -325,7 +369,9 @@ export const useVoiceCall = () => {
       }
 
       // 6. 发送通话邀请
-      console.log('发送通话邀请，Offer状态已确认');
+      // 注意：setLocalDescription后会自动开始ICE候选收集
+      // ICE候选会通过onicecandidate事件异步发送给对端
+      console.log('发送通话邀请，ICE候选收集已启动');
       socketRef.current.emit('call:start', {
         callId,
         from: {
@@ -335,7 +381,7 @@ export const useVoiceCall = () => {
           avatar: currentUser.avatar,
         },
         to: targetUser,
-        offer,
+        offer, // SDP 对象
       });
 
       console.log('通话发起成功，等待对方接受');
@@ -351,39 +397,48 @@ export const useVoiceCall = () => {
 
   // 接受通话
   const acceptCall = useCallback(async () => {
-    console.log('接受通话');
+    console.log('开始接受通话流程');
     
     try {
       if (!webrtcRef.current || !callState.callId || !callState.pendingOffer) {
         throw new Error('通话状态异常');
       }
 
-      // 重置WebRTC状态，确保干净的开始
-      console.log('重置WebRTC状态');
+      // 1. 重置WebRTC状态，确保干净的开始
+      console.log('重置WebRTC状态，确保干净的连接开始');
       webrtcRef.current.reset();
       
       // 等待重置完成
       await new Promise(resolve => setTimeout(resolve, 200));
+      console.log('WebRTC状态重置完成');
 
-      // 1. 获取本地音频流
-      console.log('获取麦克风权限');
+      // 2. 获取本地音频流
+      console.log('获取麦克风权限...');
       const localStream = await webrtcRef.current.getUserMedia();
       dispatch(setLocalStream(localStream));
+      console.log('麦克风权限获取成功');
 
-      // 2. 显示状态检查
+      // 3. 状态检查
       const stateBefore = webrtcRef.current.getDetailedState();
       console.log('处理Offer前状态:', stateBefore);
 
-      // 3. 处理offer并创建answer
-      console.log('处理Offer并创建Answer');
+      // 4. 处理offer并创建answer
+      console.log('处理Offer并创建Answer...');
       const answer = await webrtcRef.current.handleOffer(callState.pendingOffer);
 
-      // 4. 显示状态检查
+      // 5. 状态检查
       const stateAfter = webrtcRef.current.getDetailedState();
       console.log('创建Answer后状态:', stateAfter);
 
-      // 5. 发送answer
-      console.log('发送Answer');
+      // 6. 发送answer（防重复发送）
+      const acceptKey = `accept_sent_${callState.callId}`;
+      if (acceptSentRef.current.has(acceptKey)) {
+        console.log('Answer已发送，跳过重复发送');
+        return;
+      }
+      
+      acceptSentRef.current.add(acceptKey);
+      console.log('发送Answer给发起方');
       socketRef.current.emit('call:accept', {
         callId: callState.callId,
         from: callState.localUser?.id,
@@ -391,7 +446,7 @@ export const useVoiceCall = () => {
         answer,
       });
 
-      console.log('通话接受成功');
+      console.log('通话接受成功，等待连接建立');
       
     } catch (error) {
       console.error('接受通话失败:', error);

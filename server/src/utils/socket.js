@@ -22,7 +22,7 @@ export const initSocket = (server) => {
             console.log(`用户 ${userId} 加入房间`);
         });
 
-        // 消息处理 (保持原有逻辑)
+        // 消息处理
         socket.on('sendMessage', async (msg) => {
             try {
                 const splited = msg.conversationId.split('_');
@@ -66,7 +66,7 @@ export const initSocket = (server) => {
             }
         });
 
-        // 好友请求处理 (保持原有逻辑)
+        // 好友请求处理
         socket.on('sendFriendReq', async (friendReq) => {
             try {
                 console.log('转发好友请求:', friendReq);
@@ -76,93 +76,98 @@ export const initSocket = (server) => {
             }
         });
 
-        // 简化的语音通话事件处理
-
+        // ====== 语音通话信令处理 ======
+        
         // 通话发起 (包含offer)
         socket.on('call:start', (event) => {
             try {
-                console.log('转发通话邀请:', {
+                console.log('📞 收到通话发起请求:', {
                     callId: event.callId,
                     from: event.from.username,
-                    to: event.to.username
+                    to: event.to.username,
+                    offerSdpLength: event.offer?.sdp?.length
                 });
                 
                 // 转发给目标用户
                 io.to(event.to.id).emit('call:start', event);
-                console.log('通话邀请转发成功');
+                console.log('✅ 通话邀请已转发给目标用户');
                 
             } catch (error) {
-                console.error('转发通话邀请失败:', error);
+                console.error('❌ 转发通话邀请失败:', error);
             }
         });
 
         // 通话接受 (包含answer)
         socket.on('call:accept', (event) => {
             try {
-                console.log('转发通话接受:', event.callId);
+                console.log('✅ 收到通话接受，转发给发起方:', {
+                    callId: event.callId,
+                    to: event.to,
+                    answerSdpLength: event.answer?.sdp?.length
+                });
                 
                 // 转发给发起方 (event.to就是发起方ID)
                 io.to(event.to).emit('call:accept', event);
-                console.log('通话接受转发成功');
+                console.log('📤 通话接受已转发给发起方');
                 
             } catch (error) {
-                console.error('转发通话接受失败:', error);
+                console.error('❌ 转发通话接受失败:', error);
             }
         });
 
         // 通话拒绝
         socket.on('call:reject', (event) => {
             try {
-                console.log('转发通话拒绝:', event.callId);
+                console.log('🚫 收到通话拒绝:', event.callId);
                 
                 // 从callId解析发起方ID
                 const callIdParts = event.callId.split('_');
                 if (callIdParts.length >= 3) {
                     const callerId = parseInt(callIdParts[1]);
                     io.to(callerId).emit('call:reject', event);
-                    console.log('通话拒绝转发成功给用户:', callerId);
+                    console.log('📤 通话拒绝已转发给发起方:', callerId);
                 }
                 
             } catch (error) {
-                console.error('转发通话拒绝失败:', error);
+                console.error('❌ 转发通话拒绝失败:', error);
             }
         });
 
         // 通话结束
         socket.on('call:end', (event) => {
             try {
-                console.log('转发通话结束:', event.callId);
+                console.log('📞 收到通话结束信号:', event.callId);
                 
                 // 广播给双方 (从callId解析用户ID)
                 const [, user1, user2] = event.callId.split('_');
                 io.to(parseInt(user1)).emit('call:end', event);
                 io.to(parseInt(user2)).emit('call:end', event);
-                console.log('通话结束转发成功');
+                console.log('📤 通话结束信号已广播给双方');
                 
             } catch (error) {
-                console.error('转发通话结束失败:', error);
+                console.error('❌ 转发通话结束失败:', error);
             }
         });
 
-        // ICE候选交换 - 修复版本
+        // ICE候选交换
         socket.on('call:ice', (event) => {
             try {
-                console.log('转发ICE候选:', event.callId);
+                console.log('📊 收到ICE候选转发请求:', event.callId);
                 
                 // 从callId解析双方用户ID
                 const [, user1, user2] = event.callId.split('_');
                 const userId1 = parseInt(user1);
                 const userId2 = parseInt(user2);
                 
-                // 转发给双方（不包括发送方自己）
-                // 注意：socket.to() 不包括当前socket，io.to() 包括
-                io.to(userId1).emit('call:ice', event);
-                io.to(userId2).emit('call:ice', event);
+                // 标准做法：只转发给对方，不要发给发送方自己
+                // 使用socket.to()排除发送方，避免重复处理
+                socket.to(userId1).emit('call:ice', event);
+                socket.to(userId2).emit('call:ice', event);
                 
-                console.log(`ICE候选转发给用户: ${userId1}, ${userId2}`);
+                console.log(`✅ ICE候选已转发给对方用户 (排除发送方)`);
                 
             } catch (error) {
-                console.error('转发ICE候选失败:', error);
+                console.error('❌ 转发ICE候选失败:', error);
             }
         });
 

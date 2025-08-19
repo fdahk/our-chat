@@ -4,38 +4,6 @@ import { type ICECandidate } from '../globalType/call';
  * WebRTC 配置对象：ICE服务器配置和连接参数
  * 
  * @property {Array} iceServers - ICE服务器列表，用于NAT穿透
- *   -ICE服务器：用于帮助 WebRTC 完成 NAT穿透 的外部服务器
- *      包括 STUN 和 TURN 两种类型
- *      STUN服务器：获取设备的公网IP和端口（用于直接P2P连接）
- *      TURN服务器：在无法直接P2P时作为数据中继（保底方案，但带宽成本高）
- *   -公共STUN服务器（如Google）适合测试，生产环境建议自建或使用商业服务（如Twilio、腾讯云TRTC）
- *   - 使用Google的公共STUN服务器作为默认配置
- *   - 生产环境建议添加TURN服务器以应对严格的NAT环境
- *     NAT穿透：让位于不同内网（如家庭WiFi和公司网络）的设备直接通信的技术。WebRTC 使用 ICE框架 实现穿透
- *     穿透流程：
-        收集候选路径：
-        主机候选（本地IP）
-        反射候选（通过STUN服务器获取的公网IP）
-        中继候选（通过TURN服务器转发）
-        优先级排序：按网络延迟和类型排序（直接连接 > 反射 > 中继）。
-        连通性检查：双方尝试所有候选路径，选择最优路径。
-        失败场景
-        对称型NAT（Symmetric NAT）可能无法穿透，必须依赖TURN服务器。
-      
-      STUN服务器（Session Traversal Utilities for NAT）
-        STUN 是一种轻量级协议，用于帮助设备发现自己的公网IP和端口。
-        工作原理
-        设备向STUN服务器发送请求：“我的公网地址是什么？”
-        STUN服务器回复：“你的公网地址是 A.B.C.D:Port ”。
-        WebRTC 将此地址作为候选路径之一。
-        限制：
-        不能穿透所有NAT：对称型NAT下STUN可能失效。
-        无数据转发：仅提供地址发现，不参与实际数据传输。
-      TURN服务器（Traversal Using Relays around NAT）
-        TURN 是STUN的扩展，当P2P连接失败时，通过TURN服务器中转数据。
-        代码中未配置，但生产环境建议添加：
-        高可靠性：确保任何网络环境下都能连接。
-        高成本：所有流量经过服务器，消耗带宽资源。
  * @property {number} iceCandidatePoolSize - 预生成的ICE候选数量
  *   - 较大的值会增加连接成功率但会消耗更多资源
  */
@@ -55,7 +23,6 @@ const rtcConfiguration: RTCConfiguration = {
  * - 信令交换(SDP/ICE)
  * - 连接状态管理
  * - 错误处理和资源清理
- * 
  * 1. 创建实例时会自动初始化连接
  * 2. 通过事件回调获取连接状态和媒体流
  * 3. 调用createOffer/handleOffer等方法进行信令交换
@@ -96,6 +63,18 @@ export class WebRTCManager {
 
   constructor() {
     this.initialize();
+  }
+
+  /**
+   * 确保PeerConnection实例存在
+   * 如果被cleanup清理过，会自动重新初始化
+   * 这是一个关键的防御性方法，避免使用null的peerConnection
+   */
+  private ensurePeer(): void {
+    if (!this.peerConnection || this.peerConnection.connectionState === 'closed') {
+      console.log('PeerConnection不存在或已关闭，重新初始化');
+      this.initialize();
+    }
   }
 
   //初始化webRTC
@@ -144,17 +123,6 @@ export class WebRTCManager {
      * 当发现新的ICE候选(网络路径)时触发
      * 当 event.candidate 为 null 时，表示候选收集完成
      * 需要将候选通过信令服务器发送给对端
-     * 信令（Signaling）详解
-        信令是 WebRTC 中用于协调通信双方建立连接的控制协议，本身不属于 WebRTC 技术栈，但却是实现 P2P 通信的关键桥梁。以下是核心要点：
-        信令的作用
-        交换元数据：协商媒体格式（SDP）、网络地址（ICE候选）等。
-        协调状态：管理呼叫建立、修改、终止等生命周期。
-        穿透辅助：帮助设备绕过 NAT/防火墙（需配合 STUN/TURN）。
-        类比：
-        类似打电话时的“拨号-振铃-接听”流程，信令就是双方协商“用什么语言通话、如何找到对方”的过程。
-        WebRTC 不限定信令协议，常用方案包括：
-          WebSocket（推荐）：实时双向通信。
-          HTTP轮询：兼容性高但延迟大。
      */
     this.peerConnection.onicecandidate = (event) => {
       if (event.candidate) {
@@ -196,17 +164,22 @@ export class WebRTCManager {
     /**
      * 连接状态变化事件
      * 监控连接状态变化：new/connecting/connected/disconnected/failed/closed
-     * 在失败时自动尝试清理和重置连接
+     * 标准处理：只在failed时清理，disconnected给浏览器恢复机会
      */
     this.peerConnection.onconnectionstatechange = () => {
       const state = this.peerConnection?.connectionState;
-      console.log('连接状态变化:', state);
+      console.log('WebRTC连接状态变化:', state);
+      
       if (state) {
         this.onConnectionStateChange?.(state);
         
-        // 连接失败时自动重置
-        if (state === 'failed' || state === 'disconnected') {
+        // 只在真正失败时清理，不要在disconnected时立即清理
+        // disconnected可能是临时网络波动，浏览器会尝试重连
+        if (state === 'failed') {
+          console.error('WebRTC连接失败，开始清理资源');
           setTimeout(() => this.cleanup(), 1000);
+        } else if (state === 'connected') {
+          console.log('WebRTC连接建立成功');
         }
       }
     };
@@ -217,7 +190,47 @@ export class WebRTCManager {
      */
     this.peerConnection.oniceconnectionstatechange = () => {
       const state = this.peerConnection?.iceConnectionState;
-      console.log('ICE连接状态:', state);
+      console.log('ICE连接状态变化:', state);
+      
+      // 详细记录ICE状态变化，便于调试网络连接问题
+      switch (state) {
+        case 'checking':
+          console.log('ICE正在检查连接路径...');
+          break;
+        case 'connected':
+          console.log('ICE连接建立，开始媒体传输');
+          break;
+        case 'completed':
+          console.log('ICE连接完成，找到最佳路径');
+          break;
+        case 'failed':
+          console.error('ICE连接失败，可能需要TURN服务器');
+          break;
+        case 'disconnected':
+          console.warn('ICE连接断开，尝试重连中...');
+          break;
+      }
+    };
+
+    /**
+     * ICE收集状态事件
+     * 监控ICE候选收集过程：new/gathering/complete
+     */
+    this.peerConnection.onicegatheringstatechange = () => {
+      const state = this.peerConnection?.iceGatheringState;
+      console.log('ICE收集状态:', state);
+    };
+
+    /**
+     * ICE候选错误事件
+     * 当STUN/TURN服务器出现问题时触发
+     */
+    this.peerConnection.onicecandidateerror = (event: RTCPeerConnectionIceErrorEvent) => {
+      console.error('ICE候选错误:', {
+        errorCode: event.errorCode,
+        errorText: event.errorText,
+        url: event.url
+      });
     };
 
     /**
@@ -225,7 +238,9 @@ export class WebRTCManager {
      * 当需要重新协商SDP时触发(如添加/删除轨道)
      */
     this.peerConnection.onnegotiationneeded = () => {
-      console.log('需要重新协商');
+      console.log('检测到协商需求，可能需要重新创建Offer');
+      // 注意：在Perfect Negotiation模式下才自动处理重协商
+      // 当前简单模式下，由应用层控制协商时机
     };
   }
 
@@ -282,93 +297,86 @@ export class WebRTCManager {
 
   // 创建offer
   /**
-   * 创建Offer(发起方)
+   * 创建Offer(发起方) - 标准WebRTC实现
    * 
-   * WebRTC信令流程的第一步，包含以下步骤：
-   * 1. 检查连接状态
+   * WebRTC信令流程的第一步，遵循标准流程：
+   * 1. 确保PeerConnection可用
    * 2. 添加本地媒体轨道
-   * 3. 创建SDP Offer
-   * 4. 设置本地描述
+   * 3. 创建标准SDP Offer(不使用废弃的约束)
+   * 4. 设置本地描述(触发ICE收集)
    * 
    * @returns {Promise<RTCSessionDescriptionInit>} 生成的Offer SDP
-   * @throws 如果PeerConnection未初始化或状态异常
+   * @throws 如果PeerConnection不可用或创建失败
    * 
-   * 注意：
-   * 1. 必须在stable状态下调用
-   * 2. 生成的Offer需要通过信令服务器发送给对端
-   * 3. 设置本地描述会触发ICE候选收集
+   * 标准化改进：
+   * 1. 移除废弃的offerToReceiveAudio/Video约束
+   * 2. 使用ensurePeer确保连接可用
+   * 3. 返回实际的localDescription而非原始offer
    */
   async createOffer(): Promise<RTCSessionDescriptionInit> {
-    if (!this.isInitialized || !this.peerConnection) {
-      throw new Error('WebRTC未初始化');
+    // 使用ensurePeer替代手动检查，更可靠
+    this.ensurePeer();
+    
+    if (!this.peerConnection) {
+      throw new Error('无法创建PeerConnection实例');
     }
 
     try {
-      console.log('创建Offer开始');
+      console.log('开始创建Offer');
       console.log('初始信令状态:', this.peerConnection.signalingState);
       
-      // 确保PeerConnection处于stable状态
-      if (this.peerConnection.signalingState !== 'stable') {
-        console.warn('PeerConnection状态不稳定，重置中...');
-        this.reset();                // 重置连接
-        await new Promise(resolve => setTimeout(resolve, 200)); // 等待重置完成
-        
-        if (!this.peerConnection) {
-          throw new Error('重置后PeerConnection无效');
-        }
-      }
-      
-      // 添加本地媒体轨道(如果存在)
+      // 添加本地媒体轨道(标准做法：在createOffer前添加)
       if (this.localStream) {
         console.log('添加本地音频流到PeerConnection');
         
-        // 检查是否已经添加过相同轨道(避免重复添加)
         const existingSenders = this.peerConnection.getSenders();
         console.log('现有发送者数量:', existingSenders.length);
         
-        // 遍历本地流的所有轨道
+        // 避免重复添加相同轨道
         this.localStream.getTracks().forEach(track => {
           const existingSender = existingSenders.find(sender => sender.track === track);
           
-          // 只添加未存在的轨道
           if (!existingSender && this.peerConnection) {
             this.peerConnection.addTrack(track, this.localStream!);
-            console.log('音频轨道已添加');
+            console.log(`${track.kind}轨道已添加到PeerConnection`);
           } else {
-            console.log('音频轨道已存在，跳过添加');
+            console.log(`${track.kind}轨道已存在，跳过添加`);
           }
         });
       } else {
-        console.warn('没有本地流可添加');
+        console.warn('没有本地流，将只接收远端音频');
+        // 可选：添加仅接收的transceiver
+        // this.peerConnection.addTransceiver('audio', { direction: 'recvonly' });
       }
 
-      // 标记开始协商
+      // 标记协商开始
       this.isNegotiating = true;
       
-      // 创建Offer SDP
-      console.log('开始创建Offer...');
-      const offer = await this.peerConnection.createOffer({
-        offerToReceiveAudio: true,   // 期望接收音频
-        offerToReceiveVideo: false,  // 不期望接收视频
-      });
+      // 创建标准Offer(不使用废弃的约束参数)
+      console.log('开始创建标准Offer SDP...');
+      const offer = await this.peerConnection.createOffer();
       
       console.log('Offer创建完成，设置本地描述...');
-      
-      // 设置本地描述(触发ICE候选收集)
-      await this.peerConnection.setLocalDescription(offer);
-      
-      // 验证最终状态
-      const finalState = this.peerConnection.signalingState;
-      console.log('Offer创建成功');
-      console.log('最终信令状态:', finalState);
       console.log('Offer SDP长度:', offer.sdp?.length);
       
-      // 检查状态是否符合预期
+      // 设置本地描述，这会触发ICE候选收集
+      await this.peerConnection.setLocalDescription(offer);
+      
+      // 验证设置后的状态
+      const finalState = this.peerConnection.signalingState;
+      console.log('本地描述设置成功');
+      console.log('最终信令状态:', finalState);
+      
+      // 状态检查：设置Offer后应该是have-local-offer
       if (finalState !== 'have-local-offer') {
-        throw new Error(`创建Offer后状态异常: ${finalState}`);
+        throw new Error(`Offer设置后状态异常: ${finalState}, 期望: have-local-offer`);
       }
       
-      return offer;
+      console.log('Offer创建流程完成，等待ICE候选收集...');
+      
+      // 返回实际的localDescription，它可能被浏览器标准化处理过
+      return this.peerConnection.localDescription!;
+      
     } catch (error) {
       console.error('创建Offer失败:', error);
       this.isNegotiating = false;
@@ -378,108 +386,159 @@ export class WebRTCManager {
 
   // 处理offer并创建answer
   /**
-   * 处理收到的Offer(应答方)
+   * 处理收到的Offer(应答方) - 标准WebRTC实现
    * 
-   * 这是WebRTC信令流程的第二步，包含以下步骤：
-   * 1. 设置远程Offer描述
-   * 2. 添加本地媒体轨道
-   * 3. 创建Answer SDP
-   * 4. 设置本地描述
-   * 5. 处理暂存的ICE候选
+   * 标准信令流程的第二步，遵循正确时序：
+   * 1. 确保PeerConnection可用
+   * 2. 设置远程Offer描述
+   * 3. 添加本地媒体轨道
+   * 4. 创建Answer SDP
+   * 5. 设置本地描述(触发ICE收集)
+   * 6. 处理暂存的ICE候选
    * 
    * @param {RTCSessionDescriptionInit} offer - 对端发来的Offer SDP
    * @returns {Promise<RTCSessionDescriptionInit>} 生成的Answer SDP
-   * @throws 如果PeerConnection未初始化或处理失败
+   * @throws 如果处理失败
    * 
-   * 注意：
-   * 1. 生成的Answer需要通过信令服务器发送回发起方
-   * 2. 设置本地描述会触发ICE候选收集
+   * 标准化改进：
+   * 1. 使用ensurePeer确保连接可用
+   * 2. 详细的状态日志和错误处理
+   * 3. 正确解释connectionState的正常行为
    */
   async handleOffer(offer: RTCSessionDescriptionInit): Promise<RTCSessionDescriptionInit> {
-    if (!this.isInitialized || !this.peerConnection) {
-      throw new Error('WebRTC未初始化');
+    // 确保PeerConnection实例可用
+    this.ensurePeer();
+    
+    if (!this.peerConnection) {
+      throw new Error('无法创建PeerConnection实例');
     }
 
     try {
-      console.log('处理Offer并创建Answer');
+      console.log('开始处理收到的Offer');
+      console.log('处理前信令状态:', this.peerConnection.signalingState);
+      console.log('Offer SDP长度:', offer.sdp?.length);
       
-      // 设置远程Offer描述
+      // 1. 设置远程Offer描述
       await this.peerConnection.setRemoteDescription(offer);
+      console.log('远程Offer描述设置成功');
+      console.log('设置后信令状态:', this.peerConnection.signalingState);
+      console.log('设置后连接状态:', this.peerConnection.connectionState);
       
-      // 添加本地媒体轨道(如果存在)
+      // 注意：setRemoteDescription后connectionState为'new'是正常的
+      // ICE连接建立需要双方交换完SDP和ICE候选后才开始
+      // connectionState变化顺序: new -> connecting -> connected
+      
+      // 2. 添加本地媒体轨道(如果存在)
       if (this.localStream) {
+        console.log('添加本地音频流到PeerConnection');
+        
         this.localStream.getTracks().forEach(track => {
-          this.peerConnection!.addTrack(track, this.localStream!);
+          const existingSender = this.peerConnection!.getSenders().find(s => s.track === track);
+          if (!existingSender) {
+            this.peerConnection!.addTrack(track, this.localStream!);
+            console.log(`${track.kind}轨道已添加到PeerConnection`);
+          } else {
+            console.log(`${track.kind}轨道已存在，跳过添加`);
+          }
         });
-        console.log('本地流已添加');
+        
+        console.log('本地流轨道总数:', this.localStream.getTracks().length);
+      } else {
+        console.warn('没有本地流，将只接收远端音频');
       }
       
-      // 创建Answer SDP
+      // 3. 创建Answer SDP
+      console.log('开始创建Answer SDP...');
       const answer = await this.peerConnection.createAnswer();
       
-      // 设置本地Answer描述
+      console.log('Answer创建完成，设置本地描述...');
+      console.log('Answer SDP长度:', answer.sdp?.length);
+      
+      // 4. 设置本地Answer描述(触发ICE候选收集)
       await this.peerConnection.setLocalDescription(answer);
       
-      // 处理之前暂存的任何ICE候选
+      console.log('本地Answer描述设置成功');
+      console.log('最终信令状态:', this.peerConnection.signalingState);
+      console.log('最终连接状态:', this.peerConnection.connectionState);
+      
+      // 5. 处理之前暂存的ICE候选
       await this.processPendingIceCandidates();
       
-      console.log('Answer创建成功');
-      console.log('webrtc处理后：', this.peerConnection);
-      return answer;
+      console.log('Answer处理流程完成，等待ICE连接建立...');
+      
+      // 返回实际的localDescription
+      return this.peerConnection.localDescription!;
+      
     } catch (error) {
       console.error('处理Offer失败:', error);
-      throw new Error('处理通话请求失败');
+      throw new Error('处理通话请求失败: ' + (error as Error).message);
     }
   }
 
   // 处理answer
   /**
-   * 处理收到的Answer(发起方)
+   * 处理收到的Answer(发起方) - 标准WebRTC实现
    * 
-   * 这是WebRTC信令流程的最后一步，包含以下步骤：
-   * 1. 验证当前状态
-   * 2. 设置远程Answer描述
-   * 3. 处理暂存的ICE候选
+   * 信令流程的最后一步，完成SDP协商：
+   * 1. 确保PeerConnection可用
+   * 2. 验证当前状态和Answer有效性
+   * 3. 设置远程Answer描述
+   * 4. 处理暂存的ICE候选
+   * 5. 标记协商完成
    * 
    * @param {RTCSessionDescriptionInit} answer - 对端发来的Answer SDP
-   * @throws 如果PeerConnection未初始化或状态异常
+   * @throws 如果状态异常或处理失败
    * 
-   * 注意：
-   * 1. 必须在have-local-offer状态下调用
-   * 2. 设置远程描述后连接将开始建立
+   * 标准化改进：
+   * 1. 移除过于严格的状态检查和提前返回
+   * 2. 增强错误处理和状态日志
+   * 3. 确保协商状态正确管理
    */
   async handleAnswer(answer: RTCSessionDescriptionInit): Promise<void> {
-    if (!this.isInitialized || !this.peerConnection) {
-      throw new Error('WebRTC未初始化');
+    // 确保PeerConnection可用
+    this.ensurePeer();
+    
+    if (!this.peerConnection) {
+      throw new Error('无法创建PeerConnection实例');
     }
 
     try {
-      console.log('处理Answer开始');
-      console.log('当前信令状态:', this.peerConnection.signalingState);
+      console.log('开始处理收到的Answer');
+      console.log('处理前信令状态:', this.peerConnection.signalingState);
       console.log('Answer类型:', answer.type);
+      console.log('Answer SDP长度:', answer.sdp?.length);
       
-      // 验证当前状态(必须处于have-local-offer)
-      if (this.peerConnection.signalingState !== 'have-local-offer') {
-        console.warn('PeerConnection状态不正确，当前状态:', this.peerConnection.signalingState);
-        console.warn('期望状态: have-local-offer，跳过Answer处理');
-        return;
-      }
-
       // 验证Answer有效性
       if (!answer || answer.type !== 'answer') {
-        throw new Error('无效的Answer');
+        throw new Error(`无效的Answer: type=${answer?.type}`);
+      }
+
+      // 状态检查：理想情况下应该是have-local-offer
+      const currentState = this.peerConnection.signalingState;
+      if (currentState === 'stable') { //fiexd2：跳过stable
+        console.warn(`信令状态已是stable，Answer可能已经处理过，跳过重复处理`);
+        return; // 如果已经是stable，说明Answer已经处理过了
+      } else if (currentState !== 'have-local-offer') {
+        console.warn(`信令状态不是预期的have-local-offer，当前: ${currentState}`);
+        // 对于其他非预期状态，继续尝试处理
       }
 
       // 设置远程Answer描述
+      console.log('设置远程Answer描述...');
       await this.peerConnection.setRemoteDescription(answer);
-      console.log('Answer设置成功，当前状态:', this.peerConnection.signalingState);
       
-      // 处理之前暂存的任何ICE候选
+      console.log('Answer设置成功');
+      console.log('设置后信令状态:', this.peerConnection.signalingState);
+      console.log('设置后连接状态:', this.peerConnection.connectionState);
+      
+      // 处理之前暂存的ICE候选
       await this.processPendingIceCandidates();
       
       // 标记协商完成
       this.isNegotiating = false;
-      console.log('Answer处理完成');
+      
+      console.log('Answer处理完成，SDP协商结束，等待ICE连接...');
+      
     } catch (error) {
       console.error('处理Answer失败:', error);
       this.isNegotiating = false;
