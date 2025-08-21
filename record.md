@@ -131,3 +131,226 @@
     文件上传成功后，客户端构建文件消息对象
     消息包含文件的基本信息（名称、大小、类型、URL、MD5等）
     消息状态初始化为"发送中"
+
+webRTC：
+    连接状态：
+    {
+        signalingState: "stable" | "have-local-offer" | "have-remote-offer" | "closed",
+        iceGatheringState: "new" | "gathering" | "complete",
+        iceConnectionState: "new" | "checking" | "connected" | "completed" | "disconnected",
+        connectionState: "new" | "connecting" | "connected" | "disconnected" | "failed"
+    }
+
+    bug分析：
+        1.信令处理错误：在 useVoiceCall.ts 的 handleCallAccept 函数中存在一个致命的早退逻辑
+            导致发起方永远无法处理对方发来的Answer，WebRTC连接无法完成SDP协商，通话建立失败
+        2. 不标准的WebRTC实现
+            使用了已废弃的 offerToReceiveAudio/Video 约束
+            缺少防御性的 ensurePeer() 机制
+            对WebRTC状态变化的理解和处理不准确
+        3. 重复事件处理问题
+            服务端ICE候选转发给双方（包括发送方），造成重复处理
+            缺少有效的重复事件防护机制
+            ICE候选回调中存在闭包问题，导致callId获取不准确
+        4. 过于激进的连接管理
+            disconnected 状态立即触发清理，不给浏览器自动重连机会
+            缺少详细的状态监控和错误诊断
+        5. ICE候选处理时机
+            setLocalDescription 后开始ICE收集
+            ICE候选通过 onicecandidate 事件异步生成
+            需要通过信令通道发送给对端
+            对端通过 addIceCandidate 添加候选
+
+    WebRTC通话全流程总结：
+        
+        通话发起
+        ┌─────────────────────────────────────────────────────────────────┐
+        │ 1. 用户点击通话按钮                                              │
+        │    ↓                                                            │
+        │ 2. 执行 initiateCall(targetUser)                                │
+        │    ├── 生成唯一通话ID: call_${callerId}_${targetId}_${timestamp} │
+        │    ├── 更新Redux状态: startCall()                               │
+        │    └── 重置WebRTC状态: webrtcRef.current.reset()               │
+        │    ↓                                                            │
+        │ 3. 获取本地音频流                                                │
+        │    ├── webrtcRef.current.getUserMedia()                        │
+        │    ├── 请求麦克风权限                                            │
+        │    ├── 配置音频参数(回声消除、降噪等)                            │
+        │    └── dispatch(setLocalStream(stream))                        │
+        │    ↓                                                            │
+        │ 4. 创建Offer SDP                                                │
+        │    ├── webrtcRef.current.createOffer()                         │
+        │    ├── 添加本地音频轨道到PeerConnection                          │
+        │    ├── 调用 peerConnection.createOffer() (标准方式)             │
+        │    ├── 调用 peerConnection.setLocalDescription(offer)           │
+        │    ├── 触发ICE候选收集 (iceGatheringState: new → gathering)      │
+        │    └── 信令状态变为: have-local-offer                            │
+        │    ↓                                                            │
+        │ 5. 发送通话邀请                                                  │
+        │    ├── socket.emit('call:start', {callId, from, to, offer})     │
+        │    └── 等待对方接受                                              │
+        └─────────────────────────────────────────────────────────────────┘
+        
+        信令转发 
+        ┌─────────────────────────────────────────────────────────────────┐
+        │ 6. 服务端接收call:start事件                                      │
+        │    ├── 解析通话信息(callId, from, to, offer)                     │
+        │    ├── 记录Offer SDP长度用于调试                                 │
+        │    └── 转发给目标用户: io.to(targetUserId).emit('call:start')    │
+        └─────────────────────────────────────────────────────────────────┘
+        
+        接收通话邀请 
+        ┌─────────────────────────────────────────────────────────────────┐
+        │ 7. 接收方收到call:start事件                                      │
+        │    ├── 执行 handleCallStart(event)                              │
+        │    ├── 验证用户登录状态                                          │
+        │    ├── 更新Redux状态: receiveCall({callId, localUser, remoteUser, offer}) │
+        │    ├── 保存Offer到 callState.pendingOffer                       │
+        │    ├── 显示通话邀请UI                                            │
+        │    └── 等待用户决定(接受/拒绝)                                    │
+        └─────────────────────────────────────────────────────────────────┘
+        
+        接受通话
+        ┌─────────────────────────────────────────────────────────────────┐
+        │ 8. 用户点击接受按钮                                              │
+        │    ↓                                                            │
+        │ 9. 执行 acceptCall()                                             │
+        │    ├── 重置WebRTC状态: webrtcRef.current.reset()               │
+        │    ├── 获取本地音频流: getUserMedia()                            │
+        │    └── 请求麦克风权限                                            │
+        │    ↓                                                            │
+        │ 10. 处理Offer并创建Answer                                        │
+        │     ├── webrtcRef.current.handleOffer(pendingOffer)             │
+        │     ├── peerConnection.setRemoteDescription(offer)              │
+        │     ├── 信令状态变为: have-remote-offer                          │
+        │     ├── 添加本地音频轨道                                         │
+        │     ├── peerConnection.createAnswer()                           │
+        │     ├── peerConnection.setLocalDescription(answer)              │
+        │     ├── 信令状态变为: stable                                     │
+        │     ├── 触发ICE候选收集                                          │
+        │     └── 处理暂存的ICE候选                                        │
+        │     ↓                                                           │
+        │ 11. 发送Answer                                                   │
+        │     ├── 防重复发送检查                                           │
+        │     ├── socket.emit('call:accept', {callId, from, to, answer})   │
+        │     └── 等待连接建立                                             │
+        └─────────────────────────────────────────────────────────────────┘
+        
+        Answer处理
+        ┌─────────────────────────────────────────────────────────────────┐
+        │ 12. 发起方收到call:accept事件                                    │
+        │     ├── 执行 handleCallAccept(event)                            │
+        │     ├── 重复事件检查(processedEvents防护)                        │
+        │     ├── WebRTC状态检查(stable状态跳过)                           │
+        │     └── 验证callId匹配                                           │
+        │     ↓                                                           │
+        │ 13. 处理Answer SDP                                               │
+        │     ├── webrtcRef.current.handleAnswer(answer)                  │
+        │     ├── 验证信令状态(期望: have-local-offer)                     │
+        │     ├── peerConnection.setRemoteDescription(answer)             │
+        │     ├── 信令状态变为: stable                                     │
+        │     ├── 处理暂存的ICE候选                                        │
+        │     └── SDP协商完成                                              │
+        └─────────────────────────────────────────────────────────────────┘
+        
+        ICE连接建立
+        ┌─────────────────────────────────────────────────────────────────┐
+        │ 14. ICE候选收集与交换                                            │
+        │     ├── 双方PeerConnection开始ICE收集                           │
+        │     ├── iceGatheringState: new → gathering → complete           │
+        │     ├── 生成各种类型候选(host/srflx/relay)                       │
+        │     ├── 通过onicecandidate事件获取候选                           │
+        │     ├── socket.emit('call:ice', {callId, candidate})             │
+        │     ├── 服务端转发: socket.to().emit('call:ice')                │
+        │     ├── 对方接收: handleCallIce() → addIceCandidate()           │
+        │     └── ICE连接状态变化: new → checking → connected              │
+        │     ↓                                                           │
+        │ 15. 连接状态监控                                                 │
+        │     ├── oniceconnectionstatechange事件                          │
+        │     ├── onconnectionstatechange事件                             │
+        │     ├── connectionState: new → connecting → connected           │
+        │     └── 详细状态日志记录                                         │
+        └─────────────────────────────────────────────────────────────────┘
+        
+        媒体流建立
+        ┌─────────────────────────────────────────────────────────────────┐
+        │ 16. 远程媒体流接收                                               │
+        │     ├── ontrack事件触发                                          │
+        │     ├── 获取远程音频流: event.streams[0]                         │
+        │     ├── dispatch(setRemoteStream(remoteStream))                  │
+        │     ├── 绑定到HTML audio元素                                     │
+        │     └── 自动播放远程音频                                         │
+        │     ↓                                                           │
+        │ 17. 连接成功确认                                                 │
+        │     ├── connectionState变为'connected'                          │
+        │     ├── dispatch(connectCall())                                  │
+        │     ├── 启动通话计时器                                           │
+        │     ├── 显示"通话连接成功"                                       │
+        │     └── UI切换到通话中状态                                       │
+        └─────────────────────────────────────────────────────────────────┘
+        
+        通话进行中
+        ┌─────────────────────────────────────────────────────────────────┐
+        │ 18. 通话功能                                                     │
+        │     ├── 实时音频传输                                             │
+        │     ├── 静音/取消静音: toggleMute()                              │
+        │     ├── 通话时长计时                                             │
+        │     ├── 连接质量监控                                             │
+        │     └── 网络状态监控                                             │
+        │     ↓                                                           │
+        │ 19. 错误处理与恢复                                               │
+        │     ├── ICE连接断开自动重连                                      │
+        │     ├── 网络波动处理                                             │
+        │     ├── 连接失败时清理资源                                       │
+        │     └── 用户友好的错误提示                                       │
+        └─────────────────────────────────────────────────────────────────┘
+        
+        通话结束
+        ┌─────────────────────────────────────────────────────────────────┐
+        │ 20. 结束通话                                                     │
+        │     ├── 用户点击挂断: terminateCall()                           │
+        │     ├── socket.emit('call:end', {callId})                       │
+        │     ├── 服务端广播给双方                                         │
+        │     ├── 执行cleanup()清理资源                                    │
+        │     ├── 停止所有媒体轨道                                         │
+        │     ├── 关闭PeerConnection                                       │
+        │     ├── 清理定时器和事件监听                                     │
+        │     ├── 重置Redux状态                                            │
+        │     └── 显示通话结束界面                                         │
+        └─────────────────────────────────────────────────────────────────┘
+        
+        ═══════════════════════════════════════════════════════════════════
+        要点
+        ═══════════════════════════════════════════════════════════════════
+        
+        【信令协商流程】
+        Caller: createOffer() → setLocalDescription(offer) → 发送Offer
+        Callee: setRemoteDescription(offer) → createAnswer() → setLocalDescription(answer) → 发送Answer
+        Caller: setRemoteDescription(answer) → 连接建立
+        
+        【ICE连接流程】
+        1. setLocalDescription触发ICE收集
+        2. onicecandidate事件异步生成候选
+        3. 通过信令通道交换候选
+        4. addIceCandidate添加对端候选
+        5. ICE连接状态: new → checking → connected
+        
+        【状态变化时序】
+        信令状态: stable → have-local-offer → stable
+        ICE收集: new → gathering → complete  
+        ICE连接: new → checking → connected
+        整体连接: new → connecting → connected
+        
+        【防护机制】
+        ✅ 重复事件防护(processedEvents)
+        ✅ 重复发送防护(acceptSentRef)  
+        ✅ WebRTC状态检查(stable跳过)
+        ✅ 连接实例防护(ensurePeer)
+        ✅ 闭包问题解决(currentCallIdRef)
+        
+        【错误处理】
+        ✅ 网络连接失败自动清理
+        ✅ ICE候选错误监控
+        ✅ 媒体权限错误处理
+        ✅ 信令状态异常处理
+        ✅ 详细调试日志记录

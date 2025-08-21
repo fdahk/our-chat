@@ -1,5 +1,5 @@
-// client/src/globalType/call.ts - 简化的类型定义
 
+// 用户信息
 export interface CallUser {
   id: number;
   username: string;
@@ -7,13 +7,14 @@ export interface CallUser {
   avatar: string;
 }
 
+// ICE 候选
 export interface ICECandidate {
   candidate: string;
   sdpMLineIndex: number | null;
   sdpMid: string | null;
 }
 
-// 简化的Socket事件类型
+// Socket事件类型
 export interface CallStartEvent {
   callId: string;
   from: CallUser;
