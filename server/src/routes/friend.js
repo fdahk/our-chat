@@ -1,9 +1,18 @@
 import express from 'express';
 import { mySql } from '../dataBase/mySql.js';
+import { authenticateToken } from '../middleware/auth.js';
 const router = express.Router();
-// 获取好友列表及好友信息
-router.get('/getFriendList/:id', async (req, res) => {
+// 获取好友列表及好友信息 - 认证且只能获取自己的好友列表
+router.get('/getFriendList/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
+    
+    // 验证用户只能获取自己的好友列表
+    if (req.user.id.toString() !== id.toString()) {
+        return res.status(403).json({ 
+            success: false, 
+            message: '无权访问其他用户的好友列表' 
+        });
+    }
     try {
         const sql = `SELECT friend_id, remark FROM friendships WHERE user_id = ? `; // 注：由于好友申请等多出地方要用的用户信息，这里不设置status
         const [friendId] = await mySql.query(sql, [id]); // 获取好友id列表
@@ -42,7 +51,7 @@ router.get('/getFriendList/:id', async (req, res) => {
     }
 });
 // 查询用户信息
-router.get('/searchUser', async (req, res) => {
+router.get('/searchUser', authenticateToken, async (req, res) => {
     const { keyword, userId } = req.query;
     try {
         const sql = `SELECT id,avatar, username, gender FROM users WHERE id = ? OR phone = ?`;
@@ -66,9 +75,17 @@ router.get('/searchUser', async (req, res) => {
         res.json({ success: false, message: '查询用户信息失败' });
     }
 });
-// 发起好友请求
-router.put('/addFriend', async (req, res) => {
+// 发起好友请求 - 只能以自己的身份发起
+router.put('/addFriend', authenticateToken, async (req, res) => {
     const { userId, friend_id } = req.body;
+    
+    // 验证用户只能以自己的身份发起好友请求
+    if (req.user.id.toString() !== userId.toString()) {
+        return res.status(403).json({ 
+            success: false, 
+            message: '无权代替其他用户发起好友请求' 
+        });
+    }
     try {
         // 插入好友请求
         const sql = `INSERT INTO friendships (user_id, friend_id, status) VALUES (?, ?, ?)`;
@@ -80,9 +97,17 @@ router.put('/addFriend', async (req, res) => {
         res.json({ success: false, message: '发起好友请求失败' });
     }
 });
-//获取好友请求 
-router.get('/getFriendReqs', async (req, res) => {
+//获取好友请求
+router.get('/getFriendReqs', authenticateToken, async (req, res) => {
     const { userId } = req.query;
+    
+    // 验证用户只能获取自己的好友请求
+    if (req.user.id.toString() !== userId.toString()) {
+        return res.status(403).json({ 
+            success: false, 
+            message: '无权访问其他用户的好友请求' 
+        });
+    }
     try {
         const sql = `SELECT * FROM friendships WHERE user_id = ? order by updated_at desc`;
         let [result] = await mySql.query(sql, [userId]);
@@ -96,9 +121,17 @@ router.get('/getFriendReqs', async (req, res) => {
         res.json({ success: false, message: '获取好友请求失败' });
     }
 });
-//回复好友请求
-router.put('/replyFriendReq', async (req, res) => {
+//回复好友请求 - 只能回复发给自己的请求
+router.put('/replyFriendReq', authenticateToken, async (req, res) => {
     const { userId, friend_id, status } = req.body;
+    
+    // 验证用户只能回复发给自己的好友请求
+    if (req.user.id.toString() !== userId.toString()) {
+        return res.status(403).json({ 
+            success: false, 
+            message: '无权代替其他用户回复好友请求' 
+        });
+    }
     try {
         if(status === 'accepted') {
             const conversationId = `single_${Math.min(userId, friend_id)}_${Math.max(userId, friend_id)}`;

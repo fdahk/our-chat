@@ -17,13 +17,14 @@ import {
     mergeChunks,           // 合并分片
     checkFileExists        // 检查文件是否已存在（秒传）
 } from '../utils/uploadHandler.js';
+import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // ==================== 1. 单文件上传 ====================
 // 接口：POST /api/upload/single
 // 功能：接收单个文件，存储到uploads目录，返回文件信息
-router.post('/single', upload.single('file'), async (req, res) => {
+router.post('/single', authenticateToken, upload.single('file'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({
@@ -57,7 +58,7 @@ router.post('/single', upload.single('file'), async (req, res) => {
 // ==================== 2. 多文件上传 ====================
 // 接口：POST /api/upload/multiple
 // 功能：批量上传文件，最多10个，返回每个文件的信息
-router.post('/multiple', upload.array('files', 10), async (req, res) => {
+router.post('/multiple', authenticateToken, upload.array('files', 10), async (req, res) => {
     try {
         if (!req.files || req.files.length === 0) {
             return res.status(400).json({
@@ -96,7 +97,7 @@ router.post('/multiple', upload.array('files', 10), async (req, res) => {
 // ==================== 3. 秒传检查 ====================
 // 接口：POST /api/upload/check
 // 功能：前端上传前先计算MD5，后端查找是否已存在该文件，实现秒传
-router.post('/check', async (req, res) => {
+router.post('/check', authenticateToken, async (req, res) => {
     try {
         const { fileMD5, fileName, fileSize } = req.body;
         
@@ -140,7 +141,7 @@ router.post('/check', async (req, res) => {
 // ==================== 4. 分片上传 ====================
 // 接口：POST /api/upload/chunk
 // 功能：接收单个分片，存储到chunks目录，等待合并
-router.post('/chunk', upload.single('chunk'), async (req, res) => {
+router.post('/chunk', authenticateToken, upload.single('chunk'), async (req, res) => {
     try {
         const { fileId, chunkIndex, totalChunks, fileName } = req.body;
         
@@ -171,7 +172,7 @@ router.post('/chunk', upload.single('chunk'), async (req, res) => {
 // ==================== 5. 合并分片 ====================
 // 接口：POST /api/upload/merge
 // 功能：将所有分片合并为完整文件，返回最终文件信息
-router.post('/merge', async (req, res) => {
+router.post('/merge', authenticateToken, async (req, res) => {
     try {
         const { fileId, fileName, totalChunks } = req.body;
         
@@ -207,7 +208,7 @@ router.post('/merge', async (req, res) => {
 // ==================== 6. 流式上传 ====================
 // 接口：POST /api/upload/stream
 // 功能：支持流式数据上传，适合特殊场景
-router.post('/stream', (req, res) => {
+router.post('/stream', authenticateToken, (req, res) => {
     try {
         const { fileName } = req.query;
         if (!fileName) {
@@ -256,7 +257,7 @@ router.post('/stream', (req, res) => {
 // ==================== 7. 压缩上传（图片） ====================
 // 接口：POST /api/upload/compress
 // 功能：图片上传时自动压缩，减少存储和带宽
-router.post('/compress', upload.single('file'), async (req, res) => {
+router.post('/compress', authenticateToken, upload.single('file'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({
@@ -303,7 +304,7 @@ router.post('/compress', upload.single('file'), async (req, res) => {
 // ==================== 8. 断点续传 - 查询已上传分片 ====================
 // 接口：GET /api/upload/resume/:fileId
 // 功能：前端分片上传前查询已上传分片，实现断点续传
-router.get('/resume/:fileId', (req, res) => {
+router.get('/resume/:fileId', authenticateToken, (req, res) => {
     try {
         const { fileId } = req.params;
         const chunksDir = path.resolve('../uploads/chunks');

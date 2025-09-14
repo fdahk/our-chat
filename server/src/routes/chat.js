@@ -2,10 +2,19 @@ import express from 'express';
 const router = express.Router(); 
 import { mySql } from '../dataBase/mySql.js';
 import { Message } from '../dataBase/mongoDb.js';
+import { authenticateToken } from '../middleware/auth.js';
 
 // 获取用户会话列表
-router.get('/userConversations', async (req, res) => {
+router.get('/userConversations', authenticateToken, async (req, res) => {
     const userId = req.query.userId;
+    
+    // 验证用户只能获取自己的会话列表
+    if (req.user.id.toString() !== userId.toString()) {
+        return res.status(403).json({ 
+            success: false, 
+            message: '无权访问其他用户的会话列表' 
+        });
+    }
     try {
         const [list] = await mySql.execute(
             `SELECT * FROM user_conversations
@@ -21,7 +30,7 @@ router.get('/userConversations', async (req, res) => {
 });
 
 // 获取会话列表
-router.get('/conversations', async (req, res) => {
+router.get('/conversations', authenticateToken, async (req, res) => {
     const userConversationIds = JSON.parse(req.query.userConversationIds);
     // 边界处理
     if(userConversationIds.length === 0) {
@@ -57,7 +66,7 @@ router.get('/conversations', async (req, res) => {
 });
 
 // 获取会话的消息（MongoDB）
-router.get('/messages', async (req, res) => {
+router.get('/messages', authenticateToken, async (req, res) => {
     const conversationId = req.query.conversationId;
     if (!conversationId) {
         return res.status(400).json({ success: false, message: '缺少 conversationId 参数' });
@@ -73,10 +82,18 @@ router.get('/messages', async (req, res) => {
     }
 });
 
-// 更新会话（同时负责创建会话记录
-router.post('/updateConversationTime', async (req, res) => {
+// 更新会话（同时负责创建会话记录 只能更新自己参与的会话
+router.post('/updateConversationTime', authenticateToken, async (req, res) => {
     const conversationId = req.body.conversationId;
     const userId = req.body.userId;
+    
+    // 验证用户只能更新自己参与的会话
+    if (req.user.id.toString() !== userId.toString()) {
+        return res.status(403).json({ 
+            success: false, 
+            message: '无权更新其他用户的会话' 
+        });
+    }
     try {
         // 注： 单向删除会话记录，存在好友但未必有用户会话记录
         const [res1] = await mySql.execute(
@@ -107,7 +124,7 @@ router.post('/updateConversationTime', async (req, res) => {
 });
 
 // 获取最后一条消息
-router.get('/lastMessages', async (req, res) => {
+router.get('/lastMessages', authenticateToken, async (req, res) => {
     const userConversationIds = JSON.parse(req.query.userConversationIds);
     // 聚合管道获取最新消息
     const lastMessagesArray = await Message.aggregate([

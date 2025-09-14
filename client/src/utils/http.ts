@@ -2,6 +2,13 @@ import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse,
 import { message } from 'antd'; //引入antd的message 消息提示组件
 import type { ApiResponse } from '../globalType/apiResponse';
 
+// Token刷新相关变量
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (value?: any) => void;
+  reject: (reason?: any) => void;
+}> = [];
+
 const http: AxiosInstance = axios.create({
   baseURL: 'http://127.0.0.1:3007', //请求地址
   timeout: 10000,  
@@ -16,6 +23,49 @@ const http: AxiosInstance = axios.create({
   },
 });
 
+
+// Token刷新函数
+const refreshToken = async (): Promise<string | null> => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('没有token');
+    }
+
+    // 刷新token，返回新的token，第二个参数是请求配置
+    const response = await axios.post('http://127.0.0.1:3007/api/refresh', {}, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (response.data.success) {
+      const newToken = response.data.data.token;
+      localStorage.setItem('token', newToken);
+      return newToken;
+    } else {
+      throw new Error('token刷新失败');
+    }
+  } catch (error) {
+    console.error('Token刷新失败:', error);
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return null;
+  }
+};
+
+// 处理队列中的请求，用于排队等待刷新token
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (error) {
+      reject(error);
+    } else {
+      resolve(token);
+    }
+  });
+  
+  failedQueue = [];
+};
 
 // 请求拦截器可以在请求发送前： 修改请求配置， 添加认证信息， 添加请求头，记录日志， 处理错误
 http.interceptors.request.use(
@@ -57,41 +107,91 @@ http.interceptors.response.use(
     return response.data;
   },
   // 第二个参数：响应错误处理函数
-  (error: AxiosError) => {
+  async (error: AxiosError) => {
     // 超出 2xx的状态码都会触发该函数
     console.error('响应错误:', error);
+    
+    // 获取原始请求配置，用于重试请求
+    const originalRequest = error.config as any;
+    
     // 错误处理
     if (error.response) {
       // 服务器返回错误状态码
       const { status, data } = error.response;
       
-      switch (status) {
-        case 400:
-          message.error((data as any)?.message || '请求参数错误');
-          break;
-        case 401:
-          // 未登录或token过期
+      // 处理401错误（token过期或无效）
+      if (status === 401 && !originalRequest._retry) {
+        const errorData = data as any;
+        
+        // 检查是否是token过期
+        if (errorData?.code === 'TOKEN_EXPIRED' || errorData?.message?.includes('过期')) {
+          if (isRefreshing) {
+            // 如果正在刷新token，将请求加入队列
+            return new Promise((resolve, reject) => {
+              failedQueue.push({ resolve, reject });
+            }).then(token => {
+              if (originalRequest.headers) {
+                originalRequest.headers['Authorization'] = `Bearer ${token}`;
+              }
+              // 重试请求
+              return http(originalRequest);
+            }).catch(err => {
+              return Promise.reject(err);
+            });
+          }
+
+          // 设置重试标志，防止重复重试
+          originalRequest._retry = true;
+          isRefreshing = true;
+
+          try {
+            // 刷新token
+            const newToken = await refreshToken();
+            if (newToken) {
+              processQueue(null, newToken);
+              // 设置新的token
+              if (originalRequest.headers) {
+                originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+              }
+              return http(originalRequest);
+            }
+          } catch (refreshError) {
+            // 处理刷新token失败
+            processQueue(refreshError, null);
+            return Promise.reject(refreshError);
+          } finally {
+            isRefreshing = false;
+          }
+        } else {
+          // 其他401错误，直接跳转登录
           message.error('未授权，请重新登录');
           localStorage.removeItem('token');
           window.location.href = '/login';
-          break;
-        case 403:
-          message.error('拒绝访问');
-          break;
-        case 404:
-          message.error('请求的资源不存在');
-          break;
-        case 409:
-          message.error((data as any)?.message || '数据冲突');
-          break;
-        case 422:
-          message.error((data as any)?.message || '数据验证失败');
-          break;
-        case 500:
-          message.error('服务器内部错误');
-          break;
-        default:
-          message.error((data as any)?.message || `请求失败 (${status})`);
+        }
+      } else {
+        // 处理其他HTTP错误
+        switch (status) {
+          case 400:
+            message.error((data as any)?.message || '请求参数错误');
+            break;
+          case 403:
+            message.error('拒绝访问');
+            break;
+          case 404:
+            message.error('请求的资源不存在');
+            break;
+          case 409:
+            message.error((data as any)?.message || '数据冲突');
+            break;
+          case 422:
+            message.error((data as any)?.message || '数据验证失败');
+            break;
+          case 500:
+            message.error('服务器内部错误');
+            break;
+          default:
+            message.error((data as any)?.message || `请求失败 (${status})`);
+        }
       }
     } else if (error.request) {
       // error.request 存在代表：请求配置正确，请求已经通过网络发送，但是服务器没有返回响应

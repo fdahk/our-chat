@@ -44,6 +44,7 @@ function LoginView() {
         remember: values.remember,
       });
       // 存储token到本地
+      console.log('login result', result.data);
       localStorage.setItem('token', result.data.token);
       // 存储用户信息到 redux
       dispatch(login({

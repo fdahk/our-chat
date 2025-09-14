@@ -1,12 +1,13 @@
 import express from 'express';
 import { multerInstance } from '../utils/multer.js';
+import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
 export default router;
 
 // 上传图片接口
-router.post('/uploadImg', multerInstance.single('file'), (req, res) => {
+router.post('/uploadImg', authenticateToken, multerInstance.single('file'), (req, res) => {
     // console.log(req.file); //调试
     if (!req.file) {
         return res.status(400).json({

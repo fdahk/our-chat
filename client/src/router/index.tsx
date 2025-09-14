@@ -14,6 +14,7 @@ const router = createBrowserRouter([
     {
         path: "",
         element: (
+            // 加载页面时鉴定一次
             <RequireAuth>
                 <Layout/>
             </RequireAuth>
