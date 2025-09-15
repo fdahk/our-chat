@@ -247,13 +247,10 @@ export class WebRTCManager {
   //获取用户媒体
   /**
    * 获取用户媒体流(麦克风)
-   * 
    * 请求用户麦克风权限并获取音频流
    * 这是WebRTC通话的必要前置步骤
-   * 
    * @returns {Promise<MediaStream>} 包含音频轨道的媒体流
    * @throws 如果用户拒绝权限或设备不可用
-   * 
    * 注意：
    * 1. 必须在安全上下文(HTTPS/localhost)中调用
    * 2. 浏览器会显示权限请求弹窗
@@ -297,9 +294,8 @@ export class WebRTCManager {
 
   // 创建offer
   /**
-   * 创建Offer(发起方) - 标准WebRTC实现
-   * 
-   * WebRTC信令流程的第一步，遵循标准流程：
+   * 创建Offer(发起方)
+   * WebRTC信令流程的第一步
    * 1. 确保PeerConnection可用
    * 2. 添加本地媒体轨道
    * 3. 创建标准SDP Offer(不使用废弃的约束)
@@ -386,8 +382,7 @@ export class WebRTCManager {
 
   // 处理offer并创建answer
   /**
-   * 处理收到的Offer(应答方) - 标准WebRTC实现
-   * 
+   * 处理收到的Offer(应答方)
    * 标准信令流程的第二步，遵循正确时序：
    * 1. 确保PeerConnection可用
    * 2. 设置远程Offer描述
@@ -400,7 +395,7 @@ export class WebRTCManager {
    * @returns {Promise<RTCSessionDescriptionInit>} 生成的Answer SDP
    * @throws 如果处理失败
    * 
-   * 标准化改进：
+   * 标准化：
    * 1. 使用ensurePeer确保连接可用
    * 2. 详细的状态日志和错误处理
    * 3. 正确解释connectionState的正常行为
@@ -477,8 +472,7 @@ export class WebRTCManager {
 
   // 处理answer
   /**
-   * 处理收到的Answer(发起方) - 标准WebRTC实现
-   * 
+   * 处理收到的Answer(发起方)
    * 信令流程的最后一步，完成SDP协商：
    * 1. 确保PeerConnection可用
    * 2. 验证当前状态和Answer有效性
@@ -489,7 +483,7 @@ export class WebRTCManager {
    * @param {RTCSessionDescriptionInit} answer - 对端发来的Answer SDP
    * @throws 如果状态异常或处理失败
    * 
-   * 标准化改进：
+   * 标准化：
    * 1. 移除过于严格的状态检查和提前返回
    * 2. 增强错误处理和状态日志
    * 3. 确保协商状态正确管理
@@ -549,7 +543,6 @@ export class WebRTCManager {
   //添加ice候选
   /**
    * 添加ICE候选
-   * 
    * 将对端发来的ICE候选添加到PeerConnection中
    * 如果PeerConnection未准备好，候选会被暂存
    * 
@@ -593,7 +586,6 @@ export class WebRTCManager {
   // 处理ICE候选
   /**
    * 处理暂存的ICE候选
-   * 
    * 在远程描述设置完成后，处理之前暂存的所有ICE候选
    * 
    * 注意：
@@ -618,7 +610,6 @@ export class WebRTCManager {
   // 切换静音
   /**
    * 切换静音状态
-   * 
    * 切换本地音频轨道的启用状态
    * 
    * @returns {boolean} 切换后的静音状态(true表示静音)
@@ -644,7 +635,6 @@ export class WebRTCManager {
   // 获取连接状态
   /**
    * 获取连接统计信息
-   * 
    * 返回包含各种连接指标的统计报告，可用于：
    * - 监控连接质量
    * - 诊断网络问题
@@ -660,7 +650,6 @@ export class WebRTCManager {
   // 清理
   /**
    * 清理WebRTC资源
-   * 
    * 安全释放所有资源，包括：
    * 1. 停止所有媒体轨道
    * 2. 关闭PeerConnection
@@ -699,7 +688,6 @@ export class WebRTCManager {
   // 重置
   /**
    * 重置WebRTC连接
-   * 
    * 先清理现有资源，然后重新初始化
    * 用于处理连接失败或需要重新建立连接的场景
    * 
@@ -714,7 +702,6 @@ export class WebRTCManager {
 
   /**
    * 错误处理
-   * 
    * 统一处理WebRTC相关错误，包括：
    * 1. 记录错误日志
    * 2. 触发onError回调
@@ -726,44 +713,30 @@ export class WebRTCManager {
     this.onError?.(error);
   }
 
-  // ========== 状态获取方法 ==========
-  
-  /**
-   * 是否已建立连接
-   */
+  // ========== 状态获取方法 ==========  
+  // 是否已建立连接
   get isConnected(): boolean {
     return this.peerConnection?.connectionState === 'connected';
   }
 
-  /**
-   * 当前连接状态
-   */
+  // 当前连接状态
   get connectionState(): RTCPeerConnectionState | null {
     return this.peerConnection?.connectionState || null;
   }
 
-  /**
-   * 本地媒体流
-   */
+  // 本地媒体流
   get localMediaStream(): MediaStream | null {
     return this.localStream;
   }
 
-  /**
-   * 远程媒体流
-   */
+  // 远程媒体流
   get remoteMediaStream(): MediaStream | null {
     return this.remoteStream;
   }
 
   /**
    * 获取完整状态信息
-   * 
    * 返回包含所有关键状态的对象，可用于：
-   * - 调试
-   * - 状态监控
-   * - UI展示
-   * 
    * @returns {object|null} 状态对象或null(未初始化时)
    */
   getDetailedState() {

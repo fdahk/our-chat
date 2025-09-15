@@ -342,16 +342,16 @@ webRTC：
         整体连接: new → connecting → connected
         
         【防护机制】
-        ✅ 重复事件防护(processedEvents)
-        ✅ 重复发送防护(acceptSentRef)  
-        ✅ WebRTC状态检查(stable跳过)
-        ✅ 连接实例防护(ensurePeer)
-        ✅ 闭包问题解决(currentCallIdRef)
+        重复事件防护(processedEvents)
+        重复发送防护(acceptSentRef)  
+        WebRTC状态检查(stable跳过)
+        连接实例防护(ensurePeer)
+        闭包问题解决(currentCallIdRef)
         
         【错误处理】
-        ✅ 网络连接失败自动清理
-        ✅ ICE候选错误监控
-        ✅ 媒体权限错误处理
-        ✅ 信令状态异常处理
-        ✅ 详细调试日志记录
+        网络连接失败自动清理
+        ICE候选错误监控
+        媒体权限错误处理
+        信令状态异常处理
+        详细调试日志记录
 

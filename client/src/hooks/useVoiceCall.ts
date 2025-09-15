@@ -21,8 +21,8 @@ import { message } from 'antd';
 
 export const useVoiceCall = () => {
   const dispatch = useDispatch();
-  const callState = useSelector((state: RootState) => state.call);
-  const currentUser = useSelector((state: RootState) => state.user);
+  const callState = useSelector((state: RootState) => state.call);//通话状态
+  const currentUser = useSelector((state: RootState) => state.user);// 当前用户
   
   const webrtcRef = useRef<WebRTCManager | null>(null); // WebRTC 管理器类引用
   const socketRef = useRef(SocketService.getInstance()); // Socket引用
@@ -39,8 +39,6 @@ export const useVoiceCall = () => {
 
   // 初始化WebRTC管理器
   useEffect(() => {
-    console.log('初始化语音通话服务');
-    
     webrtcRef.current = new WebRTCManager();
     const webrtc = webrtcRef.current;
     
@@ -101,7 +99,6 @@ export const useVoiceCall = () => {
     };
 
     return () => {
-      console.log('清理语音通话服务');
       if (webrtcRef.current) {
         webrtcRef.current.cleanup();
         webrtcRef.current = null;
@@ -149,7 +146,7 @@ export const useVoiceCall = () => {
     const handleCallAccept = async (event: CallAcceptEvent) => {
       console.log('收到通话接受事件:', event.callId);
 
-      // 更严格的重复处理检查
+      // 重复处理检查
       if (processedEvents.current.has(`accept_${event.callId}`)) {
         console.log('重复的accept事件，跳过处理');
         return;
@@ -183,9 +180,8 @@ export const useVoiceCall = () => {
         const state = webrtcRef.current.getDetailedState();
         console.log('处理Answer前的详细状态:', state);
 
-        // 处理Answer - 移除了过于严格的状态检查
+        // 处理Answer
         // WebRTC标准允许在某些情况下状态可能不是严格的have-local-offer
-        console.log('开始处理Answer...');
         await webrtcRef.current.handleAnswer(event.answer);
         console.log('Answer处理完成，等待连接建立');
         
@@ -194,7 +190,7 @@ export const useVoiceCall = () => {
         dispatch(setError('连接建立失败: ' + (error as Error).message));
         message.error('连接建立失败');
         
-        // fixed2：清理事件标记，允许重试
+        // 清理事件标记，允许重试
         processedEvents.current.delete(`accept_${event.callId}`);
       }
     };
@@ -211,7 +207,6 @@ export const useVoiceCall = () => {
 
     // 通话结束
     const handleCallEnd = (event: CallEndEvent) => {
-      console.log('通话结束:', event.callId);
       if (event.callId === callState.callId) {
         dispatch(endCall());
         message.info('通话已结束');
@@ -235,7 +230,6 @@ export const useVoiceCall = () => {
           return;
         }
         
-        console.log('收到对端ICE候选，正在处理...');
         console.log('候选类型:', event.candidate.candidate?.split(' ')[7]);
         await webrtcRef.current.addIceCandidate(event.candidate);
         console.log('ICE候选处理成功');
@@ -413,7 +407,6 @@ export const useVoiceCall = () => {
       console.log('WebRTC状态重置完成');
 
       // 2. 获取本地音频流
-      console.log('获取麦克风权限...');
       const localStream = await webrtcRef.current.getUserMedia();
       dispatch(setLocalStream(localStream));
       console.log('麦克风权限获取成功');
