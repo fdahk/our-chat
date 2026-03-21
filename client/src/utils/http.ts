@@ -1,16 +1,35 @@
-import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse, type AxiosError } from 'axios';
+import axios, {
+  type AxiosInstance,
+  type AxiosRequestConfig,
+  type AxiosError,
+  type InternalAxiosRequestConfig,
+} from 'axios';
 import { message } from 'antd'; //引入antd的message 消息提示组件
 import type { ApiResponse } from '../globalType/apiResponse';
+import { API_BASE_URL } from './runtime';
+
+interface TokenRefreshResponse {
+  token: string;
+}
+
+interface ErrorResponseData {
+  message?: string;
+  code?: string;
+}
+
+type RetryableAxiosRequestConfig = InternalAxiosRequestConfig & {
+  _retry?: boolean;
+};
 
 // Token刷新相关变量
 let isRefreshing = false;
 let failedQueue: Array<{
-  resolve: (value?: any) => void;
-  reject: (reason?: any) => void;
+  resolve: (value: string) => void;
+  reject: (reason?: unknown) => void;
 }> = [];
 
 const http: AxiosInstance = axios.create({
-  baseURL: 'http://127.0.0.1:3007', //请求地址
+  baseURL: API_BASE_URL, 
   timeout: 10000,  
   headers: {
     // 注：以下全局配置废除
@@ -33,14 +52,17 @@ const refreshToken = async (): Promise<string | null> => {
     }
 
     // 刷新token，返回新的token，第二个参数是请求配置
-    const response = await axios.post('http://127.0.0.1:3007/api/refresh', {}, {
+    const response = await axios.post<ApiResponse<TokenRefreshResponse>>(`${API_BASE_URL}/api/refresh`, {}, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
     });
 
     if (response.data.success) {
-      const newToken = response.data.data.token;
+      const newToken = response.data.data?.token;
+      if (!newToken) {
+        throw new Error('token刷新失败');
+      }
       localStorage.setItem('token', newToken);
       return newToken;
     } else {
@@ -55,11 +77,11 @@ const refreshToken = async (): Promise<string | null> => {
 };
 
 // 处理队列中的请求，用于排队等待刷新token
-const processQueue = (error: any, token: string | null = null) => {
+const processQueue = (error: unknown, token?: string) => {
   failedQueue.forEach(({ resolve, reject }) => {
     if (error) {
       reject(error);
-    } else {
+    } else if (token) {
       resolve(token);
     }
   });
@@ -67,10 +89,21 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
+const getErrorMessage = (data: unknown, fallback: string) => {
+  if (typeof data === 'object' && data !== null && 'message' in data) {
+    const candidate = (data as ErrorResponseData).message;
+    if (typeof candidate === 'string' && candidate.trim()) {
+      return candidate;
+    }
+  }
+
+  return fallback;
+};
+
 // 请求拦截器可以在请求发送前： 修改请求配置， 添加认证信息， 添加请求头，记录日志， 处理错误
 http.interceptors.request.use(
   // 第一个参数：请求成功处理函数
-  (config: any) => {
+  (config: InternalAxiosRequestConfig) => {
     // 添加认证 token，将 token 添加到请求头的 Authorization 字段，用于身份验证
     const token = localStorage.getItem('token');
     if (token && config.headers) {
@@ -102,7 +135,7 @@ http.interceptors.request.use(
 // 注：只返回了data部分，没有返回success，组件中用try-catch或then处理逻辑
 http.interceptors.response.use(
   // 第一个参数：响应成功处理函数
-  (response: AxiosResponse) => {
+  (response) => {
     // 2xx的状态码都会触发该函数直接返回数据部分，简化调用
     return response.data;
   },
@@ -112,7 +145,7 @@ http.interceptors.response.use(
     console.error('响应错误:', error);
     
     // 获取原始请求配置，用于重试请求
-    const originalRequest = error.config as any;
+    const originalRequest = error.config as RetryableAxiosRequestConfig | undefined;
     
     // 错误处理
     if (error.response) {
@@ -120,14 +153,14 @@ http.interceptors.response.use(
       const { status, data } = error.response;
       
       // 处理401错误（token过期或无效）
-      if (status === 401 && !originalRequest._retry) {
-        const errorData = data as any;
+      if (status === 401 && originalRequest && !originalRequest._retry) {
+        const errorData = typeof data === 'object' && data !== null ? (data as ErrorResponseData) : undefined;
         
         // 检查是否是token过期
         if (errorData?.code === 'TOKEN_EXPIRED' || errorData?.message?.includes('过期')) {
           if (isRefreshing) {
             // 如果正在刷新token，将请求加入队列
-            return new Promise((resolve, reject) => {
+            return new Promise<string>((resolve, reject) => {
               failedQueue.push({ resolve, reject });
             }).then(token => {
               if (originalRequest.headers) {
@@ -135,8 +168,8 @@ http.interceptors.response.use(
               }
               // 重试请求
               return http(originalRequest);
-            }).catch(err => {
-              return Promise.reject(err);
+            }).catch(refreshQueueError => {
+              return Promise.reject(refreshQueueError);
             });
           }
 
@@ -148,7 +181,7 @@ http.interceptors.response.use(
             // 刷新token
             const newToken = await refreshToken();
             if (newToken) {
-              processQueue(null, newToken);
+              processQueue(undefined, newToken);
               // 设置新的token
               if (originalRequest.headers) {
                 originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
@@ -157,7 +190,7 @@ http.interceptors.response.use(
             }
           } catch (refreshError) {
             // 处理刷新token失败
-            processQueue(refreshError, null);
+            processQueue(refreshError);
             return Promise.reject(refreshError);
           } finally {
             isRefreshing = false;
@@ -172,7 +205,7 @@ http.interceptors.response.use(
         // 处理其他HTTP错误
         switch (status) {
           case 400:
-            message.error((data as any)?.message || '请求参数错误');
+            message.error(getErrorMessage(data, '请求参数错误'));
             break;
           case 403:
             message.error('拒绝访问');
@@ -181,16 +214,16 @@ http.interceptors.response.use(
             message.error('请求的资源不存在');
             break;
           case 409:
-            message.error((data as any)?.message || '数据冲突');
+            message.error(getErrorMessage(data, '数据冲突'));
             break;
           case 422:
-            message.error((data as any)?.message || '数据验证失败');
+            message.error(getErrorMessage(data, '数据验证失败'));
             break;
           case 500:
             message.error('服务器内部错误');
             break;
           default:
-            message.error((data as any)?.message || `请求失败 (${status})`);
+            message.error(getErrorMessage(data, `请求失败 (${status})`));
         }
       }
     } else if (error.request) {
@@ -212,9 +245,9 @@ http.interceptors.response.use(
 
 
 // GET 请求
-// 函数泛型语法 <T = any>，写在函数前面
+// 函数泛型语法 <T = unknown>，写在函数前面
 // 注意：返回值是promise<response.data>
-export const get = <T = any>(
+export const get = <T = unknown>(
   url: string, 
   config?: AxiosRequestConfig
 ): Promise<ApiResponse<T>> => {
@@ -222,25 +255,25 @@ export const get = <T = any>(
 };
 
 // POST 请求
-export const post = <T = any>(
+export const post = <T = unknown, D = unknown>(
   url: string, 
-  data?: any, 
+  data?: D, 
   config?: AxiosRequestConfig
 ): Promise<ApiResponse<T>> => {
   return http.post(url, data, config);
 };
 
 // PUT 请求
-export const put = <T = any>(
+export const put = <T = unknown, D = unknown>(
   url: string, 
-  data?: any, 
+  data?: D, 
   config?: AxiosRequestConfig
 ): Promise<ApiResponse<T>> => {
   return http.put(url, data, config);
 };
 
 // DELETE 请求
-export const del = <T = any>(
+export const del = <T = unknown>(
   url: string, 
   config?: AxiosRequestConfig
 ): Promise<ApiResponse<T>> => {
@@ -248,16 +281,16 @@ export const del = <T = any>(
 };
 
 // PATCH 请求
-export const patch = <T = any>(
+export const patch = <T = unknown, D = unknown>(
   url: string, 
-  data?: any, 
+  data?: D, 
   config?: AxiosRequestConfig
 ): Promise<ApiResponse<T>> => {
   return http.patch(url, data, config);
 };
 
 // 上传文件
-export const upload = <T = any>(
+export const upload = <T = unknown>(
   url: string, 
   file: File | FormData,
   onProgress?: (progress: number) => void
@@ -286,11 +319,11 @@ export const download = (
   filename?: string,
   config?: AxiosRequestConfig
 ): Promise<void> => {
-  return http.get(url, {
+  return axios.get<Blob>(`${API_BASE_URL}${url.startsWith('/') ? url : `/${url}`}`, {
     ...config,
     responseType: 'blob',
-  }).then((response: any) => {
-    const blob = new Blob([response]);
+  }).then(({ data }) => {
+    const blob = data;
     const downloadUrl = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = downloadUrl;

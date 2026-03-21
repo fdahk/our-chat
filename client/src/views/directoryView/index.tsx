@@ -11,6 +11,7 @@ import { setFriendReqStatus } from '@/store/friendStore';
 import {type Message } from '@/globalType/message';
 import SocketService from '@/utils/socket';
 import { addGlobalFriend, addGlobalFriendInfo } from '@/store/chatStore';
+import { buildServerUrl } from '@/utils/runtime';
 function DirectoryView() {
     const [activeFriend, setActiveFriend] = useState<{ friend_id: number, remark: string | null } | null>(null);
     const globalFriendList = useSelector((state: RootState) => state.chat.globalFriendList);
@@ -45,14 +46,16 @@ function DirectoryView() {
         if(isCheckingFriendReq) setIsCheckingFriendReq(false);
         if(searchValue.length < 1) return;
         const res = await searchUser({keyword: Number(searchValue), userId});
-        if(res.data.exist) {
-            if(res.data.isFriend) {
+        const searchResult = res.data;
+        if (!searchResult) return;
+        if(searchResult.exist) {
+            if(searchResult.isFriend) {
                 // 用户存在且是好友
-                setActiveFriend({ friend_id: res.data.friendInfo.id, remark: globalFriendList[res.data.friendInfo.id] || null });
+                setActiveFriend({ friend_id: searchResult.friendInfo.id, remark: globalFriendList[searchResult.friendInfo.id] || null });
             } else {
                 // 用户存在且不是好友
                 setShowAddFriendModal(true);
-                setFriendInfo(res.data.friendInfo);
+                setFriendInfo(searchResult.friendInfo);
             }
         } else {
             // 用户不存在
@@ -70,6 +73,10 @@ function DirectoryView() {
             dispatch(setFriendReqStatus({friend_id, status}));
             if(status === "accepted") {
                 const otherInfo = await searchUser({keyword: friend_id, userId});
+                const otherUser = otherInfo.data?.friendInfo;
+                if (!otherUser) {
+                    return;
+                }
                 const conversationId = `single_${Math.min(userId, friend_id)}_${Math.max(userId, friend_id)}`;                
                 // 创建会话记录
                 
@@ -77,7 +84,7 @@ function DirectoryView() {
                 const msg:Message = {
                     conversationId: conversationId,
                     senderId: friend_id, 
-                    content: '你好，我是' + otherInfo.data.friendInfo.username,
+                    content: '你好，我是' + otherUser.username,
                     type: 'text',
                     status: 'sent',
                     mentions: [],
@@ -93,9 +100,9 @@ function DirectoryView() {
                 // 更新好友列表
                 dispatch(addGlobalFriend({friend_id, remark: null}));
                 dispatch(addGlobalFriendInfo({friend_id, friendInfo: {
-                    username: otherInfo.data.friendInfo.username,
-                    avatar: otherInfo.data.friendInfo.avatar,
-                    gender: otherInfo.data.friendInfo.gender,
+                    username: otherUser.username,
+                    avatar: otherUser.avatar,
+                    gender: otherUser.gender,
                 }}));
             }
         })
@@ -165,7 +172,7 @@ function DirectoryView() {
                                 {showAddFriendModal && (
                                     <AddFriendModal
                                         ref={addFriendModalRef}
-                                        avatar={friendInfo?.avatar ? `http://localhost:3007${friendInfo.avatar}` : 'src/assets/images/defaultAvatar.jpg'}
+                                        avatar={friendInfo?.avatar ? buildServerUrl(friendInfo.avatar) : 'src/assets/images/defaultAvatar.jpg'}
                                         username={friendInfo?.username as string}
                                         wxid={friendInfo?.id.toString() as string}
                                         region={'中国'}
@@ -204,7 +211,7 @@ function DirectoryView() {
                                                     remark: globalFriendList[friendId] 
                                                 })}
                                                 avatar={friendInfo?.avatar 
-                                                    ? `http://localhost:3007${friendInfo.avatar}` 
+                                                    ? buildServerUrl(friendInfo.avatar) 
                                                     : 'src/assets/images/defaultAvatar.jpg'}
                                             />
                                         );
@@ -226,7 +233,7 @@ function DirectoryView() {
                             boxShadow: 'none',
                         }}
                         avatar={globalFriendInfoList[activeFriend?.friend_id as number]?.avatar 
-                            ? `http://localhost:3007${globalFriendInfoList[activeFriend?.friend_id as number].avatar}` 
+                            ? buildServerUrl(globalFriendInfoList[activeFriend?.friend_id as number].avatar) 
                             : 'src/assets/images/defaultAvatar.jpg'}
                         username={globalFriendInfoList[activeFriend?.friend_id as number]?.username}
                         wxid={activeFriend?.friend_id.toString() as string} 
@@ -250,7 +257,7 @@ function DirectoryView() {
                                             <DisplayItem 
                                             id={item} title={friendInfo?.username} content={''} 
                                             avatar={friendInfo?.avatar 
-                                            ? `http://localhost:3007${friendInfo.avatar}` 
+                                            ? buildServerUrl(friendInfo.avatar) 
                                             : 'src/assets/images/defaultAvatar.jpg'} 
                                             style={{width: '55px', height: '55px', backgroundColor: 'transparent'}}/>
                                             {/* 请求状态 */}

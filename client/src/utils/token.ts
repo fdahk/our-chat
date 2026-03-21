@@ -1,7 +1,14 @@
 
+import type { User } from '@/globalType/user';
+
 // Token存储key
 const TOKEN_KEY = 'token';
 const USER_KEY = 'user';
+
+interface JwtPayload {
+  exp?: number;
+  [key: string]: unknown;
+}
 
 // 存储token到localStorage
 export const setToken = (token: string): void => {
@@ -25,7 +32,7 @@ export const hasToken = (): boolean => {
 };
 
 // 解析JWT token获取payload（不验证签名）
-export const parseToken = (token: string): any => {
+export const parseToken = (token: string): JwtPayload | null => {
   try {
     const base64Url = token.split('.')[1]; // 获取payload
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/'); // 解码
@@ -85,12 +92,12 @@ export const getTokenRemainingTime = (token?: string): number => {
 };
 
 // 存储用户信息
-export const setUserInfo = (user: any): void => {
+export const setUserInfo = (user: User): void => {
   localStorage.setItem(USER_KEY, JSON.stringify(user));
 };
 
 // 获取用户信息
-export const getUserInfo = (): any => {
+export const getUserInfo = (): User | null => {
   const userStr = localStorage.getItem(USER_KEY);
   if (!userStr) return null;
   

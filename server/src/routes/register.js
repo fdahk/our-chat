@@ -94,6 +94,7 @@ router.post('/register', async (req, res) => {
     );
     
     if (existingUsername.length > 0) {
+      console.log('用户名已被注册');
       return res.status(409).json({
         success: false,
         message: '用户名已存在'
@@ -107,6 +108,7 @@ router.post('/register', async (req, res) => {
     );
     
     if (existingEmail.length > 0) {
+      console.log('邮箱已被注册');
       return res.status(409).json({
         success: false,
         message: '邮箱已被注册'
@@ -121,6 +123,7 @@ router.post('/register', async (req, res) => {
       );
       
       if (existingPhone.length > 0) {
+        console.log('手机号已被注册');
         return res.status(409).json({
           success: false,
           message: '手机号已被注册'

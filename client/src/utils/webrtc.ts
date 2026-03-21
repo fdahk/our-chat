@@ -2,10 +2,14 @@ import { type ICECandidate } from '../globalType/call';
 
 /**
  * WebRTC 配置对象：ICE服务器配置和连接参数
- * 
  * @property {Array} iceServers - ICE服务器列表，用于NAT穿透
  * @property {number} iceCandidatePoolSize - 预生成的ICE候选数量
- *   - 较大的值会增加连接成功率但会消耗更多资源
+ * ICE：Interactive Connectivity Establishment，即交互式连接建立
+  一种NAT穿透协议，整合了STUN和TURN两种协议的框架。ICE通过收集候选地址、进行连通性检查等，
+  来确定可用于双端通信的传输地址对，解决异构网络环境下的终端连通性问题
+  STUN：Session Traversal Utilities for NAT，即会话穿越NAT的工具
+  TURN：Traversal Using Relays around NAT，即使用中继穿越NAT
+ *  - 较大的值会增加连接成功率但会消耗更多资源
  */
 const rtcConfiguration: RTCConfiguration = {
   iceServers: [
@@ -23,9 +27,7 @@ const rtcConfiguration: RTCConfiguration = {
  * - 信令交换(SDP/ICE)
  * - 连接状态管理
  * - 错误处理和资源清理
- * 1. 创建实例时会自动初始化连接
- * 2. 通过事件回调获取连接状态和媒体流
- * 3. 调用createOffer/handleOffer等方法进行信令交换
+ * 调用createOffer/handleOffer等方法进行信令交换
  */
 export class WebRTCManager {
   // PeerConnection实例，WebRTC核心对象
@@ -43,10 +45,11 @@ export class WebRTCManager {
   private remoteStream: MediaStream | null = null;
   
   // 暂存的ICE候选(用于在SDP交换完成前缓存候选)
+  // 因为ice候选是基于sdp的，所以必须先确定sdp，再确定ice候选
+  // 如果先确定ice候选，再确定sdp，会导致ice候选无法添加到peerConnection中
   private pendingIceCandidates: ICECandidate[] = [];
   
   // 状态标志
-  private isInitialized = false; // 是否已初始化
   private isNegotiating = false;  // 是否正在协商中
   
   // 收到远程媒体流时触发
@@ -77,7 +80,6 @@ export class WebRTCManager {
     }
   }
 
-  //初始化webRTC
   /**
    * 初始化WebRTC连接
    * 创建RTCPeerConnection实例并设置事件监听器
@@ -94,18 +96,15 @@ export class WebRTCManager {
       // 设置所有必要的事件监听器
       this.setupEventHandlers();
       
-      // 标记初始化完成
-      this.isInitialized = true;
     } catch (error) {
       console.error('WebRTC初始化失败:', error);
       this.handleError(new Error('WebRTC初始化失败'));
     }
   }
 
-  // 创建offer/sdp offer
+
   /**
-   * 设置PeerConnection事件监听器
-   * 
+   * 设置PeerConnection的所有事件监听器
    * WebRTC通过事件驱动模型工作，这里设置了:
    * 1. ICE候选生成事件
    * 2. 远程媒体流到达事件
@@ -127,12 +126,13 @@ export class WebRTCManager {
     this.peerConnection.onicecandidate = (event) => {
       if (event.candidate) {
         console.log('生成ICE候选');
+        // 将原生候选转换为ICECandidate对象，方便后续处理
         const candidate: ICECandidate = {
-          candidate: event.candidate.candidate, //
-          sdpMLineIndex: event.candidate.sdpMLineIndex, //
-          sdpMid: event.candidate.sdpMid, //
+          candidate: event.candidate.candidate, // 候选
+          sdpMLineIndex: event.candidate.sdpMLineIndex, // 候选所在的SDP轨道索引
+          sdpMid: event.candidate.sdpMid, // 候选所在的SDP轨道ID
         };
-        this.onICECandidate?.(candidate);
+        this.onICECandidate?.(candidate);// 将候选通过信令服务器发送给对端
       }
     };
 
@@ -145,11 +145,8 @@ export class WebRTCManager {
           轨道协商：
           对端通过 SDP 协商确定支持的媒体类型（如 H.264 视频或 Opus 音频）。
           本地 ontrack 在收到轨道数据后自动触发。
-          媒体流关联：
-          一个 MediaStream 可包含多个轨道（如同时传输音频和视频）。
-          通过 streams 数组可获取轨道所属的完整流上下文。
-          传输控制：
-          transceiver.direction 可动态调整轨道方向（如 sendrecv 、 recvonly ）
+          媒体流关联：一个 MediaStream 可包含多个轨道（如同时传输音频和视频）。通过 streams 数组可获取轨道所属的完整流上下文。
+          传输控制：transceiver.direction 可动态调整轨道方向（如 sendrecv 、 recvonly ）
      * 当收到对端的音视频流时触发
      * 通常在这里将流绑定到video/audio元素
      */
@@ -299,11 +296,9 @@ export class WebRTCManager {
    * 1. 确保PeerConnection可用
    * 2. 添加本地媒体轨道
    * 3. 创建标准SDP Offer(不使用废弃的约束)
-   * 4. 设置本地描述(触发ICE收集)
-   * 
+   * 4. 设置本地描述(这会触发ICE收集)
    * @returns {Promise<RTCSessionDescriptionInit>} 生成的Offer SDP
    * @throws 如果PeerConnection不可用或创建失败
-   * 
    * 标准化改进：
    * 1. 移除废弃的offerToReceiveAudio/Video约束
    * 2. 使用ensurePeer确保连接可用
@@ -353,7 +348,6 @@ export class WebRTCManager {
       const offer = await this.peerConnection.createOffer();
       
       console.log('Offer创建完成，设置本地描述...');
-      console.log('Offer SDP长度:', offer.sdp?.length);
       
       // 设置本地描述，这会触发ICE候选收集
       await this.peerConnection.setLocalDescription(offer);
@@ -393,12 +387,7 @@ export class WebRTCManager {
    * 
    * @param {RTCSessionDescriptionInit} offer - 对端发来的Offer SDP
    * @returns {Promise<RTCSessionDescriptionInit>} 生成的Answer SDP
-   * @throws 如果处理失败
-   * 
-   * 标准化：
-   * 1. 使用ensurePeer确保连接可用
-   * 2. 详细的状态日志和错误处理
-   * 3. 正确解释connectionState的正常行为
+   * @throws 处理失败
    */
   async handleOffer(offer: RTCSessionDescriptionInit): Promise<RTCSessionDescriptionInit> {
     // 确保PeerConnection实例可用
@@ -411,7 +400,6 @@ export class WebRTCManager {
     try {
       console.log('开始处理收到的Offer');
       console.log('处理前信令状态:', this.peerConnection.signalingState);
-      console.log('Offer SDP长度:', offer.sdp?.length);
       
       // 1. 设置远程Offer描述
       await this.peerConnection.setRemoteDescription(offer);
@@ -447,7 +435,6 @@ export class WebRTCManager {
       const answer = await this.peerConnection.createAnswer();
       
       console.log('Answer创建完成，设置本地描述...');
-      console.log('Answer SDP长度:', answer.sdp?.length);
       
       // 4. 设置本地Answer描述(触发ICE候选收集)
       await this.peerConnection.setLocalDescription(answer);
@@ -482,11 +469,6 @@ export class WebRTCManager {
    * 
    * @param {RTCSessionDescriptionInit} answer - 对端发来的Answer SDP
    * @throws 如果状态异常或处理失败
-   * 
-   * 标准化：
-   * 1. 移除过于严格的状态检查和提前返回
-   * 2. 增强错误处理和状态日志
-   * 3. 确保协商状态正确管理
    */
   async handleAnswer(answer: RTCSessionDescriptionInit): Promise<void> {
     // 确保PeerConnection可用
@@ -609,13 +591,9 @@ export class WebRTCManager {
 
   // 切换静音
   /**
-   * 切换静音状态
    * 切换本地音频轨道的启用状态
-   * 
    * @returns {boolean} 切换后的静音状态(true表示静音)
-   * 
    * 注意：
-   * 1. 不会停止轨道，只是禁用/启用
    * 2. 对端会收到静音通知(onmute事件)
    */
   toggleMute(): boolean {
@@ -647,10 +625,8 @@ export class WebRTCManager {
     return await this.peerConnection.getStats();
   }
 
-  // 清理
   /**
    * 清理WebRTC资源
-   * 安全释放所有资源，包括：
    * 1. 停止所有媒体轨道
    * 2. 关闭PeerConnection
    * 3. 重置所有状态
@@ -681,11 +657,9 @@ export class WebRTCManager {
     // 重置所有状态
     this.remoteStream = null;
     this.pendingIceCandidates = [];
-    this.isInitialized = false;
     this.isNegotiating = false;
   }
 
-  // 重置
   /**
    * 重置WebRTC连接
    * 先清理现有资源，然后重新初始化

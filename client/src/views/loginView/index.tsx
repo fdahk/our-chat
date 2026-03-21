@@ -43,22 +43,26 @@ function LoginView() {
         password: values.password,
         remember: values.remember,
       });
+      const loginData = result.data;
+      if (!loginData) {
+        throw new Error('登录响应缺少用户数据');
+      }
       // 存储token到本地
-      console.log('login result', result.data);
-      localStorage.setItem('token', result.data.token);
+      console.log('login result', loginData);
+      localStorage.setItem('token', loginData.token);
       // 存储用户信息到 redux
       dispatch(login({
-        id: result.data.id,
-        username: result.data.username,
-        nickname: result.data.nickname,
-        email: result.data.email,
-        avatar: result.data.avatar,
-        bio: result.data.bio,
-        phone: result.data.phone,
-        status: result.data.status,
-        created_at: result.data.created_at,
-        updated_at: result.data.updated_at,
-        last_seen: result.data.last_seen,
+        id: loginData.id,
+        username: loginData.username,
+        nickname: loginData.nickname,
+        email: loginData.email,
+        avatar: loginData.avatar,
+        bio: loginData.bio,
+        phone: loginData.phone,
+        status: loginData.status,
+        created_at: loginData.created_at,
+        updated_at: loginData.updated_at,
+        last_seen: loginData.last_seen,
       }));
       // 跳转到主页
       navigate('/chat');
@@ -70,7 +74,7 @@ function LoginView() {
     }
   };
 
-  const handleLoginFailed = (errorInfo: any) => {
+  const handleLoginFailed = (errorInfo: unknown) => {
     console.log('登录失败:', errorInfo);
     message.error('请检查输入信息');
   };

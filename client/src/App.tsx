@@ -10,7 +10,7 @@ function App() {
         <Provider store={rootStore}> {/* 提供context，所有组件可通过useSelector、useDispatch等hook获取store中的状态和dispatch */}
             <PersistGate loading={null} persistor={rootPersistor}> {/* 提供persistGate，用于在页面刷新时恢复store中的状态，loading为加载时显示的组件 */}
                 <ThemeProvider>
-                    <RouterProvider router={router}/> {/* 路由 */}
+                    <RouterProvider router={router}/> 
                 </ThemeProvider>
             </PersistGate>
         </Provider>

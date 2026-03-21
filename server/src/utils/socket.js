@@ -6,7 +6,9 @@ export const initSocket = (server) => {
     const io = new Server(server, {
         cors: {
         // 即使都是本机，localhost 和 127.0.0.1 也会被浏览器视为不同的“源”，可能会有 CORS 跨域限制
-        origin: "http://localhost:5173", // 允许前端地址
+        // origin: "http://localhost:5173", // 允许前端地址
+        // 开发阶段允许 localhost 与局域网 IP 的前端访问同一 socket 服务
+        origin: true,
         methods: ["GET", "POST"],
         credentials: true
         }
@@ -81,7 +83,7 @@ export const initSocket = (server) => {
         // 通话发起 (包含offer)
         socket.on('call:start', (event) => {
             try {
-                console.log('📞 收到通话发起请求:', {
+                console.log('收到通话发起请求:', {
                     callId: event.callId,
                     from: event.from.username,
                     to: event.to.username,
@@ -90,17 +92,17 @@ export const initSocket = (server) => {
                 
                 // 转发给目标用户
                 io.to(event.to.id).emit('call:start', event);
-                console.log('✅ 通话邀请已转发给目标用户');
+                console.log('通话邀请已转发给目标用户');
                 
             } catch (error) {
-                console.error('❌ 转发通话邀请失败:', error);
+                console.error('转发通话邀请失败:', error);
             }
         });
 
         // 通话接受 (包含answer)
         socket.on('call:accept', (event) => {
             try {
-                console.log('✅ 收到通话接受，转发给发起方:', {
+                console.log('收到通话接受，转发给发起方:', {
                     callId: event.callId,
                     to: event.to,
                     answerSdpLength: event.answer?.sdp?.length
@@ -108,51 +110,51 @@ export const initSocket = (server) => {
                 
                 // 转发给发起方 (event.to就是发起方ID)
                 io.to(event.to).emit('call:accept', event);
-                console.log('📤 通话接受已转发给发起方');
+                console.log('通话接受已转发给发起方');
                 
             } catch (error) {
-                console.error('❌ 转发通话接受失败:', error);
+                console.error('转发通话接受失败:', error);
             }
         });
 
         // 通话拒绝
         socket.on('call:reject', (event) => {
             try {
-                console.log('🚫 收到通话拒绝:', event.callId);
+                console.log('收到通话拒绝:', event.callId);
                 
                 // 从callId解析发起方ID
                 const callIdParts = event.callId.split('_');
                 if (callIdParts.length >= 3) {
                     const callerId = parseInt(callIdParts[1]);
                     io.to(callerId).emit('call:reject', event);
-                    console.log('📤 通话拒绝已转发给发起方:', callerId);
+                    console.log('通话拒绝已转发给发起方:', callerId);
                 }
                 
             } catch (error) {
-                console.error('❌ 转发通话拒绝失败:', error);
+                console.error('转发通话拒绝失败:', error);
             }
         });
 
         // 通话结束
         socket.on('call:end', (event) => {
             try {
-                console.log('📞 收到通话结束信号:', event.callId);
+                console.log('收到通话结束信号:', event.callId);
                 
                 // 广播给双方 (从callId解析用户ID)
                 const [, user1, user2] = event.callId.split('_');
                 io.to(parseInt(user1)).emit('call:end', event);
                 io.to(parseInt(user2)).emit('call:end', event);
-                console.log('📤 通话结束信号已广播给双方');
+                console.log('通话结束信号已广播给双方');
                 
             } catch (error) {
-                console.error('❌ 转发通话结束失败:', error);
+                console.error('转发通话结束失败:', error);
             }
         });
 
         // ICE候选交换
         socket.on('call:ice', (event) => {
             try {
-                console.log('📊 收到ICE候选转发请求:', event.callId);
+                console.log('收到ICE候选转发请求:', event.callId);
                 
                 // 从callId解析双方用户ID
                 const [, user1, user2] = event.callId.split('_');
@@ -164,10 +166,10 @@ export const initSocket = (server) => {
                 socket.to(userId1).emit('call:ice', event);
                 socket.to(userId2).emit('call:ice', event);
                 
-                console.log(`✅ ICE候选已转发给对方用户 (排除发送方)`);
+                console.log(`ICE候选已转发给对方用户 (排除发送方)`);
                 
             } catch (error) {
-                console.error('❌ 转发ICE候选失败:', error);
+                console.error('转发ICE候选失败:', error);
             }
         });
 

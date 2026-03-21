@@ -4,7 +4,6 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { CallUser } from '../globalType/call';
 
 export interface CallState {
-  // 基础状态
   isActive: boolean;
   callId: string | null;
   
@@ -22,7 +21,7 @@ export interface CallState {
   // 添加WebRTC协商数据
   pendingOffer: RTCSessionDescriptionInit | null;
   
-  // 通话信息
+  // 通话时的相关信息
   isMuted: boolean;
   startTime: number | null;
   duration: number;
@@ -128,16 +127,16 @@ const callSlice = createSlice({
 });
 
 export const {
-  startCall,
-  receiveCall,
-  connectCall,
-  endCall,
-  resetCall,
-  setLocalStream,
-  setRemoteStream,
-  toggleMute,
-  updateDuration,
-  setError,
+  startCall, // 发起通话
+  receiveCall, // 收到通话邀请
+  connectCall, // 连接建立
+  endCall, // 结束通话
+  resetCall, // 重置状态
+  setLocalStream, // 设置本地媒体流
+  setRemoteStream, // 设置远程媒体流
+  toggleMute, // 切换静音
+  updateDuration, // 更新时长
+  setError, // 设置错误
 } = callSlice.actions;
 
 export default callSlice.reducer;

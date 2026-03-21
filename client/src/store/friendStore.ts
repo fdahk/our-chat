@@ -20,7 +20,7 @@ const friendReqSlice = createSlice({
     name: 'friendReq',
     initialState,
     reducers: {
-        initFriendReqList: (state, action: PayloadAction<FriendReqList>) => {
+        initFriendReqList: (_, action: PayloadAction<FriendReqList>) => {
             return action.payload;
         },
         addFriendReq: (state, action: PayloadAction<FriendReq>) => {

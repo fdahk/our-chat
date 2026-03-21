@@ -1,10 +1,10 @@
 //图片裁剪组件
 // client/src/globalComponents/cropper.tsx
-import React, { useState } from 'react';
-import Cropper from 'react-easy-crop';
+import { useState, type FC } from 'react';
+import Cropper, { type Area } from 'react-easy-crop';
 import { Modal, Slider } from 'antd';
 
-function getCroppedImg(imageSrc: string, croppedAreaPixels: any): Promise<Blob> {
+function getCroppedImg(imageSrc: string, croppedAreaPixels: Area): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const image = new window.Image();
     image.src = imageSrc;
@@ -40,13 +40,13 @@ interface CropperModalProps {
   onOk: (croppedBlob: Blob) => void;
 }
 
-const CropperModal: React.FC<CropperModalProps> = ({ open, image, onCancel, onOk }) => {
+const CropperModal: FC<CropperModalProps> = ({ open, image, onCancel, onOk }) => {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
 
-  const onCropComplete = (_: any, croppedAreaPixels: any) => {
-    setCroppedAreaPixels(croppedAreaPixels);
+  const onCropComplete = (_croppedArea: Area, currentCroppedAreaPixels: Area) => {
+    setCroppedAreaPixels(currentCroppedAreaPixels);
   };
 
   const handleOk = async () => {

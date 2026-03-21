@@ -23,7 +23,7 @@ export default function useGlobalMessageListener() {
     const globalFriendInfoListRef = useRef<FriendInfoList>({});
     const audio = new Audio('src/assets/audios/message.wav');
   // 注：不能使用这个用于下面获取会话列表，因为redux状态更新是异步的，不能保证在获取会话列表时，redux状态已经更新
-  // const globalUserConversations = useSelector((state: any) => state.chat.globalUserConversations); // 从redux中获取全局用户会话列表
+  // const globalUserConversations = useSelector((state: RootState) => state.chat.globalUserConversations); // 从redux中获取全局用户会话列表
     // 注：这里监听的是全局消息，消息派发逻辑由后端实现，更新redux状态全局消息，同时触发组件重新渲染
     useEffect(() => { 
       // 首次启动应用先从后端获取会话列表和全局消息存到本地 
@@ -45,6 +45,7 @@ export default function useGlobalMessageListener() {
 
       // 获取好友及好友信息列表
       getFriendList(userId).then(res => {
+        if (!res.data) return;
         dispatch(initGlobalFriendList(res.data.friendId)); //返回好友id
         dispatch(initGlobalFriendInfoList(res.data.friendInfo)); //返回好友信息
         globalFriendInfoListRef.current = res.data.friendInfo ?? {};
@@ -77,16 +78,20 @@ export default function useGlobalMessageListener() {
               // const otherUserInfo = globalFriendInfoListRef.current[parseInt(otherUserId)];
               // 注：由于对方在回复好友请求后，需要用用户信息创建会话，而发起请求前获取的数据，不包含该用户信息
               const otherInfo = await searchUser({keyword: Number(otherUserId), userId});
+              const otherUser = otherInfo.data?.friendInfo;
+              if (!otherUser) {
+                return;
+              }
               // 如果好友也不存在，把好友也添加下
               if(!globalFriendInfoListRef.current[Number(otherUserId)]) {
                 dispatch(addGlobalFriend({friend_id: Number(otherUserId), remark: null}));
-                dispatch(addGlobalFriendInfo({friend_id: Number(otherUserId), friendInfo: otherInfo.data.friendInfo}));
+                dispatch(addGlobalFriendInfo({friend_id: Number(otherUserId), friendInfo: otherUser}));
               }
               dispatch(addConversation({
                 id: msg.conversationId,
                 conv_type: 'single', // 单聊
-                title: otherInfo.data.friendInfo.username,
-                avatar: otherInfo.data.friendInfo.avatar, 
+                title: otherUser.username,
+                avatar: otherUser.avatar, 
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
               }));

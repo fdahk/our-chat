@@ -37,7 +37,7 @@ function FriendModal({
     const handleClickSendMessage = async () => {
         const conversationId = `single_${Math.min(userId, parseInt(wxid))}_${Math.max(userId, parseInt(wxid))}`;
         // 这里更新会话时间，保证会话列表中会话时间最新
-        updateConversationTime({conversationId, userId}).then(res => {
+        updateConversationTime({conversationId, userId}).then(() => {
             // 用户友好式更新
             //注：有些字段数据库实际是不需要的（为null），前端正常加，渲染时的逻辑用不到这些字段
             if(!globalConversations[conversationId as string]) {

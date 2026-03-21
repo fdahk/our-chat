@@ -327,6 +327,10 @@ webRTC：
         Caller: createOffer() → setLocalDescription(offer) → 发送Offer
         Callee: setRemoteDescription(offer) → createAnswer() → setLocalDescription(answer) → 发送Answer
         Caller: setRemoteDescription(answer) → 连接建立
+        Offer 和 Answer：这是 WebRTC 信令协商模式：
+        Offer：发起方提出"我能提供什么，我需要什么"
+        Answer：接收方回应"我接受什么，我能提供什么"
+        本质上都是 SDP 格式的会话描述
         
         【ICE连接流程】
         1. setLocalDescription触发ICE收集

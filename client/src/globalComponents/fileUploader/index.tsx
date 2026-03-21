@@ -28,6 +28,7 @@ import {
   formatFileSize,       // 格式化文件大小
   request               // HTTP请求工具
 } from '../../utils/upload';
+import { buildServerUrl } from '@/utils/runtime';
 
 import './style.module.scss';
 
@@ -37,6 +38,20 @@ interface FileUploaderProps {
   multiple?: boolean;                       // 是否允许多文件选择
   onSuccess?: (files: FileItem[]) => void;  // 上传成功回调函数
   onError?: (error: string) => void;        // 上传失败回调函数
+}
+
+interface UploadCheckResponse {
+  exists: boolean;
+  url?: string;
+}
+
+interface UploadResumeResponse {
+  uploadedChunks: number[];
+}
+
+interface UploadMergeResponse {
+  url: string;
+  md5?: string;
 }
 
 const FileUploader: React.FC<FileUploaderProps> = ({
@@ -114,7 +129,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       const md5 = await calculateFileMD5(file.file);
       
       // 发送检查请求到服务器
-      const response = await request('/upload/check', {
+      const response = await request<UploadCheckResponse>('/upload/check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -125,10 +140,10 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       });
 
       // 如果文件已存在，返回秒传信息
-      if (response.success && response.data.exists) {
+      if (response.success && response.data?.exists) {
         return {
           exists: true,           // 文件存在
-          url: response.data.url, // 文件访问URL
+          url: response.data.url ?? '', // 文件访问URL
           md5                    // 文件MD5
         };
       }
@@ -154,7 +169,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       // 检查是否可以秒传
       const checkResult = await checkFileExists(fileItem);
       if (checkResult.exists) {
-        const successFile = { 
+        const successFile: FileItem = { 
           ...fileItem, 
           status: 'success', 
           progress: 100, 
@@ -200,7 +215,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
           if (xhr.status === 200) {
             const response = JSON.parse(xhr.responseText);
             if (response.success) {
-              const successFile = {
+              const successFile: FileItem = {
                 ...fileItem,
                 status: 'success',
                 progress: 100,
@@ -235,8 +250,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({
 
         // 确定上传端点
         const endpoint = uploadConfig.compress && fileItem.type.startsWith('image/')
-          ? 'http://localhost:3007/api/upload/compress'
-          : 'http://localhost:3007/api/upload/single';
+          ? buildServerUrl('/api/upload/compress')
+          : buildServerUrl('/api/upload/single');
 
         // 发送上传请求
         xhr.open('POST', endpoint);
@@ -267,7 +282,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       // 检查是否可以秒传
       const checkResult = await checkFileExists(fileItem);
       if (checkResult.exists) {
-        const successFile = {
+        const successFile: FileItem = {
           ...fileItem,
           status: 'success',
           progress: 100,
@@ -289,8 +304,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       const fileName = `${Date.now()}-${fileItem.name}`;
 
       // 检查断点续传
-      const resumeResponse = await request(`/upload/resume/${fileId}`);
-      const uploadedChunks = resumeResponse.success ? resumeResponse.data.uploadedChunks : [];
+      const resumeResponse = await request<UploadResumeResponse>(`/upload/resume/${fileId}`);
+      const uploadedChunks = resumeResponse.success ? (resumeResponse.data?.uploadedChunks ?? []) : [];
 
       let uploadedCount = uploadedChunks.length;
 
@@ -321,7 +336,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       }
 
       // 合并分片
-      const mergeResponse = await request('/upload/merge', {
+      const mergeResponse = await request<UploadMergeResponse>('/upload/merge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -331,8 +346,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         })
       });
 
-      if (mergeResponse.success) {
-        const successFile = {
+      if (mergeResponse.success && mergeResponse.data) {
+        const successFile: FileItem = {
           ...fileItem,
           status: 'success',
           progress: 100,

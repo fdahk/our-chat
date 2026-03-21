@@ -14,6 +14,8 @@ import SearchModal from '@/globalComponents/searchModal';
 import FileUploader from '@/globalComponents/fileUploader';
 import { useVoiceCall } from '@/hooks/useVoiceCall';
 import type { CallUser } from '@/globalType/call';
+import { buildServerUrl } from '@/utils/runtime';
+import type { FileItem } from '@/utils/upload';
 function ChatView() {
 
     const dispatch = useDispatch();
@@ -143,7 +145,7 @@ function ChatView() {
         setFileUploaderVisible(true);
     }
     // 文件上传成功后发送消息
-    const handleFileUploadSuccess = (files: any[]) => {
+    const handleFileUploadSuccess = (files: FileItem[]) => {
         try {
             files.forEach(file => {
                 const fileMessage: Message = {
@@ -157,9 +159,9 @@ function ChatView() {
                     isDeleted: false,
                     extra: {},
                     fileInfo: {
-                        fileName: file.originalName || file.filename,
+                        fileName: file.name,
                         fileSize: file.size,
-                        fileUrl: file.url,
+                        fileUrl: file.url ?? '',
                         fileType: file.type || 'application/octet-stream',
                         fileMD5: file.md5
                     },
@@ -206,7 +208,7 @@ function ChatView() {
             username: friendInfo.username,
             nickname: friendInfo.username,
             avatar: friendInfo.avatar 
-                ? `http://localhost:3007${friendInfo.avatar}` 
+                ? buildServerUrl(friendInfo.avatar) 
                 : 'src/assets/images/defaultAvatar.jpg',
         };
 
@@ -237,10 +239,10 @@ function ChatView() {
                 return (
                     <div className={chatViewStyle.file_message}>
                         <img 
-                            src={`http://localhost:3007${fileUrl}`} 
+                            src={buildServerUrl(fileUrl)} 
                             alt={fileName}
                             style={{ maxWidth: '200px', maxHeight: '150px', borderRadius: '8px' }}
-                            onClick={() => window.open(`http://localhost:3007${fileUrl}`, '_blank')}
+                            onClick={() => window.open(buildServerUrl(fileUrl), '_blank')}
                         />
                         <div className={chatViewStyle.file_info}>
                             <span>{fileName}</span>
@@ -261,7 +263,7 @@ function ChatView() {
                         <button 
                             onClick={() => {
                                 const link = document.createElement('a');
-                                link.href = `http://localhost:3007${fileUrl}`;
+                                link.href = buildServerUrl(fileUrl);
                                 link.download = fileName;
                                 document.body.appendChild(link);
                                 link.click();
@@ -293,7 +295,7 @@ function ChatView() {
                                 key={item.id}
                                 id={item.id}
                                 avatar={globalFriendInfoList[parseConversationId(item.id)]?.avatar 
-                                    ? `http://localhost:3007${globalFriendInfoList[parseConversationId(item.id)]?.avatar}` 
+                                    ? buildServerUrl(globalFriendInfoList[parseConversationId(item.id)]?.avatar) 
                                     : 'src/assets/images/defaultAvatar.jpg'}
                                 title={globalFriendInfoList[parseConversationId(item.id)]?.username}
                                 content={lastMessages[item.id]?.content || ''}

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import styles from './style.module.scss';
 interface SearchModalProps {
     searchChange: (value: string) => void;
@@ -16,7 +16,9 @@ function SearchModal({searchChange, placeholder}: SearchModalProps) {
                 !searchRef.current.contains(event.target as Node)
             ) {
                 setActive(false);
-                searchRef.current && searchRef.current.blur();
+                if (searchRef.current) {
+                    searchRef.current.blur();
+                }
             }
         }
 

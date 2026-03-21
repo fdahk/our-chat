@@ -1,5 +1,5 @@
 import { post } from "@/utils/http"; 
 
 export const uploadImg = (formData: FormData) => {
-    return post('user/uploads/uploadImg', formData);
+    return post<{ url: string }>('user/uploads/uploadImg', formData);
 }

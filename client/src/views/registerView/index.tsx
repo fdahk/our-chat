@@ -36,7 +36,7 @@ function RegisterView() {
     setLoading(true);
     try {
       // 注册API调用
-      const result = await registerUser({
+      await registerUser({
         username: values.username,
         email: values.email,
         password: values.password,
@@ -65,13 +65,13 @@ function RegisterView() {
     }
   };
 
-  const handleRegisterFailed = (errorInfo: any) => {
+  const handleRegisterFailed = (errorInfo: unknown) => {
     console.log('注册失败:', errorInfo);
     message.error('请检查输入信息');
   };
 
   // 用户名唯一性验证
-  const validateUsername = async (_: any, value: string) => {
+  const validateUsername = async (_rule: unknown, value: string) => {
     if (!value) return Promise.resolve();
     
     try {
@@ -87,7 +87,7 @@ function RegisterView() {
   };
 
   // 邮箱唯一性验证
-  const validateEmail = async (_: any, value: string) => {
+  const validateEmail = async (_rule: unknown, value: string) => {
     if (!value) return Promise.resolve();
     
     try {

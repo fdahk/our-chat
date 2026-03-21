@@ -4,6 +4,9 @@ import path from 'path' // 注： Vite 配置文件在 Node.js 环境下运行�
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  server: {
+    host: '0.0.0.0',
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

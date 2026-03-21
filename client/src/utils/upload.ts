@@ -141,7 +141,7 @@ export const validateFile = (file: File, config: UploadConfig) => {
 
 // 使用封装了的 axios http请求，
 import { post, get } from './http';
-export const request = async (url: string, options: RequestInit = {}) => {
+export const request = async <T = unknown>(url: string, options: RequestInit = {}) => {
     url = 'api' + url; // 添加前缀
     const method = options.method || 'GET';
     // post 
@@ -160,9 +160,9 @@ export const request = async (url: string, options: RequestInit = {}) => {
         data = options.body;
       }
       
-      return await post(url, data);
+      return await post<T>(url, data);
     } else {
       // GET 请求
-      return await get(url);
+      return await get<T>(url);
     }
 };

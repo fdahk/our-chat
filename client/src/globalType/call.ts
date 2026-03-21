@@ -22,6 +22,7 @@ export interface CallStartEvent {
   offer: RTCSessionDescriptionInit;
 }
 
+// 通话被接受
 export interface CallAcceptEvent {
   callId: string;
   from: number;
@@ -29,18 +30,18 @@ export interface CallAcceptEvent {
   answer: RTCSessionDescriptionInit;
 }
 
+// 通话被拒绝
 export interface CallRejectEvent {
   callId: string;
 }
 
+// 通话结束
 export interface CallEndEvent {
   callId: string;
 }
 
+// ICE候选
 export interface CallIceEvent {
   callId: string;
   candidate: ICECandidate;
 }
-
-// 移除不需要的复杂类型
-// CallState, CallSignal, CallInvitation, CallHistory 等都已简化到 store 中

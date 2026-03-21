@@ -173,7 +173,7 @@ export const VoiceCallModal: React.FC = () => {
         {renderCallContent()}
       </Modal>
       
-      {/* 远程音频播放器 */}
+      {/* audio是浏览器原生标签，自动播放需要设置autoPlay和playsInline */}
       <audio 
         ref={remoteAudioRef} 
         autoPlay //自动播放

@@ -2,6 +2,7 @@
 import { configureStore,combineReducers } from '@reduxjs/toolkit';
 import { persistStore, persistReducer } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
+import type { UnknownAction } from 'redux';
 import UserReducer from './userStore'; // 导入 reducer
 import chatReducer from './chatStore'; // 同上
 import friendReqReducer from './friendStore'; // 同上
@@ -25,7 +26,10 @@ const rootReducer = combineReducers(rootReducers);
 
 // 高阶函数：进一步包装reducer ，实现全局重置 action + 合并所有 reducer
 const RESET_STORE = 'RESET_STORE'; //定义重置操作的action类型
-const rootReducerWithReset = (state: any, action: any) => {
+const rootReducerWithReset = (
+  state: ReturnType<typeof rootReducer> | undefined,
+  action: UnknownAction
+) => {
   if (action.type === RESET_STORE) {
     // 传入 undefined，触发所有 reducer 的初始状态
     // 当 reducer 收到 undefined 时，会返回初始状态

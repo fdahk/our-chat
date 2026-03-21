@@ -7,6 +7,8 @@ import { uploadImg } from './api';
 import { updateProfile } from '@/store/userStore';
 import CropperModal from '@/globalComponents/cropperModal/cropperModal'; 
 import { updateUserInfo } from '@/globalApi/userApi';
+import { buildServerUrl } from '@/utils/runtime';
+import type { RootState } from '@/store/rootStore';
 function SettingView({ onClose }: { onClose: () => void }) {
     const [loading, setLoading] = useState(false);
     const dispatch = useDispatch();
@@ -39,10 +41,14 @@ function SettingView({ onClose }: { onClose: () => void }) {
         formData.append('file', croppedBlob, 'avatar.jpg');
         setLoading(true);
         uploadImg(formData).then(res => {
+            const uploadResult = res.data;
+            if (!uploadResult) {
+                throw new Error('上传响应缺少图片地址');
+            }
             //更新redux
-            dispatch(updateProfile({ avatar: res.data.url }));
+            dispatch(updateProfile({ avatar: uploadResult.url }));
             // 更新后端
-            updateUserInfo({ id: user.id, avatar: res.data.url });
+            updateUserInfo({ id: user.id, avatar: uploadResult.url });
             setLoading(false);
         }).catch(err => {
             setLoading(false);
@@ -59,7 +65,7 @@ function SettingView({ onClose }: { onClose: () => void }) {
         onClose();
     }
     // 用户信息
-    const user = useSelector((state: any) => state.user);
+    const user = useSelector((state: RootState) => state.user);
 
     return (
         <div className={settingStyle.setting_view_mask}>
@@ -72,7 +78,7 @@ function SettingView({ onClose }: { onClose: () => void }) {
             <div className={settingStyle.setting_view_body}>
                 {/* 左侧 */}
                 <div className={settingStyle.setting_view_left}>
-                    <AntdImage width={130} src={user.avatar ? `http://localhost:3007${user.avatar}` : 'src/assets/images/defaultAvatar.jpg'}  />
+                    <AntdImage width={130} src={user.avatar ? buildServerUrl(user.avatar) : 'src/assets/images/defaultAvatar.jpg'}  />
                     {/* 事件处理函数（如 onChange、onClick 等）默认传入事件对象（event） */}
                     <input ref={inputRef} type="file" style={{display: 'none'}} accept="image/png, image/jpeg" onChange={handleChange} /> 
                     
