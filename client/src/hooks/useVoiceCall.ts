@@ -18,10 +18,11 @@ import {
 } from '../store/callStore';
 // 通话类型
 import type { CallUser, CallAcceptEvent, CallRejectEvent, CallEndEvent, CallIceEvent, CallStartEvent } from '../globalType/call';
-import { message } from 'antd';
+import { App as AntdApp } from 'antd';
 
 
 export const useVoiceCall = () => {
+  const { message } = AntdApp.useApp();
   const dispatch = useDispatch();
   const callState = useSelector((state: RootState) => state.call);//通话状态
   const currentUser = useSelector((state: RootState) => state.user);// 当前用户
@@ -377,7 +378,7 @@ export const useVoiceCall = () => {
       message.error(errorMessage);
       cleanup();
     }
-  }, [currentUser, dispatch, cleanup]);
+  }, [currentUser, dispatch, cleanup, message]);
 
   // 接受通话
   const acceptCall = useCallback(async () => {
@@ -438,7 +439,7 @@ export const useVoiceCall = () => {
       message.error(errorMessage);
       cleanup();
     }
-  }, [callState.callId, callState.pendingOffer, callState.localUser, callState.remoteUser, dispatch, cleanup]);
+  }, [callState.callId, callState.pendingOffer, callState.localUser, callState.remoteUser, dispatch, cleanup, message]);
 
   // 拒绝通话
   const rejectCall = useCallback(() => {

@@ -68,6 +68,48 @@ export class WebRTCManager {
     this.initialize();
   }
 
+  private getLegacyGetUserMedia():
+    | ((constraints: MediaStreamConstraints) => Promise<MediaStream>)
+    | null {
+    const legacyNavigator = navigator as Navigator & {
+      getUserMedia?: (
+        constraints: MediaStreamConstraints,
+        successCallback: (stream: MediaStream) => void,
+        errorCallback: (error: DOMException) => void
+      ) => void;
+      webkitGetUserMedia?: (
+        constraints: MediaStreamConstraints,
+        successCallback: (stream: MediaStream) => void,
+        errorCallback: (error: DOMException) => void
+      ) => void;
+      mozGetUserMedia?: (
+        constraints: MediaStreamConstraints,
+        successCallback: (stream: MediaStream) => void,
+        errorCallback: (error: DOMException) => void
+      ) => void;
+      msGetUserMedia?: (
+        constraints: MediaStreamConstraints,
+        successCallback: (stream: MediaStream) => void,
+        errorCallback: (error: DOMException) => void
+      ) => void;
+    };
+
+    const getUserMedia =
+      legacyNavigator.getUserMedia ||
+      legacyNavigator.webkitGetUserMedia ||
+      legacyNavigator.mozGetUserMedia ||
+      legacyNavigator.msGetUserMedia;
+
+    if (!getUserMedia) {
+      return null;
+    }
+
+    return (constraints: MediaStreamConstraints) =>
+      new Promise((resolve, reject) => {
+        getUserMedia.call(legacyNavigator, constraints, resolve, reject);
+      });
+  }
+
   /**
    * 确保PeerConnection实例存在
    * 如果被cleanup清理过，会自动重新初始化
@@ -256,9 +298,8 @@ export class WebRTCManager {
   async getUserMedia(): Promise<MediaStream> {
     try {
       console.log('请求麦克风权限');
-      
-      // 调用浏览器API获取媒体流
-      const stream = await navigator.mediaDevices.getUserMedia({
+
+      const constraints: MediaStreamConstraints = {
         audio: {
           echoCancellation: true,   // 启用回声消除
           noiseSuppression: true,   // 启用降噪
@@ -266,7 +307,29 @@ export class WebRTCManager {
           sampleRate: 44100,        // 设置采样率(CD音质)
         },
         video: false,               // 不请求视频
-      });
+      };
+
+      const modernGetUserMedia = navigator.mediaDevices?.getUserMedia?.bind(navigator.mediaDevices);
+      const legacyGetUserMedia = this.getLegacyGetUserMedia();
+
+      if (!modernGetUserMedia && !legacyGetUserMedia) {
+        const isLocalhost =
+          window.location.hostname === 'localhost' ||
+          window.location.hostname === '127.0.0.1';
+
+        if (!window.isSecureContext && !isLocalhost) {
+          throw new Error(
+            '当前页面不是安全上下文。手机通过局域网 HTTP 地址访问时，浏览器通常会禁用麦克风。请改用 localhost、HTTPS，或在浏览器中使用受信任的安全来源。'
+          );
+        }
+
+        throw new Error('当前浏览器不支持 getUserMedia，无法获取麦克风音频流');
+      }
+
+      // 优先使用标准API，老浏览器再回退到历史实现
+      const stream = modernGetUserMedia
+        ? await modernGetUserMedia(constraints)
+        : await legacyGetUserMedia!(constraints);
       
       console.log('获取音频流成功');
       this.localStream = stream;    // 保存到实例变量
@@ -282,6 +345,8 @@ export class WebRTCManager {
           throw new Error('未找到麦克风设备，请检查硬件连接');
         } else if (error.name === 'NotReadableError') {
           throw new Error('麦克风被其他应用占用，请关闭其他音频应用');
+        } else if (error.name === 'SecurityError') {
+          throw new Error('当前页面不满足浏览器的安全要求，无法访问麦克风。请改用 HTTPS 或 localhost。');
         }
       }
       
