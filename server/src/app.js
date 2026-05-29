@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors'; //跨域中间件
+import cookieParser from 'cookie-parser';
 import { connectDb } from './dataBase/mongoDb.js';
 import registerRouter from './routes/register.js';
 import loginRouter from './routes/login.js';
@@ -12,8 +13,31 @@ import uploadAdvancedRouter from './routes/uploadAdvanced.js';
 const app = express(); //Express监听（http）服务器
 const PORT = process.env.PORT || 3007; //获取端口
 
-// 跨域中间件
-app.use(cors());
+// 允许携带凭据的来源白名单。来自环境变量 CLIENT_ORIGINS（逗号分隔），
+// 开发环境默认放行本机 Vite。注意：启用 cookie 凭据后，CORS 不能再用通配 '*'。
+const allowedOrigins = (
+  process.env.CLIENT_ORIGINS ||
+  'http://localhost:5173,http://127.0.0.1:5173'
+)
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+// 跨域中间件：按白名单校验来源，并允许携带 cookie。
+// 无 origin 的请求（同源代理转发、移动端原生、curl）放行。
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error(`不允许的跨域来源: ${origin}`));
+    },
+    credentials: true,
+  })
+);
+// 解析 cookie（鉴权 token 从 HttpOnly cookie 读取）
+app.use(cookieParser());
 // 解析中间件
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
