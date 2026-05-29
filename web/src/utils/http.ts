@@ -314,25 +314,34 @@ export const upload = <T = unknown>(
 };
 
 // 下载文件
-export const download = (
-  url: string, 
+// 走 http 实例:复用 baseURL 与请求拦截器(自动附带 Authorization),
+// 受保护资源才下得动;同时享受 401 自动刷新 token 的逻辑。
+// 注:响应拦截器已把 AxiosResponse 解包为 response.data,blob 模式下即 Blob 本体。
+export const download = async (
+  url: string,
   filename?: string,
   config?: AxiosRequestConfig
 ): Promise<void> => {
-  return axios.get<Blob>(`${API_BASE_URL}${url.startsWith('/') ? url : `/${url}`}`, {
+  const blob = (await http.get(url, {
     ...config,
     responseType: 'blob',
-  }).then(({ data }) => {
-    const blob = data;
-    const downloadUrl = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = filename || 'download';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(downloadUrl);
-  });
+  })) as unknown as Blob;
+
+  // 浏览器没有"把内存里的二进制存成文件"的直接 API,标准做法是模拟一次<a download>点击:
+  // 1. 把 Blob 包成一个临时的 blob: 协议 URL(仅本页可访问,指向内存里的这份数据)
+  const downloadUrl = window.URL.createObjectURL(blob);
+  // 2. 造一个隐藏的 <a>,href 指向该 URL,download 属性告诉浏览器"点击是下载而非导航",并指定文件名
+  const link = document.createElement('a');
+  link.href = downloadUrl;
+  link.download = filename || 'download';
+  // 3. 必须先挂到文档里,部分浏览器(如旧版 Firefox)对未入 DOM 的元素 .click() 不生效
+  document.body.appendChild(link);
+  // 4. 用代码触发点击,弹出浏览器的保存对话框/直接落盘
+  link.click();
+  // 5. 善后:移除临时节点
+  document.body.removeChild(link);
+  // 6. 释放 blob URL 占用的内存(createObjectURL 创建的引用不会自动回收,不 revoke 会内存泄漏)
+  window.URL.revokeObjectURL(downloadUrl);
 };
 
 export default http;
