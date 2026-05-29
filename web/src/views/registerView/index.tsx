@@ -57,16 +57,14 @@ function RegisterView() {
         navigate('/login');
       }, 1500);
       
-    } catch (error) {
+    } catch {
       // 错误已经在响应拦截器中处理并显示
-      console.error('注册错误:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRegisterFailed = (errorInfo: unknown) => {
-    console.log('注册失败:', errorInfo);
+  const handleRegisterFailed = () => {
     message.error('请检查输入信息');
   };
 
@@ -80,7 +78,7 @@ function RegisterView() {
         return Promise.reject(new Error('用户名已存在'));
       }
       return Promise.resolve();
-    } catch (error) {
+    } catch {
       // 网络错误时不阻止提交
       return Promise.resolve();
     }
@@ -96,7 +94,7 @@ function RegisterView() {
         return Promise.reject(new Error('邮箱已被注册'));
       }
       return Promise.resolve();
-    } catch (error) {
+    } catch {
       // 网络错误时不阻止提交
       return Promise.resolve();
     }

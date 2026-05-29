@@ -48,7 +48,6 @@ function LoginView() {
         throw new Error('登录响应缺少用户数据');
       }
       // 存储token到本地
-      console.log('login result', loginData);
       localStorage.setItem('token', loginData.token);
       // 存储用户信息到 redux
       dispatch(login({
@@ -66,16 +65,14 @@ function LoginView() {
       }));
       // 跳转到主页
       navigate('/chat');
-    } catch (error) {
-      console.log(error);
+    } catch {
       message.error('登录失败，请重试');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLoginFailed = (errorInfo: unknown) => {
-    console.log('登录失败:', errorInfo);
+  const handleLoginFailed = () => {
     message.error('请检查输入信息');
   };
 

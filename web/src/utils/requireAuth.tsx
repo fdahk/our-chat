@@ -1,6 +1,6 @@
 //登录鉴权的高阶组件
 import { Navigate } from "react-router-dom";
-import { isAuthenticated, isTokenExpiringSoon, getToken, isTokenExpired, getTokenRemainingTime} from './token';
+import { isAuthenticated, isTokenExpiringSoon, getToken, isTokenExpired } from './token';
 import { useEffect, useRef, useState } from 'react';
 import { message } from 'antd';
 
@@ -31,7 +31,6 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
       } else if (isTokenExpiringSoon(currentToken)) {
         message.warning('登录即将过期');
       }
-      console.log('token有效', getTokenRemainingTime(token || undefined));
     };
 
     // 立即执行一次检查
