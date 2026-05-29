@@ -242,7 +242,7 @@ function ChatView() {
                             src={buildServerUrl(fileUrl)} 
                             alt={fileName}
                             style={{ maxWidth: '200px', maxHeight: '150px', borderRadius: '8px' }}
-                            onClick={() => window.open(buildServerUrl(fileUrl), '_blank')}
+                            onClick={() => window.open(buildServerUrl(fileUrl), '_blank', 'noopener,noreferrer')}
                         />
                         <div className={chatViewStyle.file_info}>
                             <span>{fileName}</span>
