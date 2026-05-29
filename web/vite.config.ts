@@ -13,7 +13,13 @@ const mkcertPath = path.join(
   'mkcert.exe'
 )
 
-export default defineConfig({
+// 用函数形式拿到 command:仅在生产构建(vite build)时移除 console/debugger,
+// 开发(vite serve)时保留,不影响本地调试。
+export default defineConfig(({ command }) => ({
+  // esbuild 既是 Vite 的转译器也是默认压缩器,drop 会在压缩阶段静态删除这些语句
+  esbuild: {
+    drop: command === 'build' ? ['console', 'debugger'] : [],
+  },
   plugins: [
     react(),
     mkcert({
@@ -44,4 +50,4 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-})
+}))
