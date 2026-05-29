@@ -1,13 +1,7 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import type { ComponentType } from "react";
-// 一级路由组件
-import Layout from "@/views/layout/index.tsx";
-import LoginView from "@/views/loginView/index.tsx";
-import RegisterView from "@/views/registerView/index.tsx";
-// 二级路由组件
-import DirectoryView from "@/views/directoryView/index.tsx";
-import ChatView from "@/views/chatView/index.tsx";
-// 三级路由组件
+// 鉴权守卫：同步导入。它是进入受保护路由前的同步关卡,体积很小,
+// 不参与懒加载,以免守卫本身也要等一次网络往返。
 import RequireAuth from "@/utils/requireAuth";
 
 // 把动态 import 的模块默认导出包装成 React Router 的 lazy 路由模块
@@ -39,16 +33,20 @@ const devOnlyRoutes = import.meta.env.DEV
     : [];
 
 const router = createBrowserRouter([
-    // 一级路由首页
+    // 一级路由首页：懒加载 Layout,但仍用同步的 RequireAuth 包裹做加载前鉴权。
+    // 路由级 lazy 由 React Router 在导航时 await,组件就绪后才渲染,无需额外 Suspense。
     {
         path: "",
-        element: (
-            // 加载页面时鉴定一次
-            <RequireAuth>
-                <Layout/>
-            </RequireAuth>
-        ),
-        // redirect: "/chat", //React Router v6 没有 redirect 属性
+        lazy: async () => {
+            const { default: Layout } = await import("@/views/layout/index.tsx");
+            return {
+                Component: () => (
+                    <RequireAuth>
+                        <Layout />
+                    </RequireAuth>
+                ),
+            };
+        },
         // 二级路由
         children: [
             { //默认重定向
@@ -57,23 +55,23 @@ const router = createBrowserRouter([
             },
             {
                 path: "chat",
-                element: <ChatView/>,
+                lazy: lazyComponent(() => import("@/views/chatView/index.tsx")),
             },
             {
                 path: "directory",
-                element: <DirectoryView/>,
+                lazy: lazyComponent(() => import("@/views/directoryView/index.tsx")),
             }
         ]
     },
     // 一级路由登录
     {
         path: "login",
-        element: <LoginView/>,
+        lazy: lazyComponent(() => import("@/views/loginView/index.tsx")),
     },
     // 一级路由注册
     {
         path: "register",
-        element: <RegisterView/>,
+        lazy: lazyComponent(() => import("@/views/registerView/index.tsx")),
     },
     // 开发调试路由（生产构建中为空数组，被静态消除）
     ...devOnlyRoutes
