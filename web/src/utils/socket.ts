@@ -5,6 +5,8 @@ import { SOCKET_URL } from './runtime';
 // 配置 options(socket连接配置项)
 const options = {
   autoConnect: false, // 不自动连接，需要手动调用 connect()
+  // 握手时带上 HttpOnly token cookie，供服务端验签派生身份（跨域也能携带）
+  withCredentials: true,
   // transports: ['websocket'], // 强制只用 websocket 协议
 };
 

@@ -1,32 +1,79 @@
 import { Server } from 'socket.io'; //基于WebSocket的实时通信库
+import jwt from 'jsonwebtoken';
 import { Message } from '../dataBase/mongoDb.js';
 import { mySql } from '../dataBase/mySql.js';
+import { config } from '../config/config.js';
+import { TOKEN_COOKIE } from './authCookies.js';
+
+// 从握手请求的 Cookie 头里取出指定 cookie 的值
+const parseCookie = (header, name) => {
+    if (!header) return null;
+    for (const part of header.split(';')) {
+        const idx = part.indexOf('=');
+        if (idx === -1) continue;
+        if (part.slice(0, idx).trim() === name) {
+            return decodeURIComponent(part.slice(idx + 1).trim());
+        }
+    }
+    return null;
+};
+
+const allowedOrigins = (
+    process.env.CLIENT_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173'
+)
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
 export const initSocket = (server) => {
     //创建WebSocket服务器，连接的建立依赖http，WebSocket的握手（连接建立）阶段，先通过http，然后升级为 WebSocket
     const io = new Server(server, {
         cors: {
-        // 即使都是本机，localhost 和 127.0.0.1 也会被浏览器视为不同的“源”，可能会有 CORS 跨域限制
-        // origin: "http://localhost:5173", // 允许前端地址
-        // 开发阶段允许 localhost 与局域网 IP 的前端访问同一 socket 服务
-        origin: true,
+        // 仅放行白名单来源，并允许携带 cookie（握手时浏览器需带上 HttpOnly token）
+        origin(origin, callback) {
+            if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+            return callback(new Error(`不允许的跨域来源: ${origin}`));
+        },
         methods: ["GET", "POST"],
         credentials: true
         }
     });
-    
+
+    // 握手鉴权：从 cookie 解析并验签 JWT，身份由服务端派生，绝不信任客户端自报的 userId。
+    // 校验不过直接拒绝连接，杜绝匿名 socket 加入任意房间收发他人消息。
+    io.use((socket, next) => {
+        try {
+            const token = parseCookie(socket.handshake.headers.cookie, TOKEN_COOKIE);
+            if (!token) return next(new Error('未认证：缺少登录凭据'));
+            const decoded = jwt.verify(token, config.jwtSecret);
+            socket.userId = decoded.id;
+            next();
+        } catch {
+            next(new Error('认证失败：登录凭据无效或已过期'));
+        }
+    });
+
     // 监听WebSocket连接, 注：第二个参数前端不传默认1socket实例，只能获取到socket.id
     io.on('connection', (socket) => {
-        console.log('用户连接:', socket.id);
+        console.log('用户连接:', socket.id, 'userId:', socket.userId);
 
-        // 用户加入房间
-        socket.on('join', (userId) => {
-            socket.join(userId);
-            console.log(`用户 ${userId} 加入房间`);
+        // 连接即自动加入「自己」的房间，房间号取服务端验签得到的 userId
+        socket.join(socket.userId);
+
+        // 兼容前端的 join 事件，但忽略其传参，始终只加入自己的房间
+        socket.on('join', () => {
+            socket.join(socket.userId);
+            console.log(`用户 ${socket.userId} 加入房间`);
         });
 
         // 消息处理
         socket.on('sendMessage', async (msg) => {
             try {
+                // 防伪造：发送者必须是当前已认证用户本人
+                if (Number(msg.senderId) !== Number(socket.userId)) {
+                    socket.emit('error', { message: '非法的发送者身份' });
+                    return;
+                }
                 const splited = msg.conversationId.split('_');
                 const user1 = splited[1];
                 const user2 = splited[2];            
