@@ -47,8 +47,7 @@ function LoginView() {
       if (!loginData) {
         throw new Error('登录响应缺少用户数据');
       }
-      // 存储token到本地
-      localStorage.setItem('token', loginData.token);
+      // token 由后端写入 HttpOnly cookie，前端 JS 读不到也无需存储
       // 存储用户信息到 redux
       dispatch(login({
         id: loginData.id,

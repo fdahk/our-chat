@@ -2,9 +2,8 @@ import { post } from '@/utils/http';
 import { type LoginForm } from './type';
 import type { User } from '@/globalType/user';
 
-interface LoginResponse extends User {
-    token: string;
-}
+// 登录成功响应体只含用户信息，token 走 HttpOnly cookie，不再回传给前端
+type LoginResponse = User;
 
 // 登录API
 export const loginApi = async (loginForm: LoginForm) => {

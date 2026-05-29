@@ -10,6 +10,7 @@ import useGlobalMessageListener from '@/hooks/useGlobalMessageListener';
 import VoiceCallModal from '@/globalComponents/voiceCallModal';
 import { buildServerUrl } from '@/utils/runtime';
 import { defaultAvatar } from '@/assets/images';
+import { post } from '@/utils/http';
 
 function Layout() {
     const dispatch = useDispatch();
@@ -50,10 +51,15 @@ function Layout() {
     }, [menuVisible]);
 
     // 点击退出登录
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        // 通知后端清除 HttpOnly 鉴权 cookie（失败也不阻塞前端登出）
+        try {
+            await post('/api/logout');
+        } catch {
+            // 网络异常时忽略，本地仍照常清理并跳转
+        }
         dispatch(logout()); // 清空用户信息
-        localStorage.removeItem('token'); // 清空token  
-        localStorage.removeItem('persist:root'); // 清空根状态
+        localStorage.removeItem('persist:root'); // 清空持久化的根状态
         navigate('/login'); //注：跳转到登录页，layout组件销毁会触发useEffect，断开socket连接
     };
     // 关闭设置中心(给子组件)

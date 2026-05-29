@@ -8,10 +8,6 @@ import { message } from 'antd'; //引入antd的message 消息提示组件
 import type { ApiResponse } from '../globalType/apiResponse';
 import { API_BASE_URL } from './runtime';
 
-interface TokenRefreshResponse {
-  token: string;
-}
-
 interface ErrorResponseData {
   message?: string;
   code?: string;
@@ -21,16 +17,28 @@ type RetryableAxiosRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
 };
 
+const CSRF_COOKIE = 'csrfToken';
+const SAFE_METHODS = new Set(['get', 'head', 'options']);
+
+// 读取可读的 csrfToken cookie（token 本身是 HttpOnly，JS 读不到）
+const readCookie = (name: string): string | null => {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = document.cookie.match(new RegExp('(?:^|; )' + escaped + '=([^;]*)'));
+  return match ? decodeURIComponent(match[1]) : null;
+};
+
 // Token刷新相关变量
 let isRefreshing = false;
 let failedQueue: Array<{
-  resolve: (value: string) => void;
+  resolve: () => void;
   reject: (reason?: unknown) => void;
 }> = [];
 
 const http: AxiosInstance = axios.create({
-  baseURL: API_BASE_URL, 
-  timeout: 10000,  
+  baseURL: API_BASE_URL,
+  timeout: 10000,
+  // 跨域时携带 cookie；同源（dev 经 Vite 代理）也无妨
+  withCredentials: true,
   headers: {
     // 注：以下全局配置废除
     //大多数场景 axios 会自动处理 Content-Type
@@ -43,49 +51,32 @@ const http: AxiosInstance = axios.create({
 });
 
 
-// Token刷新函数
-const refreshToken = async (): Promise<string | null> => {
+// Token刷新函数：基于 HttpOnly cookie 重签，新 token 由后端重新写回 cookie。
+// 用裸 axios 调用避免触发本实例拦截器递归；手动带上 withCredentials 与 CSRF 头。
+const refreshToken = async (): Promise<boolean> => {
   try {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      throw new Error('没有token');
-    }
-
-    // 刷新token，返回新的token，第二个参数是请求配置
-    const response = await axios.post<ApiResponse<TokenRefreshResponse>>(`${API_BASE_URL}/api/refresh`, {}, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
+    await axios.post(`${API_BASE_URL}/api/refresh`, {}, {
+      withCredentials: true,
+      headers: { 'X-CSRF-Token': readCookie(CSRF_COOKIE) ?? '' },
     });
-
-    if (response.data.success) {
-      const newToken = response.data.data?.token;
-      if (!newToken) {
-        throw new Error('token刷新失败');
-      }
-      localStorage.setItem('token', newToken);
-      return newToken;
-    } else {
-      throw new Error('token刷新失败');
-    }
+    return true;
   } catch (error) {
     console.error('Token刷新失败:', error);
-    localStorage.removeItem('token');
     window.location.href = '/login';
-    return null;
+    return false;
   }
 };
 
 // 处理队列中的请求，用于排队等待刷新token
-const processQueue = (error: unknown, token?: string) => {
+const processQueue = (error?: unknown) => {
   failedQueue.forEach(({ resolve, reject }) => {
     if (error) {
       reject(error);
-    } else if (token) {
-      resolve(token);
+    } else {
+      resolve();
     }
   });
-  
+
   failedQueue = [];
 };
 
@@ -104,10 +95,12 @@ const getErrorMessage = (data: unknown, fallback: string) => {
 http.interceptors.request.use(
   // 第一个参数：请求成功处理函数
   (config: InternalAxiosRequestConfig) => {
-    // 添加认证 token，将 token 添加到请求头的 Authorization 字段，用于身份验证
-    const token = localStorage.getItem('token');
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // 鉴权 token 由浏览器随 HttpOnly cookie 自动携带，前端不再手动塞 Authorization。
+    // 变更类请求补上双提交 CSRF 头：把可读的 csrfToken cookie 回填到 X-CSRF-Token。
+    const method = (config.method ?? 'get').toLowerCase();
+    if (!SAFE_METHODS.has(method) && config.headers) {
+      const csrf = readCookie(CSRF_COOKIE);
+      if (csrf) config.headers['X-CSRF-Token'] = csrf;
     }
 
     // 为 GET 请求添加时间戳参数，防止浏览器缓存导致的数据过期问题
@@ -159,18 +152,10 @@ http.interceptors.response.use(
         // 检查是否是token过期
         if (errorData?.code === 'TOKEN_EXPIRED' || errorData?.message?.includes('过期')) {
           if (isRefreshing) {
-            // 如果正在刷新token，将请求加入队列
-            return new Promise<string>((resolve, reject) => {
+            // 如果正在刷新token，将请求加入队列，刷新完成后重试（cookie 已更新，无需改请求头）
+            return new Promise<void>((resolve, reject) => {
               failedQueue.push({ resolve, reject });
-            }).then(token => {
-              if (originalRequest.headers) {
-                originalRequest.headers['Authorization'] = `Bearer ${token}`;
-              }
-              // 重试请求
-              return http(originalRequest);
-            }).catch(refreshQueueError => {
-              return Promise.reject(refreshQueueError);
-            });
+            }).then(() => http(originalRequest));
           }
 
           // 设置重试标志，防止重复重试
@@ -178,16 +163,13 @@ http.interceptors.response.use(
           isRefreshing = true;
 
           try {
-            // 刷新token
-            const newToken = await refreshToken();
-            if (newToken) {
-              processQueue(undefined, newToken);
-              // 设置新的token
-              if (originalRequest.headers) {
-                originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
-              }
+            // 刷新token（新 token 写回 cookie）
+            const ok = await refreshToken();
+            if (ok) {
+              processQueue();
               return http(originalRequest);
             }
+            return Promise.reject(error);
           } catch (refreshError) {
             // 处理刷新token失败
             processQueue(refreshError);
@@ -198,7 +180,6 @@ http.interceptors.response.use(
         } else {
           // 其他401错误，直接跳转登录
           message.error('未授权，请重新登录');
-          localStorage.removeItem('token');
           window.location.href = '/login';
         }
       } else {
@@ -314,7 +295,7 @@ export const upload = <T = unknown>(
 };
 
 // 下载文件
-// 走 http 实例:复用 baseURL 与请求拦截器(自动附带 Authorization),
+// 走 http 实例:复用 baseURL 与请求拦截器(鉴权 cookie 由浏览器自动携带),
 // 受保护资源才下得动;同时享受 401 自动刷新 token 的逻辑。
 // 注:响应拦截器已把 AxiosResponse 解包为 response.data,blob 模式下即 Blob 本体。
 export const download = async (

@@ -3,6 +3,15 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { mySql } from '../dataBase/mySql.js';
 import { config } from '../config/config.js';
+import {
+  setAuthCookies,
+  clearAuthCookies,
+  generateCsrfToken,
+  CSRF_COOKIE,
+  TOKEN_COOKIE,
+  REMEMBER_MAX_AGE,
+  SESSION_MAX_AGE,
+} from '../utils/authCookies.js';
 const router = express.Router();
 
 router.post('/login', async (req, res) => {
@@ -18,35 +27,33 @@ router.post('/login', async (req, res) => {
   const match = await bcrypt.compare(password, user.password);
   if (!match) return res.status(400).json({ success: false, message: '密码错误' });
 
-  // 生成JWT,勾选记住我就设置7天过期，否则设置1小时过期
-  let token = '';
-  if(remember) {
-    // 参数： 1. payload 2. 密钥 3. 过期时间
-    // iat	JWT库自动添加	当前时间戳，记录签发时间
-    // exp	JWT库自动计算	根据expiresIn计算的过期时间
-    token = jwt.sign({ id: user.id, username: user.username }, config.jwtSecret, { expiresIn: config.jwtExpiresIn });
-  } else {
-    token = jwt.sign({ id: user.id, username: user.username }, config.jwtSecret, { expiresIn: '1h' });
-    // res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', maxAge: 1000 * 60 * 60 * 24 * 7 });
-  }
-  console.log('token', token);
-  user.token = token;
-  // 返回用户信息(剔除密码)
-  const { password: _, ...userInfo } = user;
-  res.json({ success: true, data: userInfo});
+  // 勾选记住我签发 7 天，否则 1 小时；cookie maxAge 与之对齐
+  const expiresIn = remember ? config.jwtExpiresIn : '1h';
+  const maxAge = remember ? REMEMBER_MAX_AGE : SESSION_MAX_AGE;
+  const token = jwt.sign({ id: user.id, username: user.username }, config.jwtSecret, { expiresIn });
+
+  // token 写入 HttpOnly cookie（前端 JS 读不到），并下发可读的 csrf token
+  const csrfToken = generateCsrfToken();
+  setAuthCookies(res, token, csrfToken, maxAge);
+
+  // 响应体只返回用户信息，绝不再回传 token（剔除密码）
+  const { password: _password, ...userInfo } = user;
+  res.json({ success: true, data: userInfo });
 });
 
-// Token刷新接口
+// Token刷新接口：基于现有 cookie 重签并重设 cookie
 router.post('/refresh', async (req, res) => {
   try {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
+    const token = req.cookies?.[TOKEN_COOKIE];
     if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: '缺少刷新令牌'
-      });
+      return res.status(401).json({ success: false, message: '缺少刷新令牌' });
+    }
+
+    // 双提交 CSRF 校验（刷新是变更类请求）
+    const headerCsrf = req.headers['x-csrf-token'];
+    const cookieCsrf = req.cookies?.[CSRF_COOKIE];
+    if (!cookieCsrf || !headerCsrf || headerCsrf !== cookieCsrf) {
+      return res.status(403).json({ success: false, message: 'CSRF 校验失败' });
     }
 
     // 验证token（即使过期也要能解析出用户信息）
@@ -55,21 +62,14 @@ router.post('/refresh', async (req, res) => {
       decoded = jwt.verify(token, config.jwtSecret);
     } catch (error) {
       if (error.name === 'TokenExpiredError') {
-        // Token过期，但仍可以解析出用户信息
         decoded = jwt.decode(token);
       } else {
-        return res.status(401).json({
-          success: false,
-          message: 'Token无效'
-        });
+        return res.status(401).json({ success: false, message: 'Token无效' });
       }
     }
 
     if (!decoded || !decoded.id) {
-      return res.status(401).json({
-        success: false,
-        message: 'Token格式错误'
-      });
+      return res.status(401).json({ success: false, message: 'Token格式错误' });
     }
 
     // 验证用户是否仍然存在
@@ -79,44 +79,30 @@ router.post('/refresh', async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(401).json({
-        success: false,
-        message: '用户不存在或已被禁用'
-      });
+      return res.status(401).json({ success: false, message: '用户不存在或已被禁用' });
     }
 
     const user = rows[0];
 
-    // 生成新的token（默认1小时有效期）
+    // 重签并重设 cookie（默认续 1 小时），同时轮换 csrf token
     const newToken = jwt.sign(
       { id: user.id, username: user.username },
       config.jwtSecret,
       { expiresIn: '1h' }
     );
+    setAuthCookies(res, newToken, generateCsrfToken(), SESSION_MAX_AGE);
 
-    res.json({
-      success: true,
-      data: {
-        token: newToken,
-        user: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          nickname: user.nickname,
-          avatar: user.avatar,
-          status: user.status
-        }
-      },
-      message: 'Token刷新成功'
-    });
-
+    res.json({ success: true, data: { user }, message: 'Token刷新成功' });
   } catch (error) {
     console.error('Token刷新失败:', error);
-    res.status(500).json({
-      success: false,
-      message: '服务器内部错误'
-    });
+    res.status(500).json({ success: false, message: '服务器内部错误' });
   }
+});
+
+// 登出：清除鉴权 cookie
+router.post('/logout', (req, res) => {
+  clearAuthCookies(res);
+  res.json({ success: true, message: '已登出' });
 });
 
 export default router;
