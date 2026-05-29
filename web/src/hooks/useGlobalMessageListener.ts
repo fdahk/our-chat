@@ -13,6 +13,7 @@ import type { FriendInfoList } from '@/globalType/friend';
 import type { RootState } from '@/store/rootStore';
 import { initFriendReqList, addFriendReq } from '@/store/friendStore';
 import type { FriendReq } from '@/store/friendStore';
+import messageSound from '@/assets/audios/message.wav';
 
 export default function useGlobalMessageListener() {
     const userId = useSelector((state: RootState) => state.user.id);
@@ -21,7 +22,12 @@ export default function useGlobalMessageListener() {
     // 用于绑定从后端获取的最新值，避免闭包陷阱
     const globalConversationsRef = useRef<Record<string, Conversation>>({});
     const globalFriendInfoListRef = useRef<FriendInfoList>({});
-    const audio = new Audio('src/assets/audios/message.wav');
+    // 提示音 Audio 实例放进 ref，全生命周期只 new 一次：
+    // 若直接写在组件体里，每次 render 都会重建一个 Audio 对象（浪费且无意义）。
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+    if (audioRef.current === null) {
+        audioRef.current = new Audio(messageSound);
+    }
   // 注：不能使用这个用于下面获取会话列表，因为redux状态更新是异步的，不能保证在获取会话列表时，redux状态已经更新
   // const globalUserConversations = useSelector((state: RootState) => state.chat.globalUserConversations); // 从redux中获取全局用户会话列表
     // 注：这里监听的是全局消息，消息派发逻辑由后端实现，更新redux状态全局消息，同时触发组件重新渲染
@@ -97,14 +103,13 @@ export default function useGlobalMessageListener() {
               }));
             }
             dispatch(addLastMessage({ conversationId: msg.conversationId, message: msg }));
-            // 消息提示音,注：浏览器获取资源应当使用基于浏览器根目录的路径
-            // 注：大多数现代浏览器禁止在用户没有与页面交互（如点击、键盘操作）之前自动播放音频或视频
-            audio.play();
+            // 消息提示音。注：大多数现代浏览器禁止在用户与页面交互（点击/键盘）之前自动播放音频
+            audioRef.current?.play();
        };
        // 新好友消息处理
        const handleNewFriendReq = (friendReq: FriendReq) => {
         dispatch(addFriendReq(friendReq));
-        audio.play();
+        audioRef.current?.play();
        }
        // 仅监听 receiveMessage 事件，更新消息列表，消息派发逻辑由后端实现
         socket.on('receiveMessage', handleMessage);
