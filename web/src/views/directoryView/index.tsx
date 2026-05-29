@@ -12,6 +12,7 @@ import {type Message } from '@/globalType/message';
 import SocketService from '@/utils/socket';
 import { addGlobalFriend, addGlobalFriendInfo } from '@/store/chatStore';
 import { buildServerUrl } from '@/utils/runtime';
+import { defaultAvatar, searchUserIcon, newFriendIcon } from '@/assets/images';
 function DirectoryView() {
     const [activeFriend, setActiveFriend] = useState<{ friend_id: number, remark: string | null } | null>(null);
     const globalFriendList = useSelector((state: RootState) => state.chat.globalFriendList);
@@ -163,7 +164,7 @@ function DirectoryView() {
                                 }
                                 <DisplayItem
                                     id={''}
-                                    avatar={'src/assets/images/searchUser.png'}
+                                    avatar={searchUserIcon}
                                     title={'搜索：'}
                                     content={searchValue}
                                     handleClick={handleClickSearchFriend}
@@ -172,7 +173,7 @@ function DirectoryView() {
                                 {showAddFriendModal && (
                                     <AddFriendModal
                                         ref={addFriendModalRef}
-                                        avatar={friendInfo?.avatar ? buildServerUrl(friendInfo.avatar) : 'src/assets/images/defaultAvatar.jpg'}
+                                        avatar={friendInfo?.avatar ? buildServerUrl(friendInfo.avatar) : defaultAvatar}
                                         username={friendInfo?.username as string}
                                         wxid={friendInfo?.id.toString() as string}
                                         region={'中国'}
@@ -185,7 +186,7 @@ function DirectoryView() {
                             <>
                                 <DisplayItem
                                     id={''}
-                                    avatar={'src/assets/images/newFriend.png'}
+                                    avatar={newFriendIcon}
                                     title={'新朋友'}
                                     content={''}
                                     handleClick={handleClickNewFriend}
@@ -212,7 +213,7 @@ function DirectoryView() {
                                                 })}
                                                 avatar={friendInfo?.avatar 
                                                     ? buildServerUrl(friendInfo.avatar) 
-                                                    : 'src/assets/images/defaultAvatar.jpg'}
+                                                    : defaultAvatar}
                                             />
                                         );
                                     })}
@@ -234,7 +235,7 @@ function DirectoryView() {
                         }}
                         avatar={globalFriendInfoList[activeFriend?.friend_id as number]?.avatar 
                             ? buildServerUrl(globalFriendInfoList[activeFriend?.friend_id as number].avatar) 
-                            : 'src/assets/images/defaultAvatar.jpg'}
+                            : defaultAvatar}
                         username={globalFriendInfoList[activeFriend?.friend_id as number]?.username}
                         wxid={activeFriend?.friend_id.toString() as string} 
                         region="中国" 
@@ -258,7 +259,7 @@ function DirectoryView() {
                                             id={item} title={friendInfo?.username} content={''} 
                                             avatar={friendInfo?.avatar 
                                             ? buildServerUrl(friendInfo.avatar) 
-                                            : 'src/assets/images/defaultAvatar.jpg'} 
+                                            : defaultAvatar} 
                                             style={{width: '55px', height: '55px', backgroundColor: 'transparent'}}/>
                                             {/* 请求状态 */}
                                             <div className={directoryViewStyle.rightBox}>

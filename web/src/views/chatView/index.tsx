@@ -15,6 +15,7 @@ import FileUploader from '@/globalComponents/fileUploader';
 import { useVoiceCall } from '@/hooks/useVoiceCall';
 import type { CallUser } from '@/globalType/call';
 import { buildServerUrl } from '@/utils/runtime';
+import { defaultAvatar } from '@/assets/images';
 import type { FileItem } from '@/utils/upload';
 function ChatView() {
 
@@ -207,9 +208,9 @@ function ChatView() {
             id: friendId,
             username: friendInfo.username,
             nickname: friendInfo.username,
-            avatar: friendInfo.avatar 
-                ? buildServerUrl(friendInfo.avatar) 
-                : 'src/assets/images/defaultAvatar.jpg',
+            avatar: friendInfo.avatar
+                ? buildServerUrl(friendInfo.avatar)
+                : defaultAvatar,
         };
 
         initiateCall(targetUser);
@@ -294,9 +295,9 @@ function ChatView() {
                             <DisplayItem
                                 key={item.id}
                                 id={item.id}
-                                avatar={globalFriendInfoList[parseConversationId(item.id)]?.avatar 
-                                    ? buildServerUrl(globalFriendInfoList[parseConversationId(item.id)]?.avatar) 
-                                    : 'src/assets/images/defaultAvatar.jpg'}
+                                avatar={globalFriendInfoList[parseConversationId(item.id)]?.avatar
+                                    ? buildServerUrl(globalFriendInfoList[parseConversationId(item.id)]?.avatar)
+                                    : defaultAvatar}
                                 title={globalFriendInfoList[parseConversationId(item.id)]?.username}
                                 content={lastMessages[item.id]?.content || ''}
                                 isActive={activeConversation === item.id}

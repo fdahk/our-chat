@@ -9,6 +9,7 @@ import type { RootState } from '@/store/rootStore';
 import useGlobalMessageListener from '@/hooks/useGlobalMessageListener';
 import VoiceCallModal from '@/globalComponents/voiceCallModal';
 import { buildServerUrl } from '@/utils/runtime';
+import { defaultAvatar } from '@/assets/images';
 
 function Layout() {
     const dispatch = useDispatch();
@@ -88,7 +89,7 @@ function Layout() {
             <div className={layoutStyle.left_nav}>
                 {/* 头像 */}
                 <div className={layoutStyle.left_nav_item_avatar}>
-                        <img src={user.avatar ? buildServerUrl(user.avatar) : 'src/assets/images/defaultAvatar.jpg'} alt="" />
+                        <img src={user.avatar ? buildServerUrl(user.avatar) : defaultAvatar} alt="" />
                 </div>
                 {/* 选项 */}
                 {

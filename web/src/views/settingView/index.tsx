@@ -8,6 +8,7 @@ import { updateProfile } from '@/store/userStore';
 import CropperModal from '@/globalComponents/cropperModal/cropperModal'; 
 import { updateUserInfo } from '@/globalApi/userApi';
 import { buildServerUrl } from '@/utils/runtime';
+import { defaultAvatar } from '@/assets/images';
 import type { RootState } from '@/store/rootStore';
 function SettingView({ onClose }: { onClose: () => void }) {
     const [loading, setLoading] = useState(false);
@@ -78,7 +79,7 @@ function SettingView({ onClose }: { onClose: () => void }) {
             <div className={settingStyle.setting_view_body}>
                 {/* 左侧 */}
                 <div className={settingStyle.setting_view_left}>
-                    <AntdImage width={130} src={user.avatar ? buildServerUrl(user.avatar) : 'src/assets/images/defaultAvatar.jpg'}  />
+                    <AntdImage width={130} src={user.avatar ? buildServerUrl(user.avatar) : defaultAvatar}  />
                     {/* 事件处理函数（如 onChange、onClick 等）默认传入事件对象（event） */}
                     <input ref={inputRef} type="file" style={{display: 'none'}} accept="image/png, image/jpeg" onChange={handleChange} /> 
                     
