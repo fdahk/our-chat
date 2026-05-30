@@ -1,0 +1,41 @@
+name: perf
+
+# 前端性能防回归：每个改到 web/ 的 PR、以及合入 main 时跑一遍 lab 三层中的前两层
+# （体积预算 size-limit + Lighthouse CI 体检+断言）。第三层 RUM 是线上 field 数据，不在 CI。
+on:
+  pull_request:
+    paths:
+      - 'web/**'
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+
+jobs:
+  perf:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm build
+
+      # 第一层：包体积闸，超预算即失败（秒级、最便宜）
+      - run: pnpm size
+
+      # 第二层：Lighthouse 自动 collect→assert→upload，PR 上留报告链接
+      - run: pnpm lhci
