@@ -45,9 +45,12 @@ const chatSlice = createSlice({
       state.globalMessages = action.payload;
     },
     addGlobalMessage(state, action: PayloadAction<Message>) {
-      // state.globalMessages[action.payload.conversationId].push(action.payload); //将新消息添加到全局消息数组
-      state.globalMessages.push(action.payload);
-      // console.log("添加全局消息"); // 调试
+      // globalMessages 是「当前打开会话」的消息数组（点开会话时由 initGlobalMessages 整体替换）。
+      // 故收到 socket 新消息时，只有属于当前会话的才追加；其他会话的消息只更新 lastMessages 预览，
+      // 不能串进当前窗口。否则看着 A 会话时，B 来的消息会错误地显示在 A 里。
+      if (action.payload.conversationId === state.activeConversation) {
+        state.globalMessages.push(action.payload);
+      }
     },
     // 会话管理
     initGlobalUserConversations(state, action: PayloadAction<UserConversation[]>) {
