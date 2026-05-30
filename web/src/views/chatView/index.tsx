@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import type { Conversation } from '@/globalType/chat';
 import type { Message } from '@/globalType/message';
-import { Input, Button, List } from 'antd';
+import { List } from 'antd';
 import chatViewStyle from './style.module.scss';
 import SocketService from '@/utils/socket';
 import { getConversationMessages } from '@/globalApi/chatApi';
@@ -17,21 +17,13 @@ import type { CallUser } from '@/globalType/call';
 import { buildServerUrl } from '@/utils/runtime';
 import { defaultAvatar } from '@/assets/images';
 import type { FileItem } from '@/utils/upload';
+import MessageInput from './MessageInput';
 function ChatView() {
 
     const dispatch = useDispatch();
     const activeConversation = useSelector((state: RootState) => state.chat.activeConversation); // 当前会话id
     const messages = useSelector((state: RootState) => state.chat.globalMessages); //消息列表 注：数据结构为 { [conversationId: string]: Message[] , ... }
-    const [input, setInput] = useState(''); // 输入框内容
     const userId= useSelector((state: RootState) => state.user.id) as number; // 从redux中获取用户id
-    const inputAreaIcons = [
-        {label: '表情', icon: "icon-meh", method: "handleClickEmoji"},
-        {label: '文件', icon: "icon-folder", method: "handleClickFile"},
-        {label: '截图', icon: "icon-scissor", method: "handleClickScreenshot"},
-        {label: '聊天记录', icon: "icon-comment", method: "handleClickChatRecord"},
-       {label: '语音聊天', icon: "icon-phone", method: "handleClickVoice"},        
-        {label: '视频聊天', icon: "icon-videocameraadd", method: "handleClickVideo"},
-    ]
     // 注： RootState 类型是通过 ReturnType<typeof rootStore.getState> 推导出来的。
     // 但 redux-persist 的 persistReducer 会在 state 外层加上一些持久化相关的属性（如 _persist），
     // 导致类型变成 PersistPartial<RootState>，类型推断不再直接有 chat 属性(实际上能获取正确值，但类型推断报错)
@@ -76,14 +68,13 @@ function ChatView() {
         }
     }, [messages, activeConversation]);
 
-    // 发送消息
-    const sendMessage = () => {
-        if (!input.trim() || !activeConversation) return;
-        // console.log('activeConv', activeConv); // 调试
+    // 发送消息（文本由输入组件传入，草稿态不再驻留本组件）
+    const sendMessage = (text: string) => {
+        if (!text.trim() || !activeConversation) return;
         const msg:Message = {
             conversationId: activeConversation,
             senderId: userId,
-            content: input,
+            content: text,
             type: 'text',
             status: 'sent',
             mentions: [],
@@ -96,19 +87,7 @@ function ChatView() {
             timestamp: new Date().toISOString(),
         };
         socket.emit('sendMessage', msg);
-        // setMessages((prev) => [...prev, { ...msg, self: true } as Message]); // 由socket监听receiveMessage事件来更新消息列表，这里不更新
-        setInput('');
-    };
-    // 处理键盘事件
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
-        else if (e.key === 'Enter' && e.shiftKey) {
-            e.preventDefault();
-            setInput(prev => prev + '\n');
-        }
+        // 由 socket 监听 receiveMessage 事件来更新消息列表，这里不更新
     };
     const handleSearchChange = (value: string) => {
         console.log(value);
@@ -325,43 +304,8 @@ function ChatView() {
                                 }}
                             />
                         </div>
-                        {/* 输入框 */}
-                        <div className={chatViewStyle.input_area_container}>
-                            {/* header */}
-                            <div className={chatViewStyle.input_area_header}>
-                                {/* 左侧 */}
-                                <div className={chatViewStyle.input_area_header_left}>
-                                {inputAreaIcons.slice(0, 4).map((item) => (
-                                        <i key={item.label} className={`iconfont ${item.icon} ${chatViewStyle.input_area_icon}`} onClick={() => handleClickHeaderIcon(item.method)}></i>
-                                ))}
-                                </div>
-                                {/* 右侧 */}
-                                <div className={chatViewStyle.input_area_header_right}>
-                                {inputAreaIcons.slice(4, 6).map((item) => (
-                                        <i key={item.label} className={`iconfont ${item.icon} ${chatViewStyle.input_area_icon}`} onClick={() => handleClickHeaderIcon(item.method)}></i>
-                                ))}
-                                </div>
-                            </div>
-                            {/* body */}
-                            <div className={chatViewStyle.input_area_body}>
-                                <Input.TextArea
-                                    value={input}
-                                    onChange={e => setInput(e.target.value)}
-                                    onKeyDown={handleKeyDown}
-                                    autoSize={{ minRows: 2, maxRows: 4 }}
-                                    placeholder="请输入消息"
-                                    className={chatViewStyle.input_textarea}
-                                    style={{border: "none"}}
-                                />
-
-                            </div>
-                            <div className={chatViewStyle.input_area_footer}>
-                                <Button type="primary" onClick={sendMessage} className={chatViewStyle.send_button}>
-                                    发送
-                                </Button>
-                            </div>
-
-                        </div>
+                        {/* 输入框（独立组件，隔离高频草稿态的重渲染） */}
+                        <MessageInput onSend={sendMessage} onHeaderIconClick={handleClickHeaderIcon} />
                     </>
                 ) : (
                     <div className={chatViewStyle.no_chat}>请选择一个会话</div>
