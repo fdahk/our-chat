@@ -2,9 +2,12 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react-swc'
 import mkcert from 'vite-plugin-mkcert'
 import path from 'path' // 注： Vite 配置文件在 Node.js 环境下运行，依赖需安装 @types/node，确保TypeScript识别 path 模块的类型声明
+import fs from 'fs'
 // https://vite.dev/config/
 
-const mkcertPath = path.join(
+// Windows 经 WinGet 安装 mkcert 的固定路径。仅当它确实存在时才显式指定，
+// 否则（macOS/Linux，或未装在该位置）交给插件自行定位/下载 mkcert，保证跨平台都能起 HTTPS dev。
+const winMkcertPath = path.join(
   process.env.LOCALAPPDATA || '',
   'Microsoft',
   'WinGet',
@@ -12,6 +15,7 @@ const mkcertPath = path.join(
   'FiloSottile.mkcert_Microsoft.Winget.Source_8wekyb3d8bbwe',
   'mkcert.exe'
 )
+const mkcertOptions = fs.existsSync(winMkcertPath) ? { mkcertPath: winMkcertPath } : {}
 
 // 用函数形式拿到 command:仅在生产构建(vite build)时移除 console/debugger,
 // 开发(vite serve)时保留,不影响本地调试。
@@ -22,9 +26,7 @@ export default defineConfig(({ command }) => ({
   },
   plugins: [
     react(),
-    mkcert({
-      mkcertPath,
-    }),
+    mkcert(mkcertOptions),
   ],
   server: {
     host: '0.0.0.0',
