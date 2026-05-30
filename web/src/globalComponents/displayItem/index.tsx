@@ -1,4 +1,5 @@
 // 导入样式模块，使用CSS Modules实现局部作用域样式
+import { memo } from 'react';
 import styles from './style.module.scss';
 
 /**
@@ -56,4 +57,7 @@ function DisplayItem({ id, avatar, title, content, isActive, handleClick = () =>
     )
 }
 
-export default DisplayItem;
+// memo：props 全是基本类型（字符串/布尔），浅比较按值即可命中。
+// 这样会话列表在父组件因「新消息到达」重渲染时，只有 content 真正变化的那一行会重渲染，
+// 其余行被跳过。生效前提是父组件传入的 handleClick 引用稳定（ChatView 已用 useCallback 固定）。
+export default memo(DisplayItem);

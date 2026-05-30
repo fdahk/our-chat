@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import type { Conversation } from '@/globalType/chat';
 import type { Message } from '@/globalType/message';
@@ -44,13 +44,14 @@ function ChatView() {
     // }, []); 
 
     // 获取会话消息（懒加载）
-    const handleClickConversation = async (conversationId: string) => {
+    // useCallback 固定引用：作为 prop 传给 memo 化的 DisplayItem，引用稳定 memo 才不会失效。
+    const handleClickConversation = useCallback(async (conversationId: string) => {
         dispatch(initActiveConversation(conversationId));
         await getConversationMessages(conversationId).then((res: ApiResponse<Message[]>) => {
             // dispatch(initGlobalMessages(res.data ?? {})); // 注： 数据结构为 { [conversationId: string]: Message[] , ... }
             dispatch(initGlobalMessages(res.data ?? []));
         });
-    };
+    }, [dispatch]);
     // 解析会话id，获取好友id
     const parseConversationId = (conversationId: string) => {
         const tp = conversationId.split('_');
