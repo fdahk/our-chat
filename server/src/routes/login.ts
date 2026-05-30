@@ -1,7 +1,8 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
-import { mySql } from '../dataBase/mySql.js';
+import type { RowDataPacket } from 'mysql2';
+import { mySql } from '../database/mySql.js';
 import { config } from '../config/config.js';
 import {
   setAuthCookies,
@@ -17,7 +18,7 @@ const router = express.Router();
 router.post('/login', async (req, res) => {
   const { username, password, remember } = req.body;
   // 用户名登录，后期再来扩展
-  const [rows] = await mySql.execute(
+  const [rows] = await mySql.execute<RowDataPacket[]>(
     'SELECT * FROM users WHERE username=? LIMIT 1',
     [username]
   );
@@ -30,7 +31,9 @@ router.post('/login', async (req, res) => {
   // 勾选记住我签发 7 天，否则 1 小时；cookie maxAge 与之对齐
   const expiresIn = remember ? config.jwtExpiresIn : '1h';
   const maxAge = remember ? REMEMBER_MAX_AGE : SESSION_MAX_AGE;
-  const token = jwt.sign({ id: user.id, username: user.username }, config.jwtSecret, { expiresIn });
+  const token = jwt.sign({ id: user.id, username: user.username }, config.jwtSecret, {
+    expiresIn,
+  } as jwt.SignOptions);
 
   // token 写入 HttpOnly cookie（前端 JS 读不到），并下发可读的 csrf token
   const csrfToken = generateCsrfToken();
@@ -57,11 +60,11 @@ router.post('/refresh', async (req, res) => {
     }
 
     // 验证token（即使过期也要能解析出用户信息）
-    let decoded;
+    let decoded: any;
     try {
       decoded = jwt.verify(token, config.jwtSecret);
     } catch (error) {
-      if (error.name === 'TokenExpiredError') {
+      if (error instanceof jwt.TokenExpiredError) {
         decoded = jwt.decode(token);
       } else {
         return res.status(401).json({ success: false, message: 'Token无效' });
@@ -73,7 +76,7 @@ router.post('/refresh', async (req, res) => {
     }
 
     // 验证用户是否仍然存在
-    const [rows] = await mySql.execute(
+    const [rows] = await mySql.execute<RowDataPacket[]>(
       'SELECT id, username, email, nickname, avatar, status FROM users WHERE id = ? AND status != "deleted"',
       [decoded.id]
     );
@@ -100,7 +103,7 @@ router.post('/refresh', async (req, res) => {
 });
 
 // 登出：清除鉴权 cookie
-router.post('/logout', (req, res) => {
+router.post('/logout', (_req, res) => {
   clearAuthCookies(res);
   res.json({ success: true, message: '已登出' });
 });
