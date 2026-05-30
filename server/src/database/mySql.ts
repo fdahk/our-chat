@@ -1,18 +1,18 @@
 import mysql from 'mysql2/promise';
 
 export const mySql = mysql.createPool({
-    host: 'localhost',
-    user: 'root',
-    password: 'Tj@19970924',
-    database: 'our_chat',
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
+  host: process.env.MYSQL_HOST || 'localhost',
+  user: process.env.MYSQL_USER || 'root',
+  password: process.env.MYSQL_PASSWORD || 'Tj@19970924',
+  database: process.env.MYSQL_DATABASE || 'our_chat',
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
 });
 
 // 初始化数据库
-export const init = async () => {
-    const sql = `
+export const init = async (): Promise<void> => {
+  const sql = `
         -- 使用数据库
         use our_chat;
 
@@ -108,13 +108,12 @@ export const init = async () => {
             FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
             FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='消息引用表';
-    `
-    try {
-        await mySql.execute(sql)
-        console.log('MySQL 数据库结构初始化完成')
-    } catch (error) {
-        console.error('数据库初始化失败:', error)
-        throw error
-    }
+    `;
+  try {
+    await mySql.execute(sql);
+    console.log('MySQL 数据库结构初始化完成');
+  } catch (error) {
+    console.error('数据库初始化失败:', error);
+    throw error;
+  }
 };
-
