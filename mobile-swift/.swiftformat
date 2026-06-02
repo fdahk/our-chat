@@ -1,0 +1,14 @@
+--swiftversion 6.0
+--indent 4
+--maxwidth 120
+--wraparguments before-first
+--wrapcollections before-first
+--wrapparameters before-first
+--wrapreturntype if-multiline
+--commas inline
+--trimwhitespace always
+--stripunusedargs closure-only
+--self remove
+--header strip
+--ifdef no-indent
+--exclude Derived,.build,DerivedData,Tuist/Dependencies

@@ -1,0 +1,22 @@
+# Tuist
+Derived/
+*.xcodeproj/
+*.xcworkspace/
+.build/
+
+# SPM
+.swiftpm/
+Package.resolved
+
+# Xcode
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcscheme
+
+# macOS
+.DS_Store
+
+# Tuist 缓存(随机 hash 编译产物)
+.tuist-bin/
+.tuist-version
