@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# OAuth 私钥永不进 git
+keys/*.pem
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

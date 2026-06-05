@@ -1,11 +1,27 @@
 import app from './app.js';
 import { connectDb } from './database/mongoDB.js';
 import { initSocket } from './utils/socket.js';
+import {
+  loadKeyStore,
+  mountOAuth,
+  readIssuerConfigFromEnv,
+  readKeyOptionsFromEnv,
+} from './oauth/index.js';
 
-const PORT = process.env.PORT || 3007; //获取端口
+const PORT = process.env.PORT || 3007;
 
 async function start(): Promise<void> {
   await connectDb();
+
+  // OAuth IdP 模块:启动时加载 RSA 密钥,失败立即 fail-fast。
+  // 端点(/.well-known/* + /oauth/*)在 listen 前挂上,确保不会出现
+  // "service 启动了但 IdP 暂未就绪"的窗口
+  const keyStore = await loadKeyStore(readKeyOptionsFromEnv());
+  const issuerConfig = readIssuerConfigFromEnv();
+  mountOAuth(app, keyStore, issuerConfig);
+  console.log(
+    `OAuth IdP ready: issuer=${issuerConfig.issuer}, active_kid=${keyStore.active.kid}`,
+  );
 
   const server = app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
@@ -14,7 +30,7 @@ async function start(): Promise<void> {
   server.on('error', (err: NodeJS.ErrnoException) => {
     if (err.code === 'EADDRINUSE') {
       console.error(
-        `端口 ${PORT} 已被占用（EADDRINUSE）。请结束占用该端口的进程或设置环境变量 PORT 使用其他端口。`
+        `端口 ${PORT} 已被占用(EADDRINUSE)。请结束占用该端口的进程或设置环境变量 PORT 使用其他端口。`,
       );
     } else {
       console.error('HTTP 服务器 listen 错误:', err);
