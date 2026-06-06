@@ -45,6 +45,13 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // 注：Node里所有相对路径，都是基于"进程启动时的工作目录"来解析的，不是基于当前文件的目录
 app.use('/user/uploads', express.static('../uploads'));
 
+// Health 端点:容器编排健康检查 / load balancer 探针用
+// 简单返回 200,不查 DB(避免 DB 抖动时 LB 把所有副本踢下线)。
+// 如需 readiness(查 DB 是否可达),可另加 /ready 路由
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'ok', uptime: process.uptime() });
+});
+
 // 路由
 app.use('/api', registerRouter);
 app.use('/api', loginRouter);

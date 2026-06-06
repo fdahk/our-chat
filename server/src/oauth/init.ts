@@ -9,7 +9,8 @@ import { prisma } from '../database/prisma.js';
 // 失败抛错 → server 启动 fail-fast。
 export async function applyPendingMigrations(): Promise<void> {
   try {
-    execSync('pnpm prisma migrate deploy', {
+    // 用 npx 而非 pnpm,确保生产容器(只有 node + node_modules,无 pnpm)也能跑
+    execSync('npx --no-install prisma migrate deploy', {
       stdio: 'pipe',
       env: process.env,
     });

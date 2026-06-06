@@ -1,0 +1,30 @@
+# docker-compose dev override:bind mount + 热重载 + dev Dockerfile stage
+#
+# 用法:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# 或:
+#   pnpm docker:dev
+
+services:
+  server:
+    build:
+      target: dev
+    environment:
+      NODE_ENV: development
+    volumes:
+      # 源码挂载,改代码 tsx watch 立即重启
+      - ./src:/app/src
+      - ./prisma:/app/prisma
+      - ./test:/app/test
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - ./eslint.config.js:/app/eslint.config.js:ro
+      - ./vitest.config.ts:/app/vitest.config.ts:ro
+      - ./vitest.setup.ts:/app/vitest.setup.ts:ro
+      - ./keys:/app/keys:ro
+      # 内部目录用 named volume 避免被宿主机 src/generated 覆盖
+      - server_generated:/app/src/generated
+      - server_node_modules:/app/node_modules
+
+volumes:
+  server_generated:
+  server_node_modules:

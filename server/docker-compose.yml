@@ -1,0 +1,91 @@
+# 完整生产风格 stack:PostgreSQL + our-chat server
+#
+# 用法:
+#   docker compose up -d                         生产风格(用 runner image,只读)
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#                                                dev 模式:bind mount + tsx watch 热重载
+#   docker compose down                          停所有(保留数据卷)
+#   docker compose down -v                       全清(含数据卷,下次起会重建表)
+#   docker compose logs -f server                看应用日志
+#   docker compose --profile tools up -d         附带启 pgAdmin(http://localhost:5050)
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: our-chat-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-our_chat}
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-our_chat}']
+      interval: 3s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
+    shm_size: '512mb'
+
+  server:
+    image: ${SERVER_IMAGE:-our-chat-server:local}
+    build:
+      context: .
+      target: runner
+    container_name: our-chat-server
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3007
+      # 容器内 DB 连接用 service 名(docker 内置 DNS 解析)
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-our_chat}
+      JWT_SECRET: ${JWT_SECRET:?需在 .env 设置 JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      CLIENT_ORIGINS: ${CLIENT_ORIGINS:-http://localhost:5173}
+      OAUTH_ISSUER_BASE_URL: ${OAUTH_ISSUER_BASE_URL:-http://localhost:3007}
+      OAUTH_ACTIVE_KID: ${OAUTH_ACTIVE_KID:-dev}
+      OAUTH_RETIRED_KIDS: ${OAUTH_RETIRED_KIDS:-}
+      OAUTH_PRIVATE_KEY_FILE: /app/keys/oauth-private-${OAUTH_ACTIVE_KID:-dev}.pem
+      OAUTH_AT_TTL_SEC: ${OAUTH_AT_TTL_SEC:-900}
+      OAUTH_RT_TTL_SEC: ${OAUTH_RT_TTL_SEC:-2592000}
+      OAUTH_ID_TTL_SEC: ${OAUTH_ID_TTL_SEC:-900}
+      OAUTH_CODE_TTL_SEC: ${OAUTH_CODE_TTL_SEC:-60}
+      OAUTH_WEB_REDIRECT_URI: ${OAUTH_WEB_REDIRECT_URI:-http://localhost:5173/oauth/callback}
+    ports:
+      - '${PORT:-3007}:3007'
+    volumes:
+      # 私钥目录只读挂载;生产改用 secret volume
+      - ./keys:/app/keys:ro
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:3007/health']
+      interval: 10s
+      timeout: 3s
+      start_period: 20s
+      retries: 3
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: our-chat-pgadmin
+    restart: unless-stopped
+    profiles: ['tools']
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@local
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - '5050:80'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+    name: our-chat-postgres-data
