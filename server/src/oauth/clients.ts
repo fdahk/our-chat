@@ -1,53 +1,31 @@
-// oauth_clients 表查询 + client_secret 校验
+// oauth_clients 查询 + client_secret 校验
 
 import bcrypt from 'bcrypt';
-import type { RowDataPacket } from 'mysql2';
-import { mySql } from '../database/mySql.js';
+import { prisma } from '../database/prisma.js';
 import { OAuthError } from './errors.js';
 import type { GrantType, OAuthClient } from './types.js';
 
-interface ClientRow extends RowDataPacket {
-  client_id: string;
-  client_name: string;
-  client_type: 'public' | 'confidential';
-  client_secret_hash: string | null;
-  redirect_uris: string | string[];          // mysql2 可能返回字符串或已 parse
-  allowed_scopes: string | string[];
-  allowed_grant_types: string | string[];
-  token_lifetime_sec: number;
-  refresh_lifetime_sec: number;
-  require_pkce: number;
-  disabled: number;
-}
+type ClientRow = Awaited<ReturnType<typeof prisma.oAuthClient.findUnique>>;
 
-function parseJsonField<T>(v: unknown): T {
-  if (typeof v === 'string') return JSON.parse(v) as T;
-  return v as T;
-}
-
-function rowToClient(row: ClientRow): OAuthClient {
+function rowToClient(row: NonNullable<ClientRow>): OAuthClient {
   return {
-    client_id: row.client_id,
-    client_name: row.client_name,
-    client_type: row.client_type,
-    client_secret_hash: row.client_secret_hash,
-    redirect_uris: parseJsonField<string[]>(row.redirect_uris),
-    allowed_scopes: parseJsonField<string[]>(row.allowed_scopes),
-    allowed_grant_types: parseJsonField<GrantType[]>(row.allowed_grant_types),
-    token_lifetime_sec: row.token_lifetime_sec,
-    refresh_lifetime_sec: row.refresh_lifetime_sec,
-    require_pkce: row.require_pkce === 1,
-    disabled: row.disabled === 1,
+    client_id: row.clientId,
+    client_name: row.clientName,
+    client_type: row.clientType,
+    client_secret_hash: row.clientSecretHash,
+    redirect_uris: row.redirectUris as string[],
+    allowed_scopes: row.allowedScopes as string[],
+    allowed_grant_types: row.allowedGrantTypes as GrantType[],
+    token_lifetime_sec: row.tokenLifetimeSec,
+    refresh_lifetime_sec: row.refreshLifetimeSec,
+    require_pkce: row.requirePkce,
+    disabled: row.disabled,
   };
 }
 
 export async function findClient(clientId: string): Promise<OAuthClient | null> {
-  const [rows] = await mySql.execute<ClientRow[]>(
-    'SELECT * FROM oauth_clients WHERE client_id = ? LIMIT 1',
-    [clientId],
-  );
-  if (rows.length === 0) return null;
-  return rowToClient(rows[0]);
+  const row = await prisma.oAuthClient.findUnique({ where: { clientId } });
+  return row ? rowToClient(row) : null;
 }
 
 export async function requireActiveClient(clientId: string | undefined): Promise<OAuthClient> {

@@ -2,8 +2,7 @@
 // 同时处理 authorization_code 和 refresh_token 两种 grant
 
 import type { Request, RequestHandler, Response } from 'express';
-import type { RowDataPacket } from 'mysql2';
-import { mySql } from '../database/mySql.js';
+import { prisma } from '../database/prisma.js';
 import { audit, reqContext } from './audit.js';
 import {
   assertGrantAllowed,
@@ -296,8 +295,8 @@ async function handleRefreshToken(
   res.json(resp);
 }
 
-// 用事务保证 rotation + insert 原子;并发情况下旧 RT 的 rotated_to 已被先来的填上,
-// UPDATE 影响行数 = 0,本次失败回滚,reuse 检测路径上触发整 family invalidate
+// 事务保证 rotation + insert 原子。并发情况下,新 INSERT 唯一性约束没冲突,
+// 但 UPDATE 的 WHERE rotatedTo IS NULL 会命中已抢的状态 → 影响 0 → 抛错回滚清理 INSERT
 async function tryRotateInTransaction(input: {
   oldJti: string;
   newRt: {
@@ -309,58 +308,36 @@ async function tryRotateInTransaction(input: {
     expiresAt: Date;
   };
 }): Promise<boolean> {
-  const conn = await mySql.getConnection();
+  const SENTINEL = Symbol('rotate-failed');
   try {
-    await conn.beginTransaction();
-    await conn.execute(
-      `INSERT INTO oauth_refresh_tokens (jti, family_id, client_id, user_id, scope, expires_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [
-        input.newRt.jti,
-        input.newRt.family_id,
-        input.newRt.client_id,
-        input.newRt.user_id,
-        input.newRt.scope,
-        input.newRt.expiresAt,
-      ],
-    );
-    // 使用独立 mysql2 API 拿 affected rows
-    const [updRes] = await conn.execute(
-      `UPDATE oauth_refresh_tokens
-          SET rotated_to = ?, rotated_at = NOW(), revoke_reason = 'rotation'
-        WHERE jti = ? AND rotated_to IS NULL AND revoked = 0`,
-      [input.newRt.jti, input.oldJti],
-    );
-    const affected = (updRes as { affectedRows: number }).affectedRows;
-    if (affected !== 1) {
-      await conn.rollback();
-      // 委托给上层调用 rotateRefreshToken / invalidateFamily(避免事务里产生副作用)
-      // 这里返回 false,上层处理
-      // 同时清理刚刚 INSERT 的孤儿
-      await mySql.execute('DELETE FROM oauth_refresh_tokens WHERE jti = ?', [input.newRt.jti]);
-      return false;
-    }
-    await conn.commit();
-    // 防止 lint 警告未使用
-    void rotateRefreshToken;
+    await prisma.$transaction(async (tx) => {
+      await tx.oAuthRefreshToken.create({
+        data: {
+          jti: input.newRt.jti,
+          familyId: input.newRt.family_id,
+          clientId: input.newRt.client_id,
+          userId: BigInt(input.newRt.user_id),
+          scope: input.newRt.scope,
+          expiresAt: input.newRt.expiresAt,
+        },
+      });
+      const upd = await tx.oAuthRefreshToken.updateMany({
+        where: { jti: input.oldJti, rotatedTo: null, revoked: false },
+        data: { rotatedTo: input.newRt.jti, rotatedAt: new Date(), revokeReason: 'rotation' },
+      });
+      if (upd.count !== 1) {
+        // 抛 sentinel 触发事务回滚,新 INSERT 自动撤销;上层把 false 返回触发 family invalidate
+        throw SENTINEL;
+      }
+    });
     return true;
   } catch (e) {
-    await conn.rollback().catch(() => undefined);
+    if (e === SENTINEL) return false;
     throw e;
-  } finally {
-    conn.release();
   }
 }
 
 // 取用户档案(给 id_token / userinfo 用)
-interface UserRow extends RowDataPacket {
-  id: number;
-  username: string | null;
-  nickname: string | null;
-  email: string | null;
-  avatar: string | null;
-}
-
 async function loadProfile(userId: number): Promise<{
   name: string | null;
   preferred_username: string | null;
@@ -368,11 +345,10 @@ async function loadProfile(userId: number): Promise<{
   email_verified: boolean;
   picture: string | null;
 }> {
-  const [rows] = await mySql.execute<UserRow[]>(
-    'SELECT id, username, nickname, email, avatar FROM users WHERE id = ? LIMIT 1',
-    [userId],
-  );
-  const row = rows[0];
+  const row = await prisma.user.findUnique({
+    where: { id: BigInt(userId) },
+    select: { username: true, nickname: true, email: true, avatar: true },
+  });
   return {
     name: row?.nickname ?? null,
     preferred_username: row?.username ?? null,

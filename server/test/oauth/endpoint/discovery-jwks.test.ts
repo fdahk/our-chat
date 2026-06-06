@@ -1,7 +1,11 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { resolve } from 'node:path';
 import express from 'express';
 import request from 'supertest';
+
+// discovery/jwks 端点不查 DB,但 oauth/index.js 传递性 import prisma,需 stub 避免真实例化
+vi.mock('../../../src/database/prisma.js', () => ({ prisma: {} }));
+
 import { mountOAuth, loadKeyStore, type IssuerConfig } from '../../../src/oauth/index.js';
 
 const FIXTURE = resolve(__dirname, '../fixtures/test-rsa-private.pem');

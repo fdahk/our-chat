@@ -1,40 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('../../../src/database/mySql.js', () => ({
-  mySql: { execute: vi.fn() },
+vi.mock('../../../src/database/prisma.js', () => ({
+  prisma: {
+    oAuthClient: { upsert: vi.fn() },
+  },
 }));
 
-import { mySql } from '../../../src/database/mySql.js';
-import {
-  DEFAULT_WEB_CLIENT,
-  initOAuthSchema,
-  seedDefaultClient,
-} from '../../../src/oauth/init.js';
+import { prisma } from '../../../src/database/prisma.js';
+import { DEFAULT_WEB_CLIENT, seedDefaultClient } from '../../../src/oauth/init.js';
 
-const exec = mySql.execute as unknown as ReturnType<typeof vi.fn>;
+const upsert = prisma.oAuthClient.upsert as unknown as ReturnType<typeof vi.fn>;
 
-beforeEach(() => exec.mockReset());
-
-describe('initOAuthSchema', () => {
-  it('依次执行三条 CREATE TABLE IF NOT EXISTS', async () => {
-    exec.mockResolvedValue([{ affectedRows: 0 }, []]);
-    await initOAuthSchema();
-    expect(exec).toHaveBeenCalledTimes(3);
-    const stmts = exec.mock.calls.map((c) => c[0] as string);
-    expect(stmts[0]).toMatch(/CREATE TABLE IF NOT EXISTS oauth_clients/);
-    expect(stmts[1]).toMatch(/CREATE TABLE IF NOT EXISTS oauth_codes/);
-    expect(stmts[2]).toMatch(/CREATE TABLE IF NOT EXISTS oauth_refresh_tokens/);
-  });
-
-  it('每条 DDL 都是单条语句(避免 mysql2 多语句风险)', async () => {
-    exec.mockResolvedValue([{ affectedRows: 0 }, []]);
-    await initOAuthSchema();
-    for (const [stmt] of exec.mock.calls) {
-      const trailing = (stmt as string).split(';').map((s) => s.trim()).filter(Boolean);
-      expect(trailing).toHaveLength(1);
-    }
-  });
-});
+beforeEach(() => upsert.mockReset());
 
 describe('seedDefaultClient', () => {
   it('默认 client 配置:public + S256 + 完整 scope', () => {
@@ -48,19 +25,19 @@ describe('seedDefaultClient', () => {
     ]);
   });
 
-  it('INSERT ... ON DUPLICATE KEY UPDATE 允许 dev 重启', async () => {
-    exec.mockResolvedValue([{ affectedRows: 1 }, []]);
+  it('upsert(create + update)允许 dev 重启更新 env 配置', async () => {
+    upsert.mockResolvedValue({});
     await seedDefaultClient();
-    const [sql, params] = exec.mock.calls[0];
-    expect(sql).toMatch(/INSERT INTO oauth_clients/);
-    expect(sql).toMatch(/ON DUPLICATE KEY UPDATE/);
-    expect(params).toContain('our-chat-web');
-    // JSON 字段必须 CAST 否则 MySQL 会把字符串当 VARCHAR
-    expect(sql).toMatch(/CAST\(\? AS JSON\)/);
+    const arg = upsert.mock.calls[0][0];
+    expect(arg.where.clientId).toBe('our-chat-web');
+    expect(arg.create.clientType).toBe('public');
+    expect(arg.create.clientId).toBe('our-chat-web');
+    expect(arg.update.redirectUris).toBeDefined();
+    expect(arg.update.allowedScopes).toEqual(DEFAULT_WEB_CLIENT.allowed_scopes);
   });
 
   it('接受自定义 client 参数', async () => {
-    exec.mockResolvedValue([{ affectedRows: 1 }, []]);
+    upsert.mockResolvedValue({});
     await seedDefaultClient({
       client_id: 'custom',
       client_name: 'C',
@@ -69,8 +46,8 @@ describe('seedDefaultClient', () => {
       allowed_scopes: ['openid'],
       allowed_grant_types: ['authorization_code'],
     });
-    const [, params] = exec.mock.calls[0];
-    expect(params).toContain('custom');
-    expect(params).toContain('confidential');
+    const arg = upsert.mock.calls[0][0];
+    expect(arg.where.clientId).toBe('custom');
+    expect(arg.create.clientType).toBe('confidential');
   });
 });

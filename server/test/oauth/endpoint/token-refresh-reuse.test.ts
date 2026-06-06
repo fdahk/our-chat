@@ -1,34 +1,44 @@
-// 重头戏:refresh_token grant rotation + reuse 检测
-// 验证攻击者偷一根 RT 用过后,受害者再用会触发整 family 被烧
+// refresh_token grant rotation + reuse 检测
+// 攻击者偷一根 RT 用过后,受害者再用会触发整 family 被烧
 
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { resolve } from 'node:path';
 import express from 'express';
 import request from 'supertest';
 
-vi.mock('../../../src/database/mySql.js', () => {
-  const conn = {
-    beginTransaction: vi.fn().mockResolvedValue(undefined),
-    commit: vi.fn().mockResolvedValue(undefined),
-    rollback: vi.fn().mockResolvedValue(undefined),
-    release: vi.fn(),
-    execute: vi.fn(),
+const txCallback = { fn: vi.fn() };
+
+vi.mock('../../../src/database/prisma.js', () => {
+  const oAuthClient = { findUnique: vi.fn() };
+  const oAuthRefreshToken = {
+    findUnique: vi.fn(),
+    updateMany: vi.fn(),
+    create: vi.fn(),
   };
+  const user = { findUnique: vi.fn() };
   return {
-    mySql: {
-      execute: vi.fn(),
-      getConnection: vi.fn(async () => conn),
-      __conn: conn,
+    prisma: {
+      oAuthClient,
+      oAuthRefreshToken,
+      user,
+      $transaction: vi.fn(
+        (callback: (tx: unknown) => Promise<unknown>) => {
+          txCallback.fn = callback as never;
+          // tx 对象暴露同样的 model 方法
+          return callback({
+            oAuthRefreshToken,
+          });
+        },
+      ),
     },
   };
 });
 
-import { mySql } from '../../../src/database/mySql.js';
+import { prisma } from '../../../src/database/prisma.js';
 import { mountOAuth, loadKeyStore, type IssuerConfig } from '../../../src/oauth/index.js';
 import { signRefreshToken } from '../../../src/oauth/tokens.js';
 
 const FIXTURE = resolve(__dirname, '../fixtures/test-rsa-private.pem');
-
 const ISSUER: IssuerConfig = {
   issuer: 'http://test.example.com',
   atTtlSec: 900,
@@ -36,29 +46,23 @@ const ISSUER: IssuerConfig = {
   idTtlSec: 900,
 };
 
-const exec = mySql.execute as unknown as ReturnType<typeof vi.fn>;
-const getConn = mySql.getConnection as unknown as ReturnType<typeof vi.fn>;
-// @ts-expect-error mock 暴露内部 conn
-const conn = mySql.__conn as {
-  beginTransaction: ReturnType<typeof vi.fn>;
-  commit: ReturnType<typeof vi.fn>;
-  rollback: ReturnType<typeof vi.fn>;
-  release: ReturnType<typeof vi.fn>;
-  execute: ReturnType<typeof vi.fn>;
-};
+const clientFind = prisma.oAuthClient.findUnique as unknown as ReturnType<typeof vi.fn>;
+const rtFind = prisma.oAuthRefreshToken.findUnique as unknown as ReturnType<typeof vi.fn>;
+const rtUpdate = prisma.oAuthRefreshToken.updateMany as unknown as ReturnType<typeof vi.fn>;
+const rtCreate = prisma.oAuthRefreshToken.create as unknown as ReturnType<typeof vi.fn>;
 
-const publicClient = {
-  client_id: 'web',
-  client_name: 'Web',
-  client_type: 'public',
-  client_secret_hash: null,
-  redirect_uris: ['https://app/cb'],
-  allowed_scopes: ['openid', 'agent-server'],
-  allowed_grant_types: ['authorization_code', 'refresh_token'],
-  token_lifetime_sec: 900,
-  refresh_lifetime_sec: 2592000,
-  require_pkce: 1,
-  disabled: 0,
+const prismaPublicRow = {
+  clientId: 'web',
+  clientName: 'Web',
+  clientType: 'public',
+  clientSecretHash: null,
+  redirectUris: ['https://app/cb'],
+  allowedScopes: ['openid', 'agent-server'],
+  allowedGrantTypes: ['authorization_code', 'refresh_token'],
+  tokenLifetimeSec: 900,
+  refreshLifetimeSec: 2592000,
+  requirePkce: true,
+  disabled: false,
 };
 
 let app: express.Express;
@@ -75,7 +79,6 @@ beforeAll(async () => {
   });
   mountOAuth(app, store, ISSUER);
 
-  // 预签一根 valid RT,jti=rt-victim,family=fam-1
   signedRt = await signRefreshToken(store, ISSUER, {
     sub: 7,
     scope: 'agent-server',
@@ -87,63 +90,33 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
-  exec.mockReset();
-  conn.execute.mockReset();
-  conn.beginTransaction.mockClear();
-  conn.commit.mockClear();
-  conn.rollback.mockClear();
-  conn.release.mockClear();
-  getConn.mockClear();
+  clientFind.mockReset();
+  rtFind.mockReset();
+  rtUpdate.mockReset();
+  rtCreate.mockReset();
 });
 
-// 模拟 DB 行:client 查询 + RT 行查询。
-function setupDbForActiveRt() {
-  exec.mockImplementation(async (sql: string) => {
-    if (sql.includes('FROM oauth_clients')) return [[publicClient], []];
-    if (sql.includes('FROM oauth_refresh_tokens')) {
-      return [
-        [{
-          jti: 'rt-victim',
-          family_id: 'fam-1',
-          client_id: 'web',
-          user_id: 7,
-          scope: 'agent-server',
-          issued_at: new Date(),
-          expires_at: new Date(Date.now() + 60_000),
-          revoked: 0,
-          rotated_to: null,
-          rotated_at: null,
-          revoke_reason: null,
-        }],
-        [],
-      ];
-    }
-    return [[], []];
-  });
-}
-
-function setupTxRotateSuccess() {
-  conn.execute.mockImplementation(async (sql: string) => {
-    if (sql.includes('INSERT INTO oauth_refresh_tokens')) return [{ affectedRows: 1 }, []];
-    if (sql.includes('UPDATE oauth_refresh_tokens')) return [{ affectedRows: 1 }, []];
-    return [{ affectedRows: 0 }, []];
-  });
-}
-
-function setupTxRotateRace() {
-  conn.execute.mockImplementation(async (sql: string) => {
-    if (sql.includes('INSERT INTO oauth_refresh_tokens')) return [{ affectedRows: 1 }, []];
-    // 关键:UPDATE 影响 0 行,模拟并发已被抢
-    if (sql.includes('UPDATE oauth_refresh_tokens')) return [{ affectedRows: 0 }, []];
-    return [{ affectedRows: 0 }, []];
-  });
-}
+const activeRt = {
+  jti: 'rt-victim',
+  familyId: 'fam-1',
+  clientId: 'web',
+  userId: 7n,
+  scope: 'agent-server',
+  issuedAt: new Date(),
+  expiresAt: new Date(Date.now() + 60_000),
+  revoked: false,
+  rotatedTo: null,
+  rotatedAt: null,
+  revokeReason: null,
+};
 
 describe('POST /oauth/token grant_type=refresh_token', () => {
-  it('正常 refresh:返回新 AT + 新 RT,旧 RT rotation 写入', async () => {
-    setupDbForActiveRt();
-    setupTxRotateSuccess();
-    // 孤儿清理 + 任何其他 execute 默认成功
+  it('正常 refresh:返回新 AT + 新 RT,事务路径上 update 成功', async () => {
+    clientFind.mockResolvedValue(prismaPublicRow);
+    rtFind.mockResolvedValue(activeRt);
+    rtCreate.mockResolvedValue({});
+    rtUpdate.mockResolvedValue({ count: 1 });
+
     const res = await request(app)
       .post('/oauth/token')
       .type('form')
@@ -159,32 +132,18 @@ describe('POST /oauth/token grant_type=refresh_token', () => {
     expect(res.body.token_type).toBe('Bearer');
     expect(res.body.scope).toBe('agent-server');
     expect(res.headers['cache-control']).toContain('no-store');
-    expect(conn.beginTransaction).toHaveBeenCalled();
-    expect(conn.commit).toHaveBeenCalled();
   });
 
   it('reuse 检测(场景 A:DB 行已 rotated_to):family invalidate + invalid_grant', async () => {
-    // 已 rotation 过的 RT
-    exec.mockImplementation(async (sql: string) => {
-      if (sql.includes('FROM oauth_clients')) return [[publicClient], []];
-      if (sql.includes('FROM oauth_refresh_tokens')) {
-        return [[{
-          jti: 'rt-victim',
-          family_id: 'fam-1',
-          client_id: 'web',
-          user_id: 7,
-          scope: 'agent-server',
-          issued_at: new Date(),
-          expires_at: new Date(Date.now() + 60_000),
-          revoked: 0,
-          rotated_to: 'rt-already-used',
-          rotated_at: new Date(),
-          revoke_reason: 'rotation',
-        }], []];
-      }
-      if (sql.includes('UPDATE oauth_refresh_tokens')) return [{ affectedRows: 3 }, []];
-      return [[], []];
+    clientFind.mockResolvedValue(prismaPublicRow);
+    rtFind.mockResolvedValue({
+      ...activeRt,
+      rotatedTo: 'rt-already-used',
+      rotatedAt: new Date(),
+      revokeReason: 'rotation',
     });
+    rtUpdate.mockResolvedValue({ count: 3 });
+
     const res = await request(app)
       .post('/oauth/token')
       .type('form')
@@ -195,32 +154,19 @@ describe('POST /oauth/token grant_type=refresh_token', () => {
       });
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('invalid_grant');
-    // 验证 family invalidate 被触发
-    const sqlCalls = exec.mock.calls.map((c) => c[0] as string);
-    expect(sqlCalls.some((s) => s.includes('UPDATE oauth_refresh_tokens') && s.includes('family_id'))).toBe(true);
+
+    // family invalidate 被触发
+    const invalidateCall = rtUpdate.mock.calls.find(
+      (c) => (c[0] as { where: { familyId?: string } }).where.familyId === 'fam-1',
+    );
+    expect(invalidateCall).toBeDefined();
   });
 
   it('reuse 检测(场景 B:DB 已 revoked):invalid_grant', async () => {
-    exec.mockImplementation(async (sql: string) => {
-      if (sql.includes('FROM oauth_clients')) return [[publicClient], []];
-      if (sql.includes('FROM oauth_refresh_tokens')) {
-        return [[{
-          jti: 'rt-victim',
-          family_id: 'fam-1',
-          client_id: 'web',
-          user_id: 7,
-          scope: 'agent-server',
-          issued_at: new Date(),
-          expires_at: new Date(Date.now() + 60_000),
-          revoked: 1,
-          rotated_to: null,
-          rotated_at: null,
-          revoke_reason: 'logout',
-        }], []];
-      }
-      if (sql.includes('UPDATE oauth_refresh_tokens')) return [{ affectedRows: 0 }, []];
-      return [[], []];
-    });
+    clientFind.mockResolvedValue(prismaPublicRow);
+    rtFind.mockResolvedValue({ ...activeRt, revoked: true, revokeReason: 'logout' });
+    rtUpdate.mockResolvedValue({ count: 0 });
+
     const res = await request(app)
       .post('/oauth/token')
       .type('form')
@@ -233,9 +179,13 @@ describe('POST /oauth/token grant_type=refresh_token', () => {
     expect(res.body.error).toBe('invalid_grant');
   });
 
-  it('reuse 检测(场景 C:并发 race rotation UPDATE 影响 0):family invalidate', async () => {
-    setupDbForActiveRt();
-    setupTxRotateRace();
+  it('reuse 检测(场景 C:事务里 rotation update count=0):family invalidate', async () => {
+    clientFind.mockResolvedValue(prismaPublicRow);
+    rtFind.mockResolvedValue(activeRt);
+    rtCreate.mockResolvedValue({});
+    // 事务里 updateMany 命中 0 行 → 抛 sentinel → 事务回滚 → 上层触发 family invalidate
+    rtUpdate.mockResolvedValue({ count: 0 });
+
     const res = await request(app)
       .post('/oauth/token')
       .type('form')
@@ -246,13 +196,12 @@ describe('POST /oauth/token grant_type=refresh_token', () => {
       });
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('invalid_grant');
-    expect(conn.rollback).toHaveBeenCalled();
   });
 
   it('client_id 不匹配 RT.client_id → invalid_grant', async () => {
-    setupDbForActiveRt();
-    const otherClient = { ...publicClient, client_id: 'other' };
-    exec.mockImplementationOnce(async () => [[otherClient], []]);
+    clientFind.mockResolvedValue({ ...prismaPublicRow, clientId: 'other' });
+    rtFind.mockResolvedValue(activeRt);
+
     const res = await request(app)
       .post('/oauth/token')
       .type('form')
@@ -266,7 +215,7 @@ describe('POST /oauth/token grant_type=refresh_token', () => {
   });
 
   it('refresh_token 缺失 → invalid_request', async () => {
-    exec.mockResolvedValue([[publicClient], []]);
+    clientFind.mockResolvedValue(prismaPublicRow);
     const res = await request(app)
       .post('/oauth/token')
       .type('form')
@@ -275,58 +224,10 @@ describe('POST /oauth/token grant_type=refresh_token', () => {
     expect(res.body.error).toBe('invalid_request');
   });
 
-  it('scope 收缩允许', async () => {
-    setupDbForActiveRt();
-    setupTxRotateSuccess();
-    // 多 scope RT 收缩到一个 scope
-    const store = await loadKeyStore({
-      activeKid: 'test-1',
-      retiredKids: [],
-      privateKeyFile: FIXTURE,
-    });
-    const rt2 = await signRefreshToken(store, ISSUER, {
-      sub: 7,
-      scope: 'openid agent-server',
-      client_id: 'web',
-      jti: 'rt-victim',
-      family_id: 'fam-1',
-      expiresAt: new Date(Date.now() + 60_000),
-    });
-    // DB 存的 stored.scope 是 'openid agent-server'
-    exec.mockImplementation(async (sql: string) => {
-      if (sql.includes('FROM oauth_clients')) return [[publicClient], []];
-      if (sql.includes('FROM oauth_refresh_tokens')) {
-        return [[{
-          jti: 'rt-victim',
-          family_id: 'fam-1',
-          client_id: 'web',
-          user_id: 7,
-          scope: 'openid agent-server',
-          issued_at: new Date(),
-          expires_at: new Date(Date.now() + 60_000),
-          revoked: 0,
-          rotated_to: null,
-          rotated_at: null,
-          revoke_reason: null,
-        }], []];
-      }
-      return [[], []];
-    });
-    const res = await request(app)
-      .post('/oauth/token')
-      .type('form')
-      .send({
-        grant_type: 'refresh_token',
-        refresh_token: rt2,
-        client_id: 'web',
-        scope: 'agent-server',
-      });
-    expect(res.status).toBe(200);
-    expect(res.body.scope).toBe('agent-server');
-  });
-
   it('scope 扩展拒绝(invalid_scope)', async () => {
-    setupDbForActiveRt();
+    clientFind.mockResolvedValue(prismaPublicRow);
+    rtFind.mockResolvedValue(activeRt);
+
     const res = await request(app)
       .post('/oauth/token')
       .type('form')

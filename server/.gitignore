@@ -25,3 +25,7 @@ keys/*.pem
 *.njsproj
 *.sln
 *.sw?
+
+/src/generated/prisma
+.env
+.env.local

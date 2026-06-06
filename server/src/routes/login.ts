@@ -1,8 +1,7 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
-import type { RowDataPacket } from 'mysql2';
-import { mySql } from '../database/mySql.js';
+import { prisma } from '../database/prisma.js';
 import { config } from '../config/config.js';
 import {
   setAuthCookies,
@@ -17,12 +16,7 @@ const router = express.Router();
 
 router.post('/login', async (req, res) => {
   const { username, password, remember } = req.body;
-  // 用户名登录，后期再来扩展
-  const [rows] = await mySql.execute<RowDataPacket[]>(
-    'SELECT * FROM users WHERE username=? LIMIT 1',
-    [username]
-  );
-  const user = rows[0];
+  const user = await prisma.user.findUnique({ where: { username } });
   if (!user) return res.status(400).json({ success: false, message: '用户不存在' });
 
   const match = await bcrypt.compare(password, user.password);
@@ -31,9 +25,11 @@ router.post('/login', async (req, res) => {
   // 勾选记住我签发 7 天，否则 1 小时；cookie maxAge 与之对齐
   const expiresIn = remember ? config.jwtExpiresIn : '1h';
   const maxAge = remember ? REMEMBER_MAX_AGE : SESSION_MAX_AGE;
-  const token = jwt.sign({ id: user.id, username: user.username }, config.jwtSecret, {
-    expiresIn,
-  } as jwt.SignOptions);
+  const token = jwt.sign(
+    { id: Number(user.id), username: user.username },
+    config.jwtSecret,
+    { expiresIn } as jwt.SignOptions,
+  );
 
   // token 写入 HttpOnly cookie（前端 JS 读不到），并下发可读的 csrf token
   const csrfToken = generateCsrfToken();
@@ -76,20 +72,18 @@ router.post('/refresh', async (req, res) => {
     }
 
     // 验证用户是否仍然存在
-    const [rows] = await mySql.execute<RowDataPacket[]>(
-      'SELECT id, username, email, nickname, avatar, status FROM users WHERE id = ? AND status != "deleted"',
-      [decoded.id]
-    );
+    const user = await prisma.user.findFirst({
+      where: { id: BigInt(decoded.id), NOT: { status: 'deleted' } },
+      select: { id: true, username: true, email: true, nickname: true, avatar: true, status: true },
+    });
 
-    if (rows.length === 0) {
+    if (!user) {
       return res.status(401).json({ success: false, message: '用户不存在或已被禁用' });
     }
 
-    const user = rows[0];
-
     // 重签并重设 cookie（默认续 1 小时），同时轮换 csrf token
     const newToken = jwt.sign(
-      { id: user.id, username: user.username },
+      { id: Number(user.id), username: user.username },
       config.jwtSecret,
       { expiresIn: '1h' }
     );

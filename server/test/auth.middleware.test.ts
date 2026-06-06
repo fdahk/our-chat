@@ -3,15 +3,17 @@ import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction } from 'express';
 
 // 把数据库换成可控 mock，避免真实连接
-vi.mock('../src/database/mySql.js', () => ({
-  mySql: { execute: vi.fn() },
+vi.mock('../src/database/prisma.js', () => ({
+  prisma: {
+    user: { findFirst: vi.fn() },
+  },
 }));
 
-import { mySql } from '../src/database/mySql.js';
+import { prisma } from '../src/database/prisma.js';
 import { config } from '../src/config/config.js';
 import { authenticateToken } from '../src/middleware/auth.js';
 
-const execMock = mySql.execute as unknown as ReturnType<typeof vi.fn>;
+const findFirstMock = prisma.user.findFirst as unknown as ReturnType<typeof vi.fn>;
 
 const sign = (payload: object, opts?: jwt.SignOptions) =>
   jwt.sign(payload, config.jwtSecret, opts);
@@ -31,7 +33,7 @@ const run = async (req: Partial<Request>) => {
 };
 
 beforeEach(() => {
-  execMock.mockReset();
+  findFirstMock.mockReset();
 });
 
 describe('authenticateToken', () => {
@@ -57,10 +59,14 @@ describe('authenticateToken', () => {
   });
 
   it('合法 token 且用户存在 → next 并挂载 req.user', async () => {
-    execMock.mockResolvedValue([
-      [{ id: 7, username: 'neo', email: null, nickname: null, avatar: null, status: 'online' }],
-      [],
-    ]);
+    findFirstMock.mockResolvedValue({
+      id: 7n,
+      username: 'neo',
+      email: null,
+      nickname: null,
+      avatar: null,
+      status: 'online',
+    });
     const token = sign({ id: 7, username: 'neo' });
     const req = { method: 'GET', headers: {}, cookies: { token } } as Partial<Request>;
     const { res, next } = await run(req);
@@ -71,7 +77,7 @@ describe('authenticateToken', () => {
   });
 
   it('合法 token 但用户不存在 → 401', async () => {
-    execMock.mockResolvedValue([[], []]);
+    findFirstMock.mockResolvedValue(null);
     const token = sign({ id: 99, username: 'ghost' });
     const { res, next } = await run({ method: 'GET', headers: {}, cookies: { token } });
     expect(res.status).toHaveBeenCalledWith(401);

@@ -1,8 +1,7 @@
 import app from './app.js';
-import { connectDb } from './database/mongoDB.js';
 import { initSocket } from './utils/socket.js';
 import {
-  initOAuthSchema,
+  applyPendingMigrations,
   loadKeyStore,
   mountOAuth,
   readIssuerConfigFromEnv,
@@ -13,12 +12,11 @@ import {
 const PORT = process.env.PORT || 3007;
 
 async function start(): Promise<void> {
-  await connectDb();
 
   // OAuth IdP 模块:启动时加载 RSA 密钥 + 跑 migration + seed 默认 client。
   // 任一失败立即 fail-fast。端点(/.well-known/* + /oauth/*)在 listen 前挂上,
   // 确保不会出现 "service 启动了但 IdP 暂未就绪" 的窗口
-  await initOAuthSchema();
+  await applyPendingMigrations();
   await seedDefaultClient();
   const keyStore = await loadKeyStore(readKeyOptionsFromEnv());
   const issuerConfig = readIssuerConfigFromEnv();

@@ -1,3 +1,4 @@
+import './database/bigint-json.js';
 import express from 'express';
 import type { ErrorRequestHandler } from 'express';
 import cors from 'cors'; //跨域中间件

@@ -1,9 +1,8 @@
 import { Server } from 'socket.io'; //基于WebSocket的实时通信库
 import type { Server as HttpServer } from 'http';
 import jwt from 'jsonwebtoken';
-import type { RowDataPacket } from 'mysql2';
-import { Message } from '../database/mongoDB.js';
-import { mySql } from '../database/mySql.js';
+import type { Prisma } from '../generated/prisma/index.js';
+import { prisma } from '../database/prisma.js';
 import { config } from '../config/config.js';
 import { TOKEN_COOKIE } from './authCookies.js';
 
@@ -96,31 +95,49 @@ export const initSocket = (server: HttpServer): Server => {
         const user1 = splited[1];
         const user2 = splited[2];
 
-        const savedMsg = await Message.create(msg);
-        console.log('消息保存成功:', savedMsg._id);
-
-        // 检查并创建用户会话记录
-        const [res1] = await mySql.execute<RowDataPacket[]>(
-          `SELECT * FROM user_conversations WHERE conversation_id = ? AND user_id = ?`,
-          [msg.conversationId, user1]
-        );
-        if (res1.length === 0) {
-          await mySql.execute(
-            `INSERT INTO user_conversations (conversation_id, user_id) VALUES (?, ?)`,
-            [msg.conversationId, user1]
-          );
-        }
-
-        const [res2] = await mySql.execute<RowDataPacket[]>(
-          `SELECT * FROM user_conversations WHERE conversation_id = ? AND user_id = ?`,
-          [msg.conversationId, user2]
-        );
-        if (res2.length === 0) {
-          await mySql.execute(
-            `INSERT INTO user_conversations (conversation_id, user_id) VALUES (?, ?)`,
-            [msg.conversationId, user2]
-          );
-        }
+        // 单事务:upsert Conversation → 写消息 → 双方 UserConversation upsert,
+        // 关系层与消息层原子一致。
+        // (相比 Mongo+MySQL 双库的应用层 best-effort 协调,这是 PG 单库带来的核心收益之一)
+        const savedMsg = await prisma.$transaction(async (tx) => {
+          await tx.conversation.upsert({
+            where: { id: msg.conversationId },
+            create: { id: msg.conversationId, convType: 'single' },
+            update: {},
+          });
+          const created = await tx.message.create({
+            data: {
+              conversationId: String(msg.conversationId),
+              senderId: BigInt(Number(msg.senderId)),
+              content: String(msg.content ?? ''),
+              type: String(msg.type ?? 'text'),
+              status: String(msg.status ?? 'sent'),
+              mentions: (msg.mentions ?? []) as Prisma.InputJsonValue,
+              isEdited: Boolean(msg.isEdited),
+              isDeleted: Boolean(msg.isDeleted),
+              extra: (msg.extra ?? {}) as Prisma.InputJsonValue,
+              fileInfo: (msg.fileInfo ?? {}) as Prisma.InputJsonValue,
+              editHistory: (msg.editHistory ?? []) as Prisma.InputJsonValue,
+              ...(msg.timestamp ? { timestamp: new Date(msg.timestamp) } : {}),
+            },
+          });
+          for (const uid of [user1, user2]) {
+            await tx.userConversation.upsert({
+              where: {
+                userId_conversationId: {
+                  userId: BigInt(Number(uid)),
+                  conversationId: msg.conversationId,
+                },
+              },
+              create: {
+                userId: BigInt(Number(uid)),
+                conversationId: msg.conversationId,
+              },
+              update: {},
+            });
+          }
+          return created;
+        });
+        console.log('消息保存成功:', savedMsg.id);
 
         // 广播消息
         io.to(room(parseInt(user1))).emit('receiveMessage', savedMsg);

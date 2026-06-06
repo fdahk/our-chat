@@ -1,35 +1,42 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 
-vi.mock('../src/database/mySql.js', () => ({
-  mySql: { execute: vi.fn(), query: vi.fn() },
+vi.mock('../src/database/prisma.js', () => ({
+  prisma: {
+    user: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+    },
+  },
 }));
 vi.mock('bcrypt', () => ({
   default: { compare: vi.fn(), hash: vi.fn() },
 }));
 
 import bcrypt from 'bcrypt';
-import { mySql } from '../src/database/mySql.js';
+import { prisma } from '../src/database/prisma.js';
 import app from '../src/app.js';
 
-const execMock = mySql.execute as unknown as ReturnType<typeof vi.fn>;
+const findUniqueMock = prisma.user.findUnique as unknown as ReturnType<typeof vi.fn>;
+const findFirstMock = prisma.user.findFirst as unknown as ReturnType<typeof vi.fn>;
 const compareMock = bcrypt.compare as unknown as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
-  execMock.mockReset();
+  findUniqueMock.mockReset();
+  findFirstMock.mockReset();
   compareMock.mockReset();
 });
 
 describe('POST /api/login', () => {
   it('用户不存在 → 400', async () => {
-    execMock.mockResolvedValue([[], []]);
+    findUniqueMock.mockResolvedValue(null);
     const res = await request(app).post('/api/login').send({ username: 'nobody', password: 'x' });
     expect(res.status).toBe(400);
     expect(res.body).toMatchObject({ success: false, message: '用户不存在' });
   });
 
   it('密码错误 → 400', async () => {
-    execMock.mockResolvedValue([[{ id: 1, username: 'neo', password: 'hash' }], []]);
+    findUniqueMock.mockResolvedValue({ id: 1n, username: 'neo', password: 'hash' });
     compareMock.mockResolvedValue(false);
     const res = await request(app).post('/api/login').send({ username: 'neo', password: 'wrong' });
     expect(res.status).toBe(400);
@@ -37,10 +44,12 @@ describe('POST /api/login', () => {
   });
 
   it('登录成功 → 200，下发鉴权 cookie 且响应体不含密码', async () => {
-    execMock.mockResolvedValue([
-      [{ id: 1, username: 'neo', password: 'hash', nickname: 'N' }],
-      [],
-    ]);
+    findUniqueMock.mockResolvedValue({
+      id: 1n,
+      username: 'neo',
+      password: 'hash',
+      nickname: 'N',
+    });
     compareMock.mockResolvedValue(true);
     const res = await request(app)
       .post('/api/login')

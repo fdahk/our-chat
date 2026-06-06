@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('../../../src/database/mySql.js', () => ({
-  mySql: { execute: vi.fn() },
+vi.mock('../../../src/database/prisma.js', () => ({
+  prisma: {
+    oAuthClient: { findUnique: vi.fn() },
+  },
 }));
-vi.mock('bcrypt', () => ({
-  default: { compare: vi.fn() },
-}));
+vi.mock('bcrypt', () => ({ default: { compare: vi.fn() } }));
 
 import bcrypt from 'bcrypt';
-import { mySql } from '../../../src/database/mySql.js';
+import { prisma } from '../../../src/database/prisma.js';
 import {
   assertGrantAllowed,
   assertRedirectUriAllowed,
@@ -19,31 +19,47 @@ import {
 } from '../../../src/oauth/clients.js';
 import { OAuthError } from '../../../src/oauth/errors.js';
 
-const exec = mySql.execute as unknown as ReturnType<typeof vi.fn>;
+const findUnique = prisma.oAuthClient.findUnique as unknown as ReturnType<typeof vi.fn>;
 const compare = bcrypt.compare as unknown as ReturnType<typeof vi.fn>;
 
+// Prisma model 行的 shape(camelCase)
+const prismaPublicRow = {
+  clientId: 'web',
+  clientName: 'Web',
+  clientType: 'public' as const,
+  clientSecretHash: null,
+  redirectUris: ['https://app.example.com/cb'],
+  allowedScopes: ['openid', 'profile', 'agent-server'],
+  allowedGrantTypes: ['authorization_code', 'refresh_token'],
+  tokenLifetimeSec: 900,
+  refreshLifetimeSec: 2592000,
+  requirePkce: true,
+  disabled: false,
+};
+
+// OAuthClient(模块内部用的 snake_case)
 const publicClient = {
   client_id: 'web',
   client_name: 'Web',
-  client_type: 'public',
+  client_type: 'public' as const,
   client_secret_hash: null,
   redirect_uris: ['https://app.example.com/cb'],
   allowed_scopes: ['openid', 'profile', 'agent-server'],
-  allowed_grant_types: ['authorization_code', 'refresh_token'],
+  allowed_grant_types: ['authorization_code', 'refresh_token'] as const,
   token_lifetime_sec: 900,
   refresh_lifetime_sec: 2592000,
-  require_pkce: 1,
-  disabled: 0,
+  require_pkce: true,
+  disabled: false,
 };
 
 beforeEach(() => {
-  exec.mockReset();
+  findUnique.mockReset();
   compare.mockReset();
 });
 
 describe('findClient / requireActiveClient', () => {
   it('未注册 client → invalid_client', async () => {
-    exec.mockResolvedValueOnce([[], []]);
+    findUnique.mockResolvedValueOnce(null);
     await expect(requireActiveClient('unknown')).rejects.toMatchObject({
       code: 'invalid_client',
     });
@@ -55,47 +71,39 @@ describe('findClient / requireActiveClient', () => {
     });
   });
 
-  it('disabled = 1 → invalid_client', async () => {
-    exec.mockResolvedValueOnce([[{ ...publicClient, disabled: 1 }], []]);
+  it('disabled = true → invalid_client', async () => {
+    findUnique.mockResolvedValueOnce({ ...prismaPublicRow, disabled: true });
     await expect(requireActiveClient('web')).rejects.toMatchObject({
       code: 'invalid_client',
     });
   });
 
-  it('正常返回',  async () => {
-    exec.mockResolvedValueOnce([[publicClient], []]);
+  it('正常返回 OAuthClient(snake_case)', async () => {
+    findUnique.mockResolvedValueOnce(prismaPublicRow);
     const c = await requireActiveClient('web');
     expect(c.client_id).toBe('web');
     expect(c.require_pkce).toBe(true);
   });
 
-  it('JSON 字段是字符串时自动 parse', async () => {
-    exec.mockResolvedValueOnce([[{
-      ...publicClient,
-      redirect_uris: JSON.stringify(publicClient.redirect_uris),
-      allowed_scopes: JSON.stringify(publicClient.allowed_scopes),
-      allowed_grant_types: JSON.stringify(publicClient.allowed_grant_types),
-    }], []]);
-    const c = await findClient('web');
-    expect(c?.redirect_uris).toEqual(publicClient.redirect_uris);
+  it('findClient 不存在返回 null', async () => {
+    findUnique.mockResolvedValueOnce(null);
+    expect(await findClient('absent')).toBeNull();
   });
 });
 
 describe('authenticateClient', () => {
   it('public client 不应带 client_secret', async () => {
-    const c = { ...publicClient, client_type: 'public' } as never;
-    await expect(authenticateClient(c, 'oops')).rejects.toMatchObject({
+    await expect(authenticateClient(publicClient, 'oops')).rejects.toMatchObject({
       code: 'invalid_client',
     });
   });
 
   it('public 不提供 secret → 通过', async () => {
-    const c = { ...publicClient, client_type: 'public' } as never;
-    await expect(authenticateClient(c, undefined)).resolves.toBeUndefined();
+    await expect(authenticateClient(publicClient, undefined)).resolves.toBeUndefined();
   });
 
   it('confidential 缺 secret → invalid_client', async () => {
-    const c = { ...publicClient, client_type: 'confidential', client_secret_hash: 'h' } as never;
+    const c = { ...publicClient, client_type: 'confidential' as const, client_secret_hash: 'h' };
     await expect(authenticateClient(c, undefined)).rejects.toMatchObject({
       code: 'invalid_client',
     });
@@ -103,7 +111,7 @@ describe('authenticateClient', () => {
 
   it('confidential 错 secret → invalid_client', async () => {
     compare.mockResolvedValueOnce(false);
-    const c = { ...publicClient, client_type: 'confidential', client_secret_hash: 'h' } as never;
+    const c = { ...publicClient, client_type: 'confidential' as const, client_secret_hash: 'h' };
     await expect(authenticateClient(c, 'bad')).rejects.toMatchObject({
       code: 'invalid_client',
     });
@@ -111,7 +119,7 @@ describe('authenticateClient', () => {
 
   it('confidential 正确 secret → 通过', async () => {
     compare.mockResolvedValueOnce(true);
-    const c = { ...publicClient, client_type: 'confidential', client_secret_hash: 'h' } as never;
+    const c = { ...publicClient, client_type: 'confidential' as const, client_secret_hash: 'h' };
     await expect(authenticateClient(c, 'good')).resolves.toBeUndefined();
   });
 });
@@ -119,51 +127,47 @@ describe('authenticateClient', () => {
 describe('assertRedirectUriAllowed', () => {
   it('exact match 通过', () => {
     expect(() =>
-      assertRedirectUriAllowed(publicClient as never, 'https://app.example.com/cb'),
+      assertRedirectUriAllowed(publicClient, 'https://app.example.com/cb'),
     ).not.toThrow();
   });
 
   it('尾部斜杠不同 → 拒绝', () => {
     expect(() =>
-      assertRedirectUriAllowed(publicClient as never, 'https://app.example.com/cb/'),
+      assertRedirectUriAllowed(publicClient, 'https://app.example.com/cb/'),
     ).toThrowError(OAuthError);
   });
 
   it('查询参数后缀 → 拒绝', () => {
     expect(() =>
-      assertRedirectUriAllowed(publicClient as never, 'https://app.example.com/cb?x=1'),
+      assertRedirectUriAllowed(publicClient, 'https://app.example.com/cb?x=1'),
     ).toThrowError(OAuthError);
   });
 
   it('子域伪装 → 拒绝', () => {
     expect(() =>
-      assertRedirectUriAllowed(publicClient as never, 'https://app.example.com.evil.com/cb'),
+      assertRedirectUriAllowed(publicClient, 'https://app.example.com.evil.com/cb'),
     ).toThrowError(OAuthError);
   });
 
   it('缺失 → invalid_request', () => {
-    expect(() =>
-      assertRedirectUriAllowed(publicClient as never, undefined),
-    ).toThrowError(OAuthError);
+    expect(() => assertRedirectUriAllowed(publicClient, undefined)).toThrowError(OAuthError);
   });
 });
 
 describe('assertGrantAllowed', () => {
   it('允许的 grant → 通过', () => {
-    expect(() =>
-      assertGrantAllowed(publicClient as never, 'authorization_code'),
-    ).not.toThrow();
+    expect(() => assertGrantAllowed(publicClient, 'authorization_code')).not.toThrow();
   });
 
   it('未允许的 grant → unauthorized_client', () => {
-    const c = { ...publicClient, allowed_grant_types: ['authorization_code'] } as never;
+    const c = { ...publicClient, allowed_grant_types: ['authorization_code'] as const };
     expect(() => assertGrantAllowed(c, 'refresh_token')).toThrowError(OAuthError);
   });
 });
 
 describe('normalizeAndAssertScope', () => {
   it('返回去重的 scope 字符串', () => {
-    const s = normalizeAndAssertScope(publicClient as never, 'openid profile openid');
+    const s = normalizeAndAssertScope(publicClient, 'openid profile openid');
     const set = new Set(s.split(' '));
     expect(set.size).toBe(2);
     expect(set.has('openid')).toBe(true);
@@ -172,11 +176,11 @@ describe('normalizeAndAssertScope', () => {
 
   it('请求超出允许范围 → invalid_scope', () => {
     expect(() =>
-      normalizeAndAssertScope(publicClient as never, 'openid admin'),
+      normalizeAndAssertScope(publicClient, 'openid admin'),
     ).toThrowError(OAuthError);
   });
 
   it('scope 为空 → invalid_scope', () => {
-    expect(() => normalizeAndAssertScope(publicClient as never, undefined)).toThrowError(OAuthError);
+    expect(() => normalizeAndAssertScope(publicClient, undefined)).toThrowError(OAuthError);
   });
 });
