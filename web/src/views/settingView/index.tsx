@@ -1,21 +1,27 @@
 import settingStyle from './style.module.scss';
-import { Image as AntdImage } from "antd";
-import { useSelector } from 'react-redux';
+import { Image as AntdImage } from 'antd';
+import { useSelector, useDispatch } from 'react-redux';
 import { useState, useRef } from 'react';
-import { useDispatch } from 'react-redux';
 import { uploadImg } from './api';
 import { updateProfile } from '@/store/userStore';
-import CropperModal from '@/globalComponents/cropperModal/cropperModal'; 
+import CropperModal from '@/globalComponents/cropperModal/cropperModal';
 import { updateUserInfo } from '@/globalApi/userApi';
 import { buildServerUrl } from '@/utils/runtime';
 import { defaultAvatar } from '@/assets/images';
 import type { RootState } from '@/store/rootStore';
+import { useLang } from '@/i18n';
+import { useToast } from '@/globalComponents/toast';
+
 function SettingView({ onClose }: { onClose: () => void }) {
+    const { t, lang, setLang } = useLang();
+    const toast = useToast();
     const [loading, setLoading] = useState(false);
     const dispatch = useDispatch();
     const inputRef = useRef<HTMLInputElement>(null);
     const [cropModalOpen, setCropModalOpen] = useState(false);
     const [rawImage, setRawImage] = useState<string>('');
+    const user = useSelector((state: RootState) => state.user);
+
     // 上传头像
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -31,24 +37,17 @@ function SettingView({ onClose }: { onClose: () => void }) {
 
     // 裁剪完成后上传
     const handleCropOk = (croppedBlob: Blob) => {
-        // 用formData 上传文件
-        // 自动生成 multipart/form-data 的请求体，适合上传文件和表单混合数据。
-        // 后端用 multer 这样的中间件来解析 multipart/form-data
-        //multer 自动把文件存到服务器的某个目录（如 uploads/）
-        //数据库只存文件的相对路径或 URL
-        // FormData 不能用普通的 console.log 查看内容，要用 formData.entries() 或 formData.get() 来查看
-        // console.log(formData.get('file'));
         const formData = new FormData();
         formData.append('file', croppedBlob, 'avatar.jpg');
         setLoading(true);
         uploadImg(formData).then(res => {
             const uploadResult = res.data;
             if (!uploadResult) {
-                throw new Error('上传响应缺少图片地址');
+                toast.err(t('settings.avatar.missingUrl'));
+                setLoading(false);
+                return;
             }
-            //更新redux
             dispatch(updateProfile({ avatar: uploadResult.url }));
-            // 更新后端
             updateUserInfo({ id: user.id, avatar: uploadResult.url });
             setLoading(false);
         }).catch(err => {
@@ -57,49 +56,74 @@ function SettingView({ onClose }: { onClose: () => void }) {
         });
         setCropModalOpen(false);
     };
-    // 点击上传按钮
-    const handleClickUpload = () => {
-        inputRef.current?.click();
-    }
-    // 关闭设置
-    const handleClose = () => {
-        onClose();
-    }
-    // 用户信息
-    const user = useSelector((state: RootState) => state.user);
+
+    const handleClickUpload = () => inputRef.current?.click();
+    const handleClose = () => onClose();
 
     return (
         <div className={settingStyle.setting_view_mask}>
-        <div className={settingStyle.setting_view}>
-            <div className={settingStyle.setting_view_title}>
-                <p>设置</p>
-                <i className={`iconfont icon-close ${settingStyle.icon_close}`} onClick={handleClose}></i>
-            </div>
+            <div className={settingStyle.setting_view}>
+                <div className={settingStyle.setting_view_title}>
+                    <p>{t('settings.title')}</p>
+                    <i className={`iconfont icon-close ${settingStyle.icon_close}`} onClick={handleClose}></i>
+                </div>
 
-            <div className={settingStyle.setting_view_body}>
-                {/* 左侧 */}
-                <div className={settingStyle.setting_view_left}>
-                    <AntdImage width={130} src={user.avatar ? buildServerUrl(user.avatar) : defaultAvatar}  />
-                    {/* 事件处理函数（如 onChange、onClick 等）默认传入事件对象（event） */}
-                    <input ref={inputRef} type="file" style={{display: 'none'}} accept="image/png, image/jpeg" onChange={handleChange} /> 
-                    
-                    <button className={settingStyle.setting_view_upload_button} type="button" onClick={handleClickUpload}>
-                        {loading ? "加载中..." : "更换头像"}
-                    </button>
-                    <CropperModal
-                        open={cropModalOpen}
-                        image={rawImage}
-                        onCancel={() => setCropModalOpen(false)}
-                        onOk={handleCropOk}
-                    />
-                </div>
-                {/* 右侧 */}
-                <div className={settingStyle.setting_view_right}>
-                    
+                <div className={settingStyle.setting_view_body}>
+                    {/* 左侧 */}
+                    <div className={settingStyle.setting_view_left}>
+                        <AntdImage width={130} src={user.avatar ? buildServerUrl(user.avatar) : defaultAvatar} />
+                        <input
+                            ref={inputRef}
+                            type="file"
+                            style={{ display: 'none' }}
+                            accept="image/png, image/jpeg"
+                            onChange={handleChange}
+                        />
+                        <button
+                            className={settingStyle.setting_view_upload_button}
+                            type="button"
+                            onClick={handleClickUpload}
+                        >
+                            {loading ? t('settings.avatar.uploading') : t('settings.avatar.change')}
+                        </button>
+                        <CropperModal
+                            open={cropModalOpen}
+                            image={rawImage}
+                            onCancel={() => setCropModalOpen(false)}
+                            onOk={handleCropOk}
+                        />
+                    </div>
+
+                    {/* 右侧 */}
+                    <div className={settingStyle.setting_view_right}>
+                        <div className={settingStyle.row}>
+                            <div className={settingStyle.rowKey}>{t('settings.language.title')}</div>
+                            <div className={settingStyle.langSwitch} role="tablist">
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={lang === 'zh'}
+                                    className={lang === 'zh' ? settingStyle.langOn : settingStyle.langOff}
+                                    onClick={() => setLang('zh')}
+                                >
+                                    {t('settings.language.zh')}
+                                </button>
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={lang === 'en'}
+                                    className={lang === 'en' ? settingStyle.langOn : settingStyle.langOff}
+                                    onClick={() => setLang('en')}
+                                >
+                                    {t('settings.language.en')}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        </div>
-    )
+    );
 }
+
 export default SettingView;

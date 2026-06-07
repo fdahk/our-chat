@@ -65,14 +65,10 @@ const router = createBrowserRouter([
     },
     // 一级路由登录
     {
-        path: "login",
-        lazy: lazyComponent(() => import("@/views/loginView/index.tsx")),
+        path: "auth",
+        lazy: lazyComponent(() => import("@/views/authView/index.tsx")),
     },
-    // 一级路由注册
-    {
-        path: "register",
-        lazy: lazyComponent(() => import("@/views/registerView/index.tsx")),
-    },
+
     // 开发调试路由（生产构建中为空数组，被静态消除）
     ...devOnlyRoutes
 ]);

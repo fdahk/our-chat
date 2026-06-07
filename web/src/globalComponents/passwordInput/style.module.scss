@@ -1,0 +1,12 @@
+.toggle {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  color: var(--ui-ink-faint);
+  display: inline-flex;
+  align-items: center;
+  font-size: 1rem;
+  transition: color $dur-base $ease-out;
+  &:hover { color: var(--ui-ink-dim); }
+}

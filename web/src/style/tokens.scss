@@ -1,0 +1,120 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// 全局 SCSS 设计 token。
+//
+// 该文件被 vite.config.ts 的 `css.preprocessorOptions.scss.additionalData`
+// 自动注入到每一个 *.module.scss / *.scss 文件,故在任何样式文件里都可直接
+// 使用 $space-4 / $radius-md / $bp-lg / $brand-wechat 等变量,无需 @use。
+//
+// 与之配套的 CSS 自定义属性(可被 JS 主题切换、可被 ConfigProvider 覆盖)在
+// src/style/global.scss 的 :root 里声明。SCSS 变量是编译期常量,CSS 变量是
+// 运行期主题。两者数值同源,可换用场景如下:
+//   - 组件作者:用 SCSS 变量 ── 编译期内联、零运行时
+//   - 主题切换 / 用户偏好:用 CSS 变量 ── 运行期改值即整页换肤
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ╭─ 1. 几何与排印 — 全 app 共享 ─────────────────────────────────────────────╮
+
+// 间距阶梯(8px / 4px 复合)
+$space-0:  0;
+$space-1:  0.25rem;   //  4px
+$space-2:  0.5rem;    //  8px
+$space-3:  0.75rem;   // 12px
+$space-4:  1rem;      // 16px
+$space-5:  1.25rem;   // 20px
+$space-6:  1.5rem;    // 24px
+$space-7:  2rem;      // 32px
+$space-8:  2.5rem;    // 40px
+$space-9:  3rem;      // 48px
+$space-10: 4rem;      // 64px
+$space-11: 5rem;      // 80px
+
+// 圆角
+$radius-xs: 0.25rem;   //  4px
+$radius-sm: 0.375rem;  //  6px
+$radius-md: 0.625rem;  // 10px
+$radius-lg: 1rem;      // 16px
+$radius-xl: 1.5rem;    // 24px
+$radius-pill: 999px;
+
+// 字体栈
+$font-sans: -apple-system, BlinkMacSystemFont, 'Inter', 'PingFang SC',
+            'Noto Sans CJK SC', 'Microsoft YaHei', sans-serif;
+$font-mono: 'JetBrains Mono', 'SF Mono', 'Menlo', 'Consolas', monospace;
+$font-serif: 'Source Han Serif SC', 'Songti SC', Georgia, serif;
+
+// 断点
+$bp-sm: 40rem;   //  640px
+$bp-md: 48rem;   //  768px
+$bp-lg: 64rem;   // 1024px
+$bp-xl: 80rem;   // 1280px
+$bp-2xl: 96rem;  // 1536px
+
+// z-index 层级
+$z-base:    1;
+$z-sticky:  20;
+$z-dropdown: 40;
+$z-overlay: 60;
+$z-modal:   80;
+$z-toast:   100;
+$z-tooltip: 120;
+
+// 阴影
+$shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+$shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
+$shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.22);
+$shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.4);
+
+// 缓动
+$ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
+$ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+$dur-fast: 120ms;
+$dur-base: 180ms;
+$dur-slow: 320ms;
+
+// ╰───────────────────────────────────────────────────────────────────────────╯
+
+// ╭─ 2. 品牌色 — 命名而不语义,谁用谁取 ─────────────────────────────────────╮
+
+// 主 app(聊天本体)用微信绿
+$brand-wechat:        #07c160;
+$brand-wechat-hover:  #06ad57;
+$brand-wechat-soft:   rgba(7, 193, 96, 0.12);
+
+// auth 落地页 / 简历页用 indigo
+$brand-indigo:        #6366f1;
+$brand-indigo-hover:  #818cf8;
+$brand-indigo-soft:   rgba(99, 102, 241, 0.16);
+$brand-indigo-faint:  rgba(99, 102, 241, 0.08);
+
+// 状态色
+$color-success: #10b981;
+$color-warning: #f59e0b;
+$color-danger:  #ef4444;
+$color-info:    #3b82f6;
+
+// 主 app 既有遗留色(由 index.css 迁移)
+$legacy-warning: #f56c6c;
+$legacy-bg:      #333333;
+$legacy-bg-hover: #4f4f4f;
+$legacy-btn:     #edecec;
+$legacy-btn-hover: #d3d2d2;
+$legacy-icon:    #b2a9ac;
+$legacy-text:    #333333;
+
+// ╰───────────────────────────────────────────────────────────────────────────╯
+
+// ╭─ 3. auth 页深色面板专用 ─────────────────────────────────────────────────╮
+
+$dark-bg-base:   #0a0a0c;
+$dark-bg-elev1:  #131316;
+$dark-bg-elev2:  #1c1c20;
+$dark-bg-elev3:  #26262b;
+
+$dark-ink:       #fafafa;
+$dark-ink-dim:   rgba(250, 250, 250, 0.62);
+$dark-ink-faint: rgba(250, 250, 250, 0.36);
+
+$dark-border:        rgba(255, 255, 255, 0.08);
+$dark-border-strong: rgba(255, 255, 255, 0.16);
+
+// ╰───────────────────────────────────────────────────────────────────────────╯

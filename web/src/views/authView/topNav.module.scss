@@ -1,0 +1,118 @@
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: $z-sticky;
+  padding: $space-3 $space-6;
+  backdrop-filter: blur(1rem) saturate(140%);
+  background: rgba(10, 10, 12, 0.6);
+  border-bottom: 1px solid $dark-border;
+}
+
+.inner {
+  max-width: $bp-xl;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: $space-4;
+}
+
+// 品牌
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  color: $dark-ink;
+  font-size: 0.875rem;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  justify-self: start;
+}
+.brandMark {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 0.125rem;
+  background: $brand-indigo;
+  display: inline-block;
+}
+.brandText { white-space: nowrap; }
+.brandBy {
+  color: $dark-ink-faint;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+}
+
+// 中间 tabs
+.tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  padding: $space-1;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid $dark-border;
+  border-radius: $radius-pill;
+}
+.tab {
+  position: relative;
+  background: transparent;
+  border: 0;
+  padding: 0.4375rem $space-4;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  letter-spacing: 0.04em;
+  color: $dark-ink-dim;
+  cursor: pointer;
+  border-radius: $radius-pill;
+  transition: color $dur-base $ease-out, background $dur-base $ease-out;
+
+  &:hover { color: $dark-ink; }
+}
+.tabActive {
+  color: $dark-ink;
+  background: $brand-indigo;
+  &:hover { color: #fff; }
+}
+
+// 中英切换按钮
+.langBtn {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  background: transparent;
+  border: 1px solid $dark-border;
+  border-radius: $radius-pill;
+  padding: $space-1 $space-3;
+  font-family: inherit;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  color: $dark-ink-dim;
+  cursor: pointer;
+  transition: border-color $dur-base $ease-out, color $dur-base $ease-out;
+
+  &:hover { border-color: $dark-border-strong; color: $dark-ink; }
+}
+.langOn  { color: $brand-indigo; font-weight: 600; }
+.langOff { color: $dark-ink-faint; }
+.langSep { color: $dark-ink-faint; }
+
+// ── Responsive ──
+@media (max-width: $bp-md) {
+  .nav { padding: $space-2 $space-4; }
+  .brand { font-size: 0.8125rem; }
+  .brandBy { display: none; }
+  .tab { padding: $space-2 $space-3; font-size: 0.75rem; }
+}
+
+@media (max-width: $bp-sm) {
+  .inner {
+    grid-template-columns: auto 1fr auto;
+    gap: $space-2;
+  }
+  .brand { font-size: 0.75rem; }
+  .brandText { letter-spacing: 0.06em; }
+  .tabs { padding: 0.1875rem; }
+  .tab { padding: 0.3125rem $space-2; }
+}

@@ -18,8 +18,10 @@ import { buildServerUrl } from '@/utils/runtime';
 import { defaultAvatar } from '@/assets/images';
 import type { FileItem } from '@/utils/upload';
 import MessageInput from './MessageInput';
+import { useLang } from '@/i18n';
 function ChatView() {
 
+    const { t } = useLang();
     const dispatch = useDispatch();
     const activeConversation = useSelector((state: RootState) => state.chat.activeConversation); // 当前会话id
     const messages = useSelector((state: RootState) => state.chat.globalMessages); //消息列表 注：数据结构为 { [conversationId: string]: Message[] , ... }
@@ -132,7 +134,7 @@ function ChatView() {
                 const fileMessage: Message = {
                     conversationId: activeConversation!,
                     senderId: userId,
-                    content: '发送了文件',
+                    content: t('chat.sentFile'),
                     type: 'file',
                     status: 'sent',
                     mentions: [],
@@ -156,7 +158,7 @@ function ChatView() {
                 socket.emit('sendMessage', fileMessage);
             });            
         } catch (error) {
-            console.error('文件上传失败:', error);
+            console.error(t('chat.errors.uploadFailed'), error);
         }
         // 关闭文件上传弹窗
         setFileUploaderVisible(false);
@@ -172,15 +174,15 @@ function ChatView() {
     // 语音聊天
     const handleClickVoice = () => {
         if (!activeConversation) {
-            console.warn('没有选择聊天对象');
+            console.warn(t('chat.errors.noActiveConversation'));
             return;
         }
 
         const friendId = parseConversationId(activeConversation);
         const friendInfo = globalFriendInfoList[friendId];
-        
+
         if (!friendInfo) {
-            console.warn('无法获取好友信息');
+            console.warn(t('chat.errors.noFriendInfo'));
             return;
         }
 
@@ -252,7 +254,7 @@ function ChatView() {
                             }}
                             className={chatViewStyle.download_btn}
                         >
-                            下载
+                            {t('chat.download')}
                         </button>
                     </div>
                 );
@@ -269,7 +271,7 @@ function ChatView() {
         <div className={chatViewStyle.chat_view_container}>
             {/* 左侧：对话列表 */}
             <div className={chatViewStyle.chat_view_left}>
-                <SearchModal searchChange={handleSearchChange} placeholder="搜索" />
+                <SearchModal searchChange={handleSearchChange} placeholder={t('chat.searchPlaceholder')} />
                 <div className={chatViewStyle.chat_view_left_body}>
                         {Object.values(globalConversations).map((item: Conversation) => (
                             <DisplayItem
@@ -309,7 +311,7 @@ function ChatView() {
                         <MessageInput onSend={sendMessage} onHeaderIconClick={handleClickHeaderIcon} />
                     </>
                 ) : (
-                    <div className={chatViewStyle.no_chat}>请选择一个会话</div>
+                    <div className={chatViewStyle.no_chat}>{t('chat.noConversation')}</div>
                 )}
                 {/* 文件上传弹窗 */}
                 {fileUploaderVisible && 

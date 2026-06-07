@@ -52,4 +52,14 @@ export default defineConfig(({ command }) => ({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  // 让每个 *.scss / *.module.scss 自动可见 tokens.scss 里的 SCSS 变量,
+  // 模块文件直接写 $space-4 / $brand-wechat 即可,无需各自 @use。
+  // 仅前置 @use 不会产出 CSS,所以零打包代价。
+  css: {
+    preprocessorOptions: {
+      scss: {
+        additionalData: `@use "@/style/tokens.scss" as *;`,
+      },
+    },
+  },
 }))

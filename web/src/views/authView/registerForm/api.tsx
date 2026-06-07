@@ -1,10 +1,9 @@
 import { post, get } from '@/utils/http';
-import { type RegisterData, type RegisterResponse } from './type';
-
+import { type RegisterFormModel, type RegisterResponseModel } from './type';
 
 // 注册API
-export const registerUser = async (userData: RegisterData) => {
-  return post<RegisterResponse>('/api/register', {
+export const registerUser = async (userData: RegisterFormModel) => {
+  return post<RegisterResponseModel>('/api/register', {
     username: userData.username,
     email: userData.email,
     password: userData.password,

@@ -1,5 +1,5 @@
 // 注册表单数据类型
-export interface RegisterData {
+export interface RegisterFormModel {
     username: string;
     email: string;
     password: string;
@@ -10,7 +10,7 @@ export interface RegisterData {
 }
   
 // 注册响应数据类型
-export interface RegisterResponse {
+export interface RegisterResponseModel {
     id: number;
     username: string;
     email: string;
@@ -20,15 +20,4 @@ export interface RegisterResponse {
     bio: string;
     status: string;
     created_at: string;
-}
-
-// 注册表单数据类型
-export interface RegisterForm {
-    username: string;
-    email: string;
-    password: string;
-    phone?: string | null;
-    nickname?: string;
-    avatar?: string;
-    bio?: string;
 }

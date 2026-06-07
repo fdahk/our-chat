@@ -4,9 +4,14 @@ import axios, {
   type AxiosError,
   type InternalAxiosRequestConfig,
 } from 'axios';
-import { message } from 'antd'; //引入antd的message 消息提示组件
+import i18n from '@/i18n';
+import { toast } from '@/globalComponents/toast/bridge';
 import type { ApiResponse } from '../globalType/apiResponse';
 import { API_BASE_URL } from './runtime';
+
+// 拦截器非 React 上下文,t() 直接走 i18n 单例
+const t = (key: string, opts?: Record<string, unknown>): string =>
+  i18n.t(key, opts) as string;
 
 interface ErrorResponseData {
   message?: string;
@@ -119,7 +124,7 @@ http.interceptors.request.use(
   (error: AxiosError) => {
     // 请求错误处理
     console.error('请求拦截器错误:', error);
-    message.error('请求配置错误');
+    toast.err(t('http.requestConfigError'));
     return Promise.reject(error);
   }
 );
@@ -179,44 +184,44 @@ http.interceptors.response.use(
           }
         } else {
           // 其他401错误，直接跳转登录
-          message.error('未授权，请重新登录');
+          toast.err(t('http.unauthorized'));
           window.location.href = '/login';
         }
       } else {
         // 处理其他HTTP错误
         switch (status) {
           case 400:
-            message.error(getErrorMessage(data, '请求参数错误'));
+            toast.err(getErrorMessage(data, t('http.badRequest')));
             break;
           case 403:
-            message.error('拒绝访问');
+            toast.err(t('http.forbidden'));
             break;
           case 404:
-            message.error('请求的资源不存在');
+            toast.err(t('http.notFound'));
             break;
           case 409:
-            message.error(getErrorMessage(data, '数据冲突'));
+            toast.err(getErrorMessage(data, t('http.conflict')));
             break;
           case 422:
-            message.error(getErrorMessage(data, '数据验证失败'));
+            toast.err(getErrorMessage(data, t('http.unprocessable')));
             break;
           case 500:
-            message.error('服务器内部错误');
+            toast.err(t('http.serverError'));
             break;
           default:
-            message.error(getErrorMessage(data, `请求失败 (${status})`));
+            toast.err(getErrorMessage(data, t('http.requestFailed', { status })));
         }
       }
     } else if (error.request) {
       // error.request 存在代表：请求配置正确，请求已经通过网络发送，但是服务器没有返回响应
       if (error.code === 'ECONNABORTED') {
-        message.error('请求超时，请稍后重试');
+        toast.err(t('http.timeout'));
       } else {
-        message.error('网络错误，请检查网络连接');
+        toast.err(t('http.networkError'));
       }
     } else {
       // 其他错误
-      message.error('请求配置错误');
+      toast.err(t('http.requestConfigError'));
     }
     // 返回错误，用于在组件中处理错误
     return Promise.reject(error);

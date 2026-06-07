@@ -1,5 +1,5 @@
 // 登录表单数据类型
-export interface LoginForm {
+export interface LoginFormModel {
     username: string;
     password: string;
     remember: boolean;

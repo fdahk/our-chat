@@ -1,0 +1,58 @@
+// authView 整页容器:固定视口高度,内部 scroll 容器承载滚动,以便定制滚动条。
+// 配色用 SCSS token($dark-*),保持单一文件取值。
+
+.shell {
+  position: fixed;
+  inset: 0;
+  background: $dark-bg-base;
+  color: $dark-ink;
+  font-family: $font-sans;
+  font-size: 1rem;
+  line-height: 1.5;
+  letter-spacing: 0.005em;
+
+  // 顶层细节:几乎不可见的暗角晕,避免纯平
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse at 50% -10%, $brand-indigo-soft, transparent 50%),
+      radial-gradient(ellipse at 100% 100%, $brand-indigo-faint, transparent 55%);
+    z-index: $z-base;
+  }
+}
+
+.scroll {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: $z-base + 1;
+
+  // 自定义滚动条
+  scrollbar-width: thin;
+  scrollbar-color: $dark-border-strong transparent;
+
+  &::-webkit-scrollbar {
+    width: 0.5rem;
+    height: 0.5rem;
+  }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb {
+    background: $dark-border-strong;
+    border-radius: $radius-md;
+    transition: background $dur-base $ease-out;
+  }
+  &::-webkit-scrollbar-thumb:hover { background: $brand-indigo; }
+}
+
+// 切页淡入
+.fade { will-change: opacity, transform; }
+.fadeIn { animation: pageIn 480ms $ease-out both; }
+
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(0.5rem); }
+  to   { opacity: 1; transform: translateY(0); }
+}

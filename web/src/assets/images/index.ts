@@ -5,5 +5,4 @@
 import defaultAvatar from './defaultAvatar.jpg';
 import searchUserIcon from './searchUser.png';
 import newFriendIcon from './newFriend.png';
-
 export { defaultAvatar, searchUserIcon, newFriendIcon };
