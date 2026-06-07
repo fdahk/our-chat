@@ -16,7 +16,7 @@ const app = express(); //Express监听（http）服务器
 // 允许携带凭据的来源白名单。来自环境变量 CLIENT_ORIGINS（逗号分隔），
 // 开发环境默认放行本机 Vite。注意：启用 cookie 凭据后，CORS 不能再用通配 '*'。
 const allowedOrigins = (
-  process.env.CLIENT_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173'
+  process.env.CLIENT_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173,https://localhost:5173,https://127.0.0.1:5173'
 )
   .split(',')
   .map((o) => o.trim())
