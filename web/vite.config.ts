@@ -31,6 +31,10 @@ export default defineConfig(({ command }) => ({
   server: {
     host: '0.0.0.0',
     // 开发 HTTPS：使用系统已安装的 mkcert 生成并安装本地开发 CA，浏览器与局域网设备更容易信任证书。
+    // ── Dev proxy 仅给"必须同源"的服务用 ──
+    // our-chat 后端走 HttpOnly cookie 鉴权,浏览器要带 cookie 必须同源,故必须 proxy。
+    // agent-server 用 Bearer header 鉴权,无 cookie 同源约束,前端直接打 + 后端 CORS
+    // 白名单是更标准的做法,见 src/views/agentView/api.ts 与 docs。
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:3007',

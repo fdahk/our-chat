@@ -30,6 +30,11 @@ function Layout() {
             name: 'directory',
             icon: 'icon-user',
             path: '/directory'
+        },
+        {
+            name: 'agent',
+            icon: 'icon-robot-fill',
+            path: '/agent'
         }
     ]
 

@@ -1,0 +1,128 @@
+.wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.head {
+  padding: $space-4;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-3;
+}
+.title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: $legacy-text;
+}
+.actions {
+  display: inline-flex;
+  gap: $space-2;
+}
+
+.empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 0.875rem;
+}
+
+.list {
+  flex: 1;
+  overflow-y: auto;
+  padding: $space-2 $space-3;
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  list-style: none;
+  margin: 0;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-3;
+  background: $legacy-btn;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  border-radius: $radius-md;
+  transition: border-color $dur-base $ease-out;
+
+  &:hover { border-color: rgba(0, 0, 0, 0.12); }
+}
+
+.itemMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+}
+.itemName {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: $legacy-text;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.itemMeta {
+  font-size: 0.75rem;
+  color: #888;
+  display: inline-flex;
+  gap: $space-2;
+  align-items: center;
+}
+.metaSep { color: #ccc; }
+.itemErr {
+  font-size: 0.75rem;
+  color: $color-danger;
+}
+
+.badge {
+  font-size: 0.6875rem;
+  padding: 0.125rem $space-2;
+  border-radius: $radius-sm;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+.badge-ok {
+  background: rgba(16, 185, 129, 0.12);
+  color: $color-success;
+}
+.badge-err {
+  background: rgba(239, 68, 68, 0.12);
+  color: $color-danger;
+}
+.badge-pending {
+  background: rgba(245, 158, 11, 0.16);
+  color: $color-warning;
+}
+
+.delBtn {
+  background: transparent;
+  border: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  cursor: pointer;
+  color: #999;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: $radius-sm;
+  font-size: 0.875rem;
+  transition: background $dur-base $ease-out, color $dur-base $ease-out;
+
+  &:hover {
+    background: rgba(239, 68, 68, 0.12);
+    color: $color-danger;
+  }
+}

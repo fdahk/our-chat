@@ -60,6 +60,10 @@ const router = createBrowserRouter([
             {
                 path: "directory",
                 lazy: lazyComponent(() => import("@/views/directoryView/index.tsx")),
+            },
+            {
+                path: "agent",
+                lazy: lazyComponent(() => import("@/views/agentView/index.tsx")),
             }
         ]
     },
