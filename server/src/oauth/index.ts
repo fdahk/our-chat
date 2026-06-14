@@ -2,6 +2,8 @@
 // 在 app.ts 里调用 mountOAuth(app, store, issuer) 即可挂载全部端点
 
 import { Router, type Application, type Router as ExpressRouter } from 'express';
+import { authenticateToken } from '../middleware/auth.js';
+import { makeAgentTokenHandler } from './agentToken.js';
 import { makeAuthorizeHandler } from './authorize.js';
 import { makeDiscoveryHandler } from './discovery.js';
 import { makeIntrospectHandler } from './introspect.js';
@@ -36,6 +38,8 @@ export function mountOAuth(
   r.post('/revoke', makeRevokeHandler({ store, issuer }));
   r.post('/introspect', makeIntrospectHandler({ store, issuer }));
   r.get('/userinfo', makeUserInfoHandler({ store, issuer }));
+  // 首方令牌铸造:已登录会话直接换 agent-server-scoped token(authenticateToken 把关 + CSRF)。
+  r.post('/agent-token', authenticateToken, makeAgentTokenHandler({ store, issuer }));
   app.use('/oauth', r);
 }
 

@@ -8,6 +8,7 @@ export type AuditEvent =
   | 'client_created'
   | 'code_issued'
   | 'code_exchanged'
+  | 'agent_token_issued'
   | 'token_refreshed'
   | 'rt_reuse_detected'
   | 'token_revoked'
@@ -38,6 +39,7 @@ const DEFAULT_LEVEL: Record<AuditEvent, AuditLevel> = {
   client_created: 'INFO',
   code_issued: 'INFO',
   code_exchanged: 'INFO',
+  agent_token_issued: 'INFO',
   token_refreshed: 'INFO',
   rt_reuse_detected: 'WARN',
   token_revoked: 'INFO',
