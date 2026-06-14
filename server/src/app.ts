@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import registerRouter from './routes/register.js';
 import loginRouter from './routes/login.js';
 import conversationRouter from './routes/chat.js';
+import syncRouter from './routes/sync.js';
 import uploadRouter from './routes/upload.js';
 import userRouter from './routes/user.js';
 import friendRouter from './routes/friend.js';
@@ -56,6 +57,7 @@ app.get('/health', (_req, res) => {
 app.use('/api', registerRouter);
 app.use('/api', loginRouter);
 app.use('/user', conversationRouter);
+app.use('/user', syncRouter);
 app.use('/user/uploads', uploadRouter);
 app.use('/user', userRouter);
 app.use('/user', friendRouter);
