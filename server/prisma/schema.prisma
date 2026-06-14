@@ -164,6 +164,20 @@ model UserConversation {
   @@map("user_conversations")
 }
 
+// per-device 同步态:同一用户多设备时,每个设备各自追平消息的位点(docs 15 §6,坑3)。
+// synced 必须 per-device(否则一端推进了用户级游标,另一端会永久缺消息);
+// read 仍留在 UserConversation 保持 per-user(在任一端读都算"这个人读过了")。
+model DeviceSyncState {
+  userId         BigInt   @map("user_id")
+  deviceId       String   @map("device_id") @db.VarChar(64)
+  conversationId String   @map("conversation_id") @db.VarChar(100)
+  lastSyncedSeq  BigInt   @default(0) @map("last_synced_seq")
+  lastHeartbeat  DateTime @default(now()) @updatedAt @map("last_heartbeat") @db.Timestamptz(0)
+
+  @@id([userId, deviceId, conversationId])
+  @@map("device_sync_state")
+}
+
 // MessageRef:保留作 conversation/sender 维度的轻量索引引用(给 MySQL 时代的兼容查询用)。
 // 真实消息体在 Message 表(从 MongoDB 迁移而来)。
 model MessageRef {

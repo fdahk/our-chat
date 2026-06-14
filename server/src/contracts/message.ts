@@ -30,6 +30,8 @@ export const syncQuery = z.object({
     .string()
     .regex(/^\d+$/)
     .optional(),
+  // 设备标识(可选):提供时服务端记录该设备的 per-device synced 位点(docs 15 §6)。
+  device: z.string().min(1).max(64).optional(),
 });
 export type SyncQuery = z.infer<typeof syncQuery>;
 

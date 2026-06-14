@@ -2,20 +2,12 @@ import express from 'express';
 import { prisma } from '../database/prisma.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { syncQuery, readReportInput } from '../contracts/message.js';
+import { isConversationMember, advanceLastRead, recordDeviceSync } from '../services/read.js';
 
 const router = express.Router();
 
 const SYNC_MAX_LIMIT = 200;
 const SYNC_DEFAULT_LIMIT = 50;
-
-// 成员校验:必须是会话参与者才能拉取/上报,防越权读取他人会话(docs 13 §6.2)。
-async function isMember(userId: bigint, conversationId: string): Promise<boolean> {
-  const row = await prisma.userConversation.findUnique({
-    where: { userId_conversationId: { userId, conversationId } },
-    select: { id: true },
-  });
-  return row !== null;
-}
 
 // 增量补拉:返回 seq > since 的消息,按 seq 升序分页。命中 idx_messages_conv_seq 做 Index Range Scan。
 router.get('/sync', authenticateToken, async (req, res) => {
@@ -23,10 +15,10 @@ router.get('/sync', authenticateToken, async (req, res) => {
   if (!parsed.success) {
     return res.status(400).json({ success: false, message: '参数非法', issues: parsed.error.issues });
   }
-  const { conv, since, limit } = parsed.data;
+  const { conv, since, limit, device } = parsed.data;
   const userId = BigInt(req.user!.id);
 
-  if (!(await isMember(userId, conv))) {
+  if (!(await isConversationMember(userId, conv))) {
     return res.status(403).json({ success: false, message: '无权拉取该会话' });
   }
 
@@ -36,6 +28,15 @@ router.get('/sync', authenticateToken, async (req, res) => {
     orderBy: { seq: 'asc' },
     take,
   });
+
+  // 记录该设备的 per-device synced 位点(docs 15 §6)。取本次拉到的最大 seq 与 since 的较大值,
+  // 单调推进。辅助状态,失败不影响补拉响应。
+  if (device) {
+    const maxSeq = messages.length ? messages[messages.length - 1].seq : BigInt(since);
+    void recordDeviceSync(userId, device, conv, maxSeq).catch((err) =>
+      console.error('记录 device sync 失败:', err)
+    );
+  }
 
   res.json({ success: true, data: { messages, hasMore: messages.length === take } });
 });
@@ -49,16 +50,12 @@ router.post('/read', authenticateToken, async (req, res) => {
   const { conversationId, uptoSeq } = parsed.data;
   const userId = BigInt(req.user!.id);
 
-  if (!(await isMember(userId, conversationId))) {
+  if (!(await isConversationMember(userId, conversationId))) {
     return res.status(403).json({ success: false, message: '无权操作该会话' });
   }
 
-  const updated = await prisma.userConversation.updateMany({
-    where: { userId, conversationId, lastReadSeq: { lt: uptoSeq } },
-    data: { lastReadSeq: uptoSeq },
-  });
-
-  res.json({ success: true, data: { advanced: updated.count > 0 } });
+  const { advanced } = await advanceLastRead(userId, conversationId, uptoSeq);
+  res.json({ success: true, data: { advanced } });
 });
 
 export default router;

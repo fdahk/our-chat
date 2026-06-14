@@ -6,8 +6,9 @@ import { createAdapter } from '@socket.io/redis-adapter';
 import type { Prisma } from '../generated/prisma/index.js';
 import { config } from '../config/config.js';
 import { TOKEN_COOKIE } from './authCookies.js';
-import { sendMessageInput } from '../contracts/message.js';
+import { sendMessageInput, readReportInput } from '../contracts/message.js';
 import { persistMessage, deriveParticipants } from '../services/message.js';
+import { isConversationMember, advanceLastRead } from '../services/read.js';
 import { register, refresh, remove, REPLICA_ID } from '../realtime/presence.js';
 import { redis } from '../database/redis.js';
 
@@ -166,6 +167,35 @@ export const initSocket = (server: HttpServer): Server => {
       } catch (err) {
         console.error('message.send 处理失败:', err);
         socket.emit('message.error', { message: '消息发送失败', clientMsgId: data.clientMsgId });
+      }
+    });
+
+    // 已读上报(实时):单调推进用户级 lastReadSeq,再把 read.sync 推给【同用户的其它设备】,
+    // 让另一端的红点一起清掉(docs 15 §5.3)。只发其它端:io.to(用户房间).except(本连接)——
+    // 既不回声给操作端自己,也不发给会话对方(已读是用户私有状态)。adapter 保证跨副本送达。
+    socket.on('read.report', async (raw) => {
+      const parsed = readReportInput.safeParse(raw);
+      if (!parsed.success) {
+        socket.emit('read.error', { message: '已读上报参数非法' });
+        return;
+      }
+      const { conversationId, uptoSeq } = parsed.data;
+      const userId = BigInt(socket.userId as number);
+      try {
+        if (!(await isConversationMember(userId, conversationId))) {
+          socket.emit('read.error', { message: '无权操作该会话', conversationId });
+          return;
+        }
+        const { advanced } = await advanceLastRead(userId, conversationId, uptoSeq);
+        // 单调未推进(乱序旧值)时无需扰动其它端。
+        if (advanced) {
+          io.to(room(socket.userId as number))
+            .except(socket.id)
+            .emit('read.sync', { conversationId, uptoSeq });
+        }
+      } catch (err) {
+        console.error('read.report 处理失败:', err);
+        socket.emit('read.error', { message: '已读上报失败', conversationId });
       }
     });
 
