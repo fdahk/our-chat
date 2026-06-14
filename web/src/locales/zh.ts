@@ -261,6 +261,13 @@ const zh = {
       empty: '提交一个任务,看看 agent 怎么调用工具完成它',
       submitFail: '任务提交失败',
     },
+    inChat: {
+      contactTitle: 'AI 助手',
+      contactPreview: '基于你的文档,随时问我',
+      connecting: '正在连接 AI 助手…',
+      connectFail: 'AI 助手连接失败',
+      retry: '重试',
+    },
   },
 };
 

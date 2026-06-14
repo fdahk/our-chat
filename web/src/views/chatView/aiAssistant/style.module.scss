@@ -1,0 +1,15 @@
+.state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 100%;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 0.875rem;
+}
+
+.stateMsg {
+  color: rgba(0, 0, 0, 0.55);
+}

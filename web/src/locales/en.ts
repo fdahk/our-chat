@@ -250,6 +250,13 @@ const en: LocaleSchema = {
       empty: 'Submit a task and watch the agent reason through tool calls',
       submitFail: 'Task submit failed',
     },
+    inChat: {
+      contactTitle: 'AI Assistant',
+      contactPreview: 'Ask me anything about your docs',
+      connecting: 'Connecting to AI Assistant…',
+      connectFail: 'Failed to connect to AI Assistant',
+      retry: 'Retry',
+    },
   },
 };
 
