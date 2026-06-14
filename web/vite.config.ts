@@ -40,6 +40,11 @@ export default defineConfig(({ command }) => ({
         target: 'http://127.0.0.1:3007',
         changeOrigin: true,
       },
+      // /oauth/agent-token 走 our-chat 会话 cookie 鉴权,必须同源,故 proxy 到后端。
+      '/oauth': {
+        target: 'http://127.0.0.1:3007',
+        changeOrigin: true,
+      },
       '/user': {
         target: 'http://127.0.0.1:3007',
         changeOrigin: true,
