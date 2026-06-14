@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { redis } from '../../src/database/redis.js';
-import { register, refresh, remove, getDevices } from '../../src/realtime/presence.js';
+import { register, refresh, remove, getDevices, filterOnline } from '../../src/realtime/presence.js';
 
 // presence 注册表真 Redis 集成测试:多端登记、心跳续约、断开摘除、TTL 惰性过期。
 describe('连接注册表 presence(集成,真 Redis)', () => {
@@ -52,5 +52,28 @@ describe('连接注册表 presence(集成,真 Redis)', () => {
 
     const devices = await getDevices(userId);
     expect(devices.map((d) => d.deviceId)).toContain('beat');
+  });
+
+  it('filterOnline 批量返回在线子集,离线/过期成员被剔除(群扩散只推在线)', async () => {
+    const on1 = 9_900_000_101n;
+    const on2 = 9_900_000_102n;
+    const off = 9_900_000_103n;
+    const keys = [on1, on2, off].flatMap((u) => [`presence:${u}`, `presence:${u}:meta`]);
+    await redis.del(...keys);
+
+    await register(on1, { deviceId: 'd', replica: 'r', socketId: 's1' });
+    await register(on2, { deviceId: 'd', replica: 'r', socketId: 's2' });
+    // off 只有一台极短 TTL 设备,稍候过期 → 视为离线。
+    await register(off, { deviceId: 'stale', replica: 'r', socketId: 's3' }, 20);
+    await new Promise((r) => setTimeout(r, 40));
+
+    const set = await filterOnline([on1, on2, off]);
+    expect(set.has(Number(on1))).toBe(true);
+    expect(set.has(Number(on2))).toBe(true);
+    expect(set.has(Number(off))).toBe(false);
+    // 空入参快速短路。
+    expect(await filterOnline([])).toEqual(new Set());
+
+    await redis.del(...keys);
   });
 });
