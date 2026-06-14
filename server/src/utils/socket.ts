@@ -1,10 +1,12 @@
 import { Server } from 'socket.io'; //基于WebSocket的实时通信库
 import type { Server as HttpServer } from 'http';
+import { randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
 import type { Prisma } from '../generated/prisma/index.js';
-import { prisma } from '../database/prisma.js';
 import { config } from '../config/config.js';
 import { TOKEN_COOKIE } from './authCookies.js';
+import { sendMessageInput } from '../contracts/message.js';
+import { persistMessage, deriveParticipants } from '../services/message.js';
 
 // 握手验签后把用户身份挂到 socket 上，房间号即用户 id。
 declare module 'socket.io' {
@@ -83,66 +85,78 @@ export const initSocket = (server: HttpServer): Server => {
       console.log(`用户 ${socket.userId} 加入房间`);
     });
 
-    // 消息处理
+    // 落库 + 广播的公共逻辑。clientMsgId 由调用方保证(新协议来自客户端,旧协议服务端兜底生成)。
+    // 落库成功后:向会话双方广播 receiveMessage(携带 seq),并把首次/去重结果交给调用方决定是否 ack。
+    const persistAndBroadcast = async (input: {
+      conversationId: string;
+      senderId: bigint;
+      clientMsgId: string;
+      content: string;
+      type?: string;
+      mentions?: Prisma.InputJsonValue;
+      extra?: Prisma.InputJsonValue;
+      fileInfo?: Prisma.InputJsonValue;
+    }) => {
+      const participantIds = deriveParticipants(input.conversationId, input.senderId);
+      const { message, deduped } = await persistMessage({ ...input, participantIds });
+      // 去重命中时不重复广播(对方已收到过首次广播),仅给发送方回 ack 收敛本地状态。
+      if (!deduped) {
+        for (const uid of participantIds) {
+          io.to(room(Number(uid))).emit('receiveMessage', message);
+        }
+      }
+      return { message, deduped };
+    };
+
+    // 新协议:可靠上行。zod 校验 → 落库后回 message.ack(回带 seq/serverMsgId),
+    // 客户端凭 ack 把本地"发送中"替换为"已发送";收不到则按同 clientMsgId 重发,服务端幂等去重。
+    socket.on('message.send', async (raw) => {
+      const parsed = sendMessageInput.safeParse(raw);
+      if (!parsed.success) {
+        socket.emit('message.error', { message: '消息参数非法', clientMsgId: (raw as { clientMsgId?: string })?.clientMsgId });
+        return;
+      }
+      const data = parsed.data;
+      try {
+        const { message } = await persistAndBroadcast({
+          conversationId: data.conversationId,
+          senderId: BigInt(socket.userId as number), // 发送者以握手验签身份为准,不信任入参
+          clientMsgId: data.clientMsgId,
+          content: data.content,
+          type: data.type,
+          mentions: data.mentions as Prisma.InputJsonValue,
+          extra: data.extra as Prisma.InputJsonValue,
+          fileInfo: data.fileInfo as Prisma.InputJsonValue,
+        });
+        socket.emit('message.ack', {
+          clientMsgId: data.clientMsgId,
+          seq: message.seq,
+          serverMsgId: message.id,
+        });
+      } catch (err) {
+        console.error('message.send 处理失败:', err);
+        socket.emit('message.error', { message: '消息发送失败', clientMsgId: data.clientMsgId });
+      }
+    });
+
+    // 旧协议:前端尚未迁移时兼容。无 clientMsgId 时服务端生成一个,确保仍走发号/落库,
+    // 但无法跨重发去重(这是迁移到 message.send 的动机)。迁移完成后可移除。
     socket.on('sendMessage', async (msg) => {
       try {
-        // 防伪造：发送者必须是当前已认证用户本人
         if (Number(msg.senderId) !== Number(socket.userId)) {
           socket.emit('error', { message: '非法的发送者身份' });
           return;
         }
-        const splited = msg.conversationId.split('_');
-        const user1 = splited[1];
-        const user2 = splited[2];
-
-        // 单事务:upsert Conversation → 写消息 → 双方 UserConversation upsert,
-        // 关系层与消息层原子一致。
-        // (相比 Mongo+MySQL 双库的应用层 best-effort 协调,这是 PG 单库带来的核心收益之一)
-        const savedMsg = await prisma.$transaction(async (tx) => {
-          await tx.conversation.upsert({
-            where: { id: msg.conversationId },
-            create: { id: msg.conversationId, convType: 'single' },
-            update: {},
-          });
-          const created = await tx.message.create({
-            data: {
-              conversationId: String(msg.conversationId),
-              senderId: BigInt(Number(msg.senderId)),
-              content: String(msg.content ?? ''),
-              type: String(msg.type ?? 'text'),
-              status: String(msg.status ?? 'sent'),
-              mentions: (msg.mentions ?? []) as Prisma.InputJsonValue,
-              isEdited: Boolean(msg.isEdited),
-              isDeleted: Boolean(msg.isDeleted),
-              extra: (msg.extra ?? {}) as Prisma.InputJsonValue,
-              fileInfo: (msg.fileInfo ?? {}) as Prisma.InputJsonValue,
-              editHistory: (msg.editHistory ?? []) as Prisma.InputJsonValue,
-              ...(msg.timestamp ? { timestamp: new Date(msg.timestamp) } : {}),
-            },
-          });
-          for (const uid of [user1, user2]) {
-            await tx.userConversation.upsert({
-              where: {
-                userId_conversationId: {
-                  userId: BigInt(Number(uid)),
-                  conversationId: msg.conversationId,
-                },
-              },
-              create: {
-                userId: BigInt(Number(uid)),
-                conversationId: msg.conversationId,
-              },
-              update: {},
-            });
-          }
-          return created;
+        await persistAndBroadcast({
+          conversationId: String(msg.conversationId),
+          senderId: BigInt(Number(socket.userId)),
+          clientMsgId: typeof msg.clientMsgId === 'string' && msg.clientMsgId ? msg.clientMsgId : randomUUID(),
+          content: String(msg.content ?? ''),
+          type: String(msg.type ?? 'text'),
+          mentions: (msg.mentions ?? []) as Prisma.InputJsonValue,
+          extra: (msg.extra ?? {}) as Prisma.InputJsonValue,
+          fileInfo: (msg.fileInfo ?? {}) as Prisma.InputJsonValue,
         });
-        console.log('消息保存成功:', savedMsg.id);
-
-        // 广播消息
-        io.to(room(parseInt(user1))).emit('receiveMessage', savedMsg);
-        io.to(room(parseInt(user2))).emit('receiveMessage', savedMsg);
-        console.log('消息广播成功');
       } catch (err) {
         console.error('消息处理失败:', err);
         socket.emit('error', { message: '消息发送失败' });
