@@ -11,6 +11,7 @@ import uploadRouter from './routes/upload.js';
 import userRouter from './routes/user.js';
 import friendRouter from './routes/friend.js';
 import uploadAdvancedRouter from './routes/uploadAdvanced.js';
+import internalRouter from './routes/internal.js';
 
 const app = express(); //Express监听（http）服务器
 
@@ -62,6 +63,7 @@ app.use('/user/uploads', uploadRouter);
 app.use('/user', userRouter);
 app.use('/user', friendRouter);
 app.use('/api/upload', uploadAdvancedRouter);
+app.use('/internal', internalRouter);
 
 // 错误处理中间件（需注册在所有路由之后）
 const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
