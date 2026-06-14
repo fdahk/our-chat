@@ -32,6 +32,21 @@ services:
       start_period: 5s
     shm_size: '512mb'
 
+  # 连接注册表(presence)+ 跨副本 backplane(pub/sub)。多副本下连接态的共享存储。
+  redis:
+    image: redis:7-alpine
+    container_name: our-chat-redis
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'no', '--save', '']
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 3s
+      timeout: 3s
+      retries: 15
+      start_period: 3s
+
   server:
     image: ${SERVER_IMAGE:-our-chat-server:local}
     build:

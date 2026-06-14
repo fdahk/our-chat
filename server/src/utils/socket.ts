@@ -7,11 +7,14 @@ import { config } from '../config/config.js';
 import { TOKEN_COOKIE } from './authCookies.js';
 import { sendMessageInput } from '../contracts/message.js';
 import { persistMessage, deriveParticipants } from '../services/message.js';
+import { register, refresh, remove, REPLICA_ID } from '../realtime/presence.js';
 
 // 握手验签后把用户身份挂到 socket 上，房间号即用户 id。
 declare module 'socket.io' {
   interface Socket {
     userId?: number;
+    // 设备标识:同一用户多端登录时区分物理连接。客户端可在握手时自报,缺省用 socket.id。
+    deviceId?: string;
   }
 }
 
@@ -78,6 +81,25 @@ export const initSocket = (server: HttpServer): Server => {
 
     // 连接即自动加入「自己」的房间，房间号取服务端验签得到的 userId
     socket.join(room(socket.userId as number));
+
+    // 设备标识取握手自报值,缺省回落 socket.id(每条连接唯一)。登记到 presence 注册表,
+    // 让其它副本/扇出逻辑能查到「该用户此刻有哪些在线连接、在哪台副本」(docs 15 §5.1)。
+    const handshakeDeviceId = (socket.handshake.auth?.deviceId ??
+      socket.handshake.query?.deviceId) as string | undefined;
+    socket.deviceId =
+      typeof handshakeDeviceId === 'string' && handshakeDeviceId ? handshakeDeviceId : socket.id;
+    void register(socket.userId as number, {
+      deviceId: socket.deviceId,
+      replica: REPLICA_ID,
+      socketId: socket.id,
+    }).catch((err) => console.error('presence 登记失败:', err));
+
+    // 心跳:仅续约该设备的 TTL。客户端按 ~25s 间隔发送(docs 16 §5.2)。
+    socket.on('heartbeat', () => {
+      void refresh(socket.userId as number, socket.deviceId as string).catch((err) =>
+        console.error('presence 续约失败:', err)
+      );
+    });
 
     // 兼容前端的 join 事件，但忽略其传参，始终只加入自己的房间
     socket.on('join', () => {
@@ -263,9 +285,12 @@ export const initSocket = (server: HttpServer): Server => {
       }
     });
 
-    // 断开连接
+    // 断开连接:优雅断开即时从 presence 摘除该设备(非优雅断开靠 TTL 过期兜底)。
     socket.on('disconnect', () => {
       console.log('用户断开连接:', socket.id);
+      void remove(socket.userId as number, socket.deviceId as string).catch((err) =>
+        console.error('presence 摘除失败:', err)
+      );
     });
   });
 
