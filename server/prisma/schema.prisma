@@ -150,6 +150,9 @@ model UserConversation {
   // 未读数 = lastSyncedSeq - lastReadSeq,不再依赖易漂移的 unreadCount 计数器。详见 docs 13。
   lastSyncedSeq     BigInt   @default(0) @map("last_synced_seq")
   lastReadSeq       BigInt   @default(0) @map("last_read_seq")
+  // @提醒旁路游标(docs 14 §5.3):被 @ 时单调推到该消息 seq。
+  // "有未读 @" 判定 = mentionSeq > lastReadSeq —— 读位点推过即自动清除,无需单独清标。
+  mentionSeq        BigInt   @default(0) @map("mention_seq")
   unreadCount       Int      @default(0) @map("unread_count")
   isMuted           Boolean  @default(false) @map("is_muted")
   isPinned          Boolean  @default(false) @map("is_pinned")

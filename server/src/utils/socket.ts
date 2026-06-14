@@ -7,9 +7,9 @@ import type { Prisma } from '../generated/prisma/index.js';
 import { config } from '../config/config.js';
 import { TOKEN_COOKIE } from './authCookies.js';
 import { sendMessageInput, readReportInput } from '../contracts/message.js';
-import { persistMessage, deriveParticipants } from '../services/message.js';
+import { persistMessage, getConversationMembers, markMentions } from '../services/message.js';
 import { isConversationMember, advanceLastRead } from '../services/read.js';
-import { register, refresh, remove, REPLICA_ID } from '../realtime/presence.js';
+import { register, refresh, remove, filterOnline, REPLICA_ID } from '../realtime/presence.js';
 import { redis } from '../database/redis.js';
 
 // 握手验签后把用户身份挂到 socket 上，房间号即用户 id。
@@ -29,6 +29,19 @@ interface TokenPayload {
 // socket.io 的 Room 类型标注为 string，但本项目历史上一直用数字房间号（join 与 emit 两侧一致）。
 // 为保持运行时行为完全不变，这里仅做类型层面的桥接，不改动实际传入的数值。
 const room = (id: number): string => id as unknown as string;
+
+// 从消息 mentions(客户端上报的被 @ userId 列表)解析出「确实是本会话成员」的 bigint 集合。
+// 客户端可能传非法/越权 id,只保留与会话成员的交集,杜绝跨会话伪造 @提醒。
+const parseMentionIds = (raw: unknown, participants: bigint[]): bigint[] => {
+  if (!Array.isArray(raw)) return [];
+  const memberSet = new Set(participants.map((p) => p.toString()));
+  const out: bigint[] = [];
+  for (const v of raw) {
+    const s = String(v);
+    if (/^\d+$/.test(s) && memberSet.has(s)) out.push(BigInt(s));
+  }
+  return out;
+};
 
 // 从握手请求的 Cookie 头里取出指定 cookie 的值
 const parseCookie = (header: string | undefined, name: string): string | null => {
@@ -116,8 +129,8 @@ export const initSocket = (server: HttpServer): Server => {
       console.log(`用户 ${socket.userId} 加入房间`);
     });
 
-    // 落库 + 广播的公共逻辑。clientMsgId 由调用方保证(新协议来自客户端,旧协议服务端兜底生成)。
-    // 落库成功后:向会话双方广播 receiveMessage(携带 seq),并把首次/去重结果交给调用方决定是否 ack。
+    // 落库 + 读扩散扇出的公共逻辑。clientMsgId 由调用方保证(新协议来自客户端,旧协议服务端兜底生成)。
+    // 落库成功后:向会话在线成员广播 receiveMessage(携带 seq),并把首次/去重结果交给调用方决定是否 ack。
     const persistAndBroadcast = async (input: {
       conversationId: string;
       senderId: bigint;
@@ -128,12 +141,33 @@ export const initSocket = (server: HttpServer): Server => {
       extra?: Prisma.InputJsonValue;
       fileInfo?: Prisma.InputJsonValue;
     }) => {
-      const participantIds = deriveParticipants(input.conversationId, input.senderId);
+      const participantIds = await getConversationMembers(input.conversationId, input.senderId);
       const { message, deduped } = await persistMessage({ ...input, participantIds });
       // 去重命中时不重复广播(对方已收到过首次广播),仅给发送方回 ack 收敛本地状态。
       if (!deduped) {
-        for (const uid of participantIds) {
-          io.to(room(Number(uid))).emit('receiveMessage', message);
+        // 读扩散扇出:消息只落 1 份,实时只推在线成员,离线成员靠 /sync 按各自 synced 补拉。
+        // 单聊直推双方(成员仅 2 人,省一次 presence 往返);群聊先 filterOnline 收敛到在线子集,
+        // 避免给离线成员做无谓的跨副本 publish(大群下这是主要的扇出成本,docs 14 §6③)。
+        const isGroup = input.conversationId.startsWith('group_');
+        const targets = isGroup
+          ? await filterOnline(participantIds)
+          : new Set(participantIds.map(Number));
+        for (const uid of targets) {
+          io.to(room(uid)).emit('receiveMessage', message);
+        }
+
+        // @提醒旁路:与读扩散主链路解耦(docs 14 §5.3)。标记被 @ 成员的 mentionSeq(供 /mentions 单独查),
+        // 并给在线被 @ 者额外定向推一条 mention 事件高亮——不让 @我 淹没在大群的普通未读里。
+        const mentioned = parseMentionIds(input.mentions, participantIds);
+        if (mentioned.length) {
+          await markMentions(input.conversationId, message.seq, mentioned);
+          for (const uid of await filterOnline(mentioned)) {
+            io.to(room(uid)).emit('mention', {
+              conversationId: input.conversationId,
+              seq: message.seq,
+              serverMsgId: message.id,
+            });
+          }
         }
       }
       return { message, deduped };

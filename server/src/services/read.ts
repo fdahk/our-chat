@@ -26,6 +26,32 @@ export async function advanceLastRead(
   return { advanced: updated.count > 0 };
 }
 
+// 列出某用户「有未读 @」的会话(docs 14 §5.3):mentionSeq > lastReadSeq 即被 @ 后还没读到那条。
+// 两列比较 Prisma where 不支持,用原生 SQL;读位点推过 mentionSeq 时该行自然不再返回,无需单独清标。
+export async function listMentions(
+  userId: bigint
+): Promise<Array<{ conversationId: string; mentionSeq: bigint; lastReadSeq: bigint }>> {
+  return prisma.$queryRaw`
+    SELECT conversation_id AS "conversationId", mention_seq AS "mentionSeq", last_read_seq AS "lastReadSeq"
+    FROM user_conversations
+    WHERE user_id = ${userId} AND mention_seq > last_read_seq
+    ORDER BY mention_seq DESC
+  `;
+}
+
+// 群已读聚合(docs 14 §4.4/§5.2):只算「读到 seq 的人数」与总成员数,不做逐人逐条已读,
+// 规避 N×M 写放大。readCount = lastReadSeq>=seq 的成员行数;total = 会话成员行数。
+export async function countReadMembers(
+  conversationId: string,
+  seq: bigint
+): Promise<{ readCount: number; total: number }> {
+  const [readCount, total] = await Promise.all([
+    prisma.userConversation.count({ where: { conversationId, lastReadSeq: { gte: seq } } }),
+    prisma.userConversation.count({ where: { conversationId } }),
+  ]);
+  return { readCount, total };
+}
+
 // per-device 同步态推进:记录某设备在某会话已追平到的 seq(docs 15 §6)。
 // ON CONFLICT DO UPDATE + GREATEST 保证单调,避免乱序上报让 synced 倒退。
 export async function recordDeviceSync(

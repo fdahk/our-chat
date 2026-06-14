@@ -28,10 +28,13 @@ export interface PersistMessageResult {
 export async function persistMessage(input: PersistMessageInput): Promise<PersistMessageResult> {
   try {
     const message = await prisma.$transaction(async (tx) => {
-      // 会话不存在则建(单聊首条消息会触发)。用 ON CONFLICT DO NOTHING 而非 Prisma upsert:
+      // 会话不存在则建(首条消息触发)。用 ON CONFLICT DO NOTHING 而非 Prisma upsert:
       // 后者是 SELECT-then-INSERT 两步、并发首条消息会撞主键;前者由 DB 原子去重,并发安全。
+      // convType 按 id 前缀推断:group_<id> 是群会话,其余按单聊。群会话通常已在建群时存在,
+      // 这里只是并发兜底,保证即便先到消息也不会把群会话误标成 single。
+      const convType = input.conversationId.startsWith('group_') ? 'group' : 'single';
       await tx.$executeRaw`
-        INSERT INTO conversations (id, conv_type) VALUES (${input.conversationId}, 'single'::"ConvType")
+        INSERT INTO conversations (id, conv_type) VALUES (${input.conversationId}, ${convType}::"ConvType")
         ON CONFLICT (id) DO NOTHING
       `;
 
@@ -99,4 +102,39 @@ export function deriveParticipants(conversationId: string, senderId: bigint): bi
     if (ids.length === 2) return ids;
   }
   return [senderId];
+}
+
+// 会话成员读取(读扩散的「读会话成员」步,docs 14 §6)。这是群聊扇出的事实来源:
+//   group_<groupId> → 查 GroupMember 取全体成员(权威花名册,而非可能滞后的 UserConversation);
+//   single_<u1>_<u2> → 解析双方;其余 → 仅发送者兜底。
+// 群成员为空(群不存在/未建成员)时回落发送者,避免消息只落库却无人可达。
+export async function getConversationMembers(
+  conversationId: string,
+  senderId: bigint
+): Promise<bigint[]> {
+  const parts = conversationId.split('_');
+  if (parts[0] === 'group' && /^\d+$/.test(parts[1] ?? '')) {
+    const rows = await prisma.groupMember.findMany({
+      where: { groupId: BigInt(parts[1]) },
+      select: { userId: true },
+    });
+    const ids = rows.map((r) => r.userId);
+    return ids.length ? ids : [senderId];
+  }
+  return deriveParticipants(conversationId, senderId);
+}
+
+// @提醒旁路标记(docs 14 §5.3,坑4):把被 @ 成员的 mentionSeq 单调推到该消息 seq。
+// 与扩散主链路解耦——普通消息走读扩散,@提醒额外打这个游标,使其不被淹没在普通未读里。
+// WHERE mentionSeq < seq 保证单调,乱序/重发不会让游标倒退;只动确实是会话成员的行。
+export async function markMentions(
+  conversationId: string,
+  seq: bigint,
+  mentionedUserIds: bigint[]
+): Promise<void> {
+  if (!mentionedUserIds.length) return;
+  await prisma.userConversation.updateMany({
+    where: { conversationId, userId: { in: mentionedUserIds }, mentionSeq: { lt: seq } },
+    data: { mentionSeq: seq },
+  });
 }

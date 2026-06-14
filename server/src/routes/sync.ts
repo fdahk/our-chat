@@ -2,7 +2,13 @@ import express from 'express';
 import { prisma } from '../database/prisma.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { syncQuery, readReportInput } from '../contracts/message.js';
-import { isConversationMember, advanceLastRead, recordDeviceSync } from '../services/read.js';
+import {
+  isConversationMember,
+  advanceLastRead,
+  recordDeviceSync,
+  listMentions,
+  countReadMembers,
+} from '../services/read.js';
 
 const router = express.Router();
 
@@ -56,6 +62,30 @@ router.post('/read', authenticateToken, async (req, res) => {
 
   const { advanced } = await advanceLastRead(userId, conversationId, uptoSeq);
   res.json({ success: true, data: { advanced } });
+});
+
+// @我:列出当前用户有未读 @ 的会话(mentionSeq > lastReadSeq)。@提醒旁路的查询端,
+// 让大群里 @我 的消息能单独高亮/聚合,不被淹没在普通未读里(docs 14 §5.3)。
+router.get('/mentions', authenticateToken, async (req, res) => {
+  const userId = BigInt(req.user!.id);
+  const list = await listMentions(userId);
+  res.json({ success: true, data: list });
+});
+
+// 群已读人数:返回会话里「已读到 seq」的成员数与总成员数(docs 14 §4.4)。
+// 只做聚合不做逐人逐条,规避 N×M 写放大。需是会话成员才可查,防越权窥探群规模。
+router.get('/readCount', authenticateToken, async (req, res) => {
+  const conv = req.query.conv as string;
+  const seqRaw = req.query.seq as string;
+  if (!conv || !/^\d+$/.test(seqRaw ?? '')) {
+    return res.status(400).json({ success: false, message: '参数非法' });
+  }
+  const userId = BigInt(req.user!.id);
+  if (!(await isConversationMember(userId, conv))) {
+    return res.status(403).json({ success: false, message: '无权查看该会话' });
+  }
+  const result = await countReadMembers(conv, BigInt(seqRaw));
+  res.json({ success: true, data: result });
 });
 
 export default router;

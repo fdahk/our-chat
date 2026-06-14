@@ -87,3 +87,26 @@ export async function getDevices(userId: bigint | number): Promise<DeviceEntry[]
   }
   return result;
 }
+
+// 批量在线判定:返回入参中「当前至少有一台设备在 TTL 内」的 userId 子集。
+// 群扩散时据此只把消息实时推给在线成员(离线成员靠 /sync 补拉,docs 14 §6③);
+// 用单条 pipeline 把 N 次 ZRANGEBYSCORE 压成一次往返,避免大群逐个查的 N 次 RTT。
+export async function filterOnline(
+  userIds: Array<bigint | number>
+): Promise<Set<number>> {
+  const online = new Set<number>();
+  if (!userIds.length) return online;
+  const now = Date.now();
+  const pipe = redis.pipeline();
+  for (const uid of userIds) {
+    // LIMIT 0 1:只需判断「是否存在未过期设备」,取一个即可,不必拉全量。
+    pipe.zrangebyscore(zkey(uid), now, '+inf', 'LIMIT', 0, 1);
+  }
+  const results = await pipe.exec();
+  if (!results) return online;
+  for (let i = 0; i < userIds.length; i++) {
+    const [, rows] = results[i];
+    if (Array.isArray(rows) && rows.length > 0) online.add(Number(userIds[i]));
+  }
+  return online;
+}
