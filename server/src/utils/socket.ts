@@ -2,12 +2,14 @@ import { Server } from 'socket.io'; //基于WebSocket的实时通信库
 import type { Server as HttpServer } from 'http';
 import { randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
+import { createAdapter } from '@socket.io/redis-adapter';
 import type { Prisma } from '../generated/prisma/index.js';
 import { config } from '../config/config.js';
 import { TOKEN_COOKIE } from './authCookies.js';
 import { sendMessageInput } from '../contracts/message.js';
 import { persistMessage, deriveParticipants } from '../services/message.js';
 import { register, refresh, remove, REPLICA_ID } from '../realtime/presence.js';
+import { redis } from '../database/redis.js';
 
 // 握手验签后把用户身份挂到 socket 上，房间号即用户 id。
 declare module 'socket.io' {
@@ -60,6 +62,12 @@ export const initSocket = (server: HttpServer): Server => {
       credentials: true,
     },
   });
+
+  // 跨副本 backplane:接入 Redis adapter 后,io.to(room).emit 会透明地跨所有副本广播。
+  // 内部即「按房间 pub/sub 代投」——别的副本订阅到消息后用本地 fd 投给在该房间的连接,
+  // 因此多副本部署无需粘性会话(任意副本可代投,docs 16 §5.1/§6)。
+  // pub/sub 各用一条独立连接(订阅态连接不能再发普通命令),与 presence 的命令连接隔离。
+  io.adapter(createAdapter(redis.duplicate(), redis.duplicate()));
 
   // 握手鉴权：从 cookie 解析并验签 JWT，身份由服务端派生，绝不信任客户端自报的 userId。
   // 校验不过直接拒绝连接，杜绝匿名 socket 加入任意房间收发他人消息。
