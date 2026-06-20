@@ -28,6 +28,21 @@ beforeEach(() => {
 });
 
 describe('POST /api/login', () => {
+  it('缺少用户名/密码 → 400 且不查库(防 undefined 进 Prisma 崩溃)', async () => {
+    const res = await request(app).post('/api/login').send({});
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({ success: false });
+    // 根因防护:入参缺失时绝不能把 undefined 传给 prisma.findUnique
+    expect(findUniqueMock).not.toHaveBeenCalled();
+  });
+
+  it('查库异常 → 500 兜底(不让未捕获 rejection 崩进程)', async () => {
+    findUniqueMock.mockRejectedValue(new Error('db boom'));
+    const res = await request(app).post('/api/login').send({ username: 'neo', password: 'x' });
+    expect(res.status).toBe(500);
+    expect(res.body).toMatchObject({ success: false });
+  });
+
   it('用户不存在 → 400', async () => {
     findUniqueMock.mockResolvedValue(null);
     const res = await request(app).post('/api/login').send({ username: 'nobody', password: 'x' });
