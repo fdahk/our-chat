@@ -19,12 +19,19 @@ docker compose version >/dev/null 2>&1 || fail '缺 docker compose 插件'
 command -v openssl >/dev/null 2>&1 || fail '缺 openssl'
 ok '依赖齐全'
 
-step '准备 .env'
-if [ ! -f .env ]; then
-  cp .env.example .env
-  ok '从 .env.example 创建 .env(请按需调整)'
+step '准备集中 dev env(docker/.env.debug)+ 软链 server/.env'
+# dev/prod 的 env 集中在 docker/;server 与 Prisma CLI 默认读 server/.env,软链到集中文件复用同一份
+if [ ! -f ../docker/.env.debug ]; then
+  cp ../docker/.env.debug.example ../docker/.env.debug
+  ok '从 docker/.env.debug.example 创建 docker/.env.debug(请按需调整 JWT_SECRET 等)'
 else
-  ok '.env 已存在,跳过'
+  ok 'docker/.env.debug 已存在,跳过'
+fi
+if [ ! -e .env ]; then
+  ln -s ../docker/.env.debug .env
+  ok '软链 server/.env → ../docker/.env.debug'
+else
+  ok 'server/.env 已存在,跳过'
 fi
 
 step '生成 OAuth dev 私钥'
@@ -41,10 +48,11 @@ step '安装依赖'
 pnpm install
 
 step '启动 PostgreSQL(Docker)'
-docker compose up -d postgres
+DC='docker compose -f ../docker/docker-compose.dev.yml'
+$DC up -d postgres
 printf '等待 PG 就绪'
 for i in $(seq 1 30); do
-  if docker compose exec -T postgres pg_isready -U postgres -d our_chat >/dev/null 2>&1; then
+  if $DC exec -T postgres pg_isready -U postgres -d our_chat >/dev/null 2>&1; then
     printf '\n'
     ok 'PostgreSQL 就绪'
     break
@@ -53,7 +61,7 @@ for i in $(seq 1 30); do
   sleep 1
   if [ "$i" -eq 30 ]; then
     printf '\n'
-    fail 'PG 30 秒内未就绪,检查 docker compose logs postgres'
+    fail "PG 30 秒内未就绪,检查 $DC logs postgres"
   fi
 done
 
@@ -69,16 +77,14 @@ cat <<HINT
 
 \033[1;32m✓ 开发环境就绪!\033[0m
 
-下一步:
+下一步(也可在仓库根用 make server / make gateway / make web):
   $ pnpm dev                启动 server(端口 3007)
-  $ pnpm dev               看实时日志
 
 工具:
-  $ pnpm db:studio         Prisma Studio 浏览数据
-  $ docker compose --profile tools up -d   起 pgAdmin(http://localhost:5050)
-  $ docker compose logs -f postgres        看 PG 日志
+  $ pnpm db:studio          Prisma Studio 浏览数据
+  $ pnpm docker:logs:pg     看 PG 日志
 
 清理 / 重置:
-  $ pnpm clean:db          停 PG 并删数据卷(下次 setup-dev 会重建表)
+  $ pnpm clean:db           停中间件并删数据卷(下次 setup 会重建表)
 
 HINT

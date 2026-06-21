@@ -38,7 +38,8 @@ COPY --from=build --chown=app:app /app/pnpm-lock.yaml ./
 COPY --from=build --chown=app:app /app/node_modules ./node_modules
 COPY --from=build --chown=app:app /app/dist ./dist
 COPY --from=build --chown=app:app /app/prisma ./prisma
-COPY --from=build --chown=app:app /app/src/generated ./src/generated
+# Prisma client(生成的 .js)需放到 dist 下,匹配编译后代码 ../generated 的相对路径
+COPY --from=build --chown=app:app /app/src/generated ./dist/generated
 USER app
 EXPOSE 3007
 HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=3 \

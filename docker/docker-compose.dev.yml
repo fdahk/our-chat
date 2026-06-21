@@ -1,0 +1,82 @@
+# our-chat 本地开发:只起中间件(postgres + redis + minio),业务跑在宿主机热重载
+#
+# 推荐用仓库根的 Makefile 一键起全部:make dev(集中 dev env 在 docker/.env.debug)
+# 本文件单独用:make middleware,或 cd docker && docker compose -f docker-compose.dev.yml up -d
+name: our-chat
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: our-chat-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-our_chat}
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-our_chat}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    shm_size: '512mb'
+    networks: [our-chat]
+
+  redis:
+    image: redis:7-alpine
+    container_name: our-chat-redis
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'no', '--save', '']
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [our-chat]
+
+  # 对象存储:开发用 MinIO(S3 兼容);生产用腾讯云 COS,不起本容器
+  minio:
+    image: minio/minio:latest
+    container_name: our-chat-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin123}
+    ports:
+      - '${MINIO_PORT:-9000}:9000'
+      - '${MINIO_CONSOLE_PORT:-9001}:9001'
+    volumes:
+      - minio_data:/data
+    networks: [our-chat]
+
+  # 一次性:创建 bucket 并设为公有读(匿名下载),随后退出
+  minio-setup:
+    image: minio/mc:latest
+    depends_on: [minio]
+    entrypoint: >
+      /bin/sh -c "
+        until (mc alias set local http://minio:9000 ${S3_ACCESS_KEY:-minioadmin} ${S3_SECRET_KEY:-minioadmin123}); do echo 'waiting minio...'; sleep 2; done;
+        mc mb --ignore-existing local/${S3_BUCKET:-our-chat};
+        mc anonymous set download local/${S3_BUCKET:-our-chat};
+        echo 'MinIO bucket ready';
+      "
+    networks: [our-chat]
+    restart: 'no'
+
+volumes:
+  postgres_data:
+    name: our-chat-postgres-data
+  minio_data:
+    name: our-chat-minio-data
+
+networks:
+  our-chat:
+    driver: bridge

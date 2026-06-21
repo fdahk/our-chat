@@ -1,3 +1,6 @@
+// dotenv 必须在任何读取 process.env 的模块之前加载:宿主机本地开发读 .env;
+// 容器内无 .env 文件时静默跳过,改走 compose 的 environment 注入(已存在的 env 不被覆盖)。
+import 'dotenv/config';
 import app from './app.js';
 import { initSocket } from './utils/socket.js';
 import {

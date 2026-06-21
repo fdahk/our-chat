@@ -367,7 +367,7 @@ K8s 内建三种(Deployment 控制器实现):
 | **网络** | CNI 跑在 Docker 里(kind)/ VZ 虚拟机(OrbStack) | 真 overlay 网络(Calico / Cilium / 云原生) |
 | **可观测性** | 装得起 Prometheus + Grafana + Loki,看自己集群 | 同样,但数据量大 / 多 namespace |
 
-### 6.1 YAML 95% 一致,差异用 Kustomize overlay
+### 7.1 YAML 95% 一致,差异用 Kustomize overlay
 
 ```
 k8s/
@@ -387,7 +387,7 @@ k8s/
 
 `kubectl apply -k k8s/overlays/local`(本地)/ `kubectl apply -k k8s/overlays/production`(生产)。
 
-### 6.2 工作流闭环
+### 7.2 工作流闭环
 
 ```
 本地 kind 开发     ✓ 改 YAML,kubectl apply,看效果
