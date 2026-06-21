@@ -161,7 +161,9 @@ jobs:
 
             # —— 写 OAuth 生产私钥（base64 secret 解码）——
             printf '%s' "${OAUTH_PRIVATE_KEY_B64}" | base64 -d > keys/oauth-private-prod.pem
-            chmod 600 keys/oauth-private-prod.pem
+            # 容器内 server 以非 root 用户(app)运行,uid 与宿主 ubuntu(1000)不同;私钥需对其可读,
+            # 否则启动读 key 报 EACCES。单租户服务器 + :ro 挂载,644 可接受。
+            chmod 644 keys/oauth-private-prod.pem
 
             # —— 生成 .env（仅 ②③；①通用默认在 compose）。CLIENT_ORIGINS/OAUTH_* 由 WEB_PUBLIC_ORIGIN 派生，三处天然一致 ——
             {
