@@ -1,0 +1,159 @@
+name: deploy
+
+# 提交即自动部署：推送到 main → 构建 3 个镜像推 GHCR → SSH 到服务器生成 .env/私钥 → pull + compose up。
+# 配置分层：① 通用非机密在 compose 默认值；② 机密在 GitHub Secrets；③ 因环境而异的非机密在 GitHub Variables。
+# ②③ 由本工作流在部署时统一注入、在服务器生成 .env，服务器零手工维护。
+# 想用 dev 触发，把 branches 改成 [dev]；workflow_dispatch 支持手动触发。
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/our-chat
+
+jobs:
+  # ── 1) 并行构建并推送三个服务镜像 ──
+  build:
+    name: 构建并推送镜像
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: server
+            context: server
+          - name: gateway
+            context: gateway
+          - name: web
+            context: web
+            # web 需在构建期烤入「用户实际访问的公开 origin」（构建期变量，无法用 compose 默认覆盖）
+            build_args: |
+              VITE_SERVER_ORIGIN=${{ vars.WEB_PUBLIC_ORIGIN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 登录 GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: 构建并推送 ${{ matrix.name }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          build-args: ${{ matrix.build_args }}
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:${{ github.sha }}
+            ${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:latest
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+
+  # ── 2) 同步部署文件 + 在服务器生成 .env/私钥 + 拉取镜像滚动重启 ──
+  deploy:
+    name: 部署到服务器
+    needs: build
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-prod
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      # compose 文件与 nginx 配置同步到部署目录（strip_components 去掉 docker/ 前缀）
+      - name: 同步 compose + nginx 到服务器
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          source: 'docker/docker-compose.prod.yml,docker/nginx'
+          target: ${{ vars.DEPLOY_PATH || '/opt/our-chat' }}
+          strip_components: 1
+          overwrite: true
+
+      - name: 生成 .env/私钥 + 拉取镜像 + 滚动重启
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          # —— 连接/镜像 ——
+          IMAGE_PREFIX: ${{ env.IMAGE_PREFIX }}
+          GIT_SHA: ${{ github.sha }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/our-chat' }}
+          # —— ② 机密（GitHub Secrets，日志自动打码）——
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          GATEWAY_INTERNAL_TOKEN: ${{ secrets.GATEWAY_INTERNAL_TOKEN }}
+          S3_ACCESS_KEY: ${{ secrets.S3_ACCESS_KEY }}
+          S3_SECRET_KEY: ${{ secrets.S3_SECRET_KEY }}
+          OAUTH_PRIVATE_KEY_B64: ${{ secrets.OAUTH_PRIVATE_KEY_B64 }}
+          # —— ③ 因环境而异的非机密（GitHub Variables）——
+          WEB_PUBLIC_ORIGIN: ${{ vars.WEB_PUBLIC_ORIGIN }}
+          OAUTH_ACTIVE_KID: ${{ vars.OAUTH_ACTIVE_KID }}
+          S3_ENDPOINT: ${{ vars.S3_ENDPOINT }}
+          S3_REGION: ${{ vars.S3_REGION }}
+          S3_BUCKET: ${{ vars.S3_BUCKET }}
+          S3_PUBLIC_BASE_URL: ${{ vars.S3_PUBLIC_BASE_URL }}
+          POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+          POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          envs: IMAGE_PREFIX,GIT_SHA,GHCR_USER,GHCR_TOKEN,DEPLOY_PATH,POSTGRES_PASSWORD,JWT_SECRET,GATEWAY_INTERNAL_TOKEN,S3_ACCESS_KEY,S3_SECRET_KEY,OAUTH_PRIVATE_KEY_B64,WEB_PUBLIC_ORIGIN,OAUTH_ACTIVE_KID,S3_ENDPOINT,S3_REGION,S3_BUCKET,S3_PUBLIC_BASE_URL,POSTGRES_USER,POSTGRES_DB
+          script_stop: true
+          script: |
+            set -euo pipefail
+            umask 077
+            cd "${DEPLOY_PATH}"
+            mkdir -p keys
+
+            # —— 写 OAuth 生产私钥（base64 secret 解码）——
+            printf '%s' "${OAUTH_PRIVATE_KEY_B64}" | base64 -d > keys/oauth-private-prod.pem
+            chmod 600 keys/oauth-private-prod.pem
+
+            # —— 生成 .env（仅 ②③；①通用默认在 compose）。CLIENT_ORIGINS/OAUTH_* 由 WEB_PUBLIC_ORIGIN 派生，三处天然一致 ——
+            {
+              echo "POSTGRES_USER=${POSTGRES_USER:-postgres}"
+              echo "POSTGRES_DB=${POSTGRES_DB:-our_chat}"
+              echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
+              echo "JWT_SECRET=${JWT_SECRET}"
+              echo "GATEWAY_INTERNAL_TOKEN=${GATEWAY_INTERNAL_TOKEN}"
+              echo "OAUTH_ACTIVE_KID=${OAUTH_ACTIVE_KID}"
+              echo "CLIENT_ORIGINS=${WEB_PUBLIC_ORIGIN}"
+              echo "OAUTH_ISSUER_BASE_URL=${WEB_PUBLIC_ORIGIN}"
+              echo "OAUTH_WEB_REDIRECT_URI=${WEB_PUBLIC_ORIGIN}/oauth/callback"
+              echo "S3_ENDPOINT=${S3_ENDPOINT}"
+              echo "S3_REGION=${S3_REGION}"
+              echo "S3_BUCKET=${S3_BUCKET}"
+              echo "S3_PUBLIC_BASE_URL=${S3_PUBLIC_BASE_URL}"
+              echo "S3_ACCESS_KEY=${S3_ACCESS_KEY}"
+              echo "S3_SECRET_KEY=${S3_SECRET_KEY}"
+            } > .env
+            chmod 600 .env
+
+            # —— 登录 GHCR → 用精确 sha 镜像 pull → up（server 启动自动 prisma migrate deploy）——
+            echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
+            export SERVER_IMAGE="${IMAGE_PREFIX}-server:${GIT_SHA}"
+            export GATEWAY_IMAGE="${IMAGE_PREFIX}-gateway:${GIT_SHA}"
+            export WEB_IMAGE="${IMAGE_PREFIX}-web:${GIT_SHA}"
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            docker image prune -f
+            docker logout ghcr.io || true
+
+            echo "✅ 部署完成：${GIT_SHA}"
+            docker compose -f docker-compose.prod.yml ps

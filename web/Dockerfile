@@ -7,6 +7,11 @@ RUN npm install -g pnpm@10
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY . .
+# 生产构建期注入「用户实际访问的公开 origin」(经 nginx 同源反代到 server/gateway)。
+# Vite 把 VITE_* 内联进 bundle;不传则回退到 当前主机:3007(生产不暴露,会请求失败),故 CI 必传。
+# 例: http://1.2.3.4:8080  或  https://chat.example.com
+ARG VITE_SERVER_ORIGIN=
+ENV VITE_SERVER_ORIGIN=$VITE_SERVER_ORIGIN
 RUN pnpm build
 
 # 运行阶段:nginx 托管静态资源 + 反向代理

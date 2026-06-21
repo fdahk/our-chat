@@ -1,19 +1,18 @@
-// AgentView shell 测试。核心是认证门 → tab UI 的状态切换。
+// AgentView shell 测试。核心是一键鉴权(ensureAgentToken → agentMe)→ tab UI 的状态切换。
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders, screen, waitFor } from '@/test/render';
 
+vi.mock('./agentAuth', () => ({
+  ensureAgentToken: vi.fn(),
+}));
+
 vi.mock('./api', () => ({
-  getToken:    vi.fn(),
-  setToken:    vi.fn(),
-  agentMe:     vi.fn(),
-  agentLogout: vi.fn(),
+  agentMe: vi.fn(),
   // 各 tab 也走 api 模块,避免渲染时打真网络
   listDocuments:            vi.fn().mockResolvedValue([]),
   listConversations:        vi.fn().mockResolvedValue([]),
-  agentLogin:               vi.fn(),
-  agentRegister:            vi.fn(),
   uploadDocument:           vi.fn(),
   deleteDocument:           vi.fn(),
   createConversation:       vi.fn(),
@@ -26,26 +25,18 @@ vi.mock('./api', () => ({
 }));
 
 import AgentView from './index';
-import { agentLogout, agentMe, getToken } from './api';
+import { agentMe } from './api';
+import { ensureAgentToken } from './agentAuth';
 import { authMeFixture } from './__fixtures__/agentServer';
 
-const mGetTok  = vi.mocked(getToken);
-const mMe      = vi.mocked(agentMe);
-const mLogout  = vi.mocked(agentLogout);
+const mEnsure = vi.mocked(ensureAgentToken);
+const mMe     = vi.mocked(agentMe);
 
-beforeEach(() => { mGetTok.mockReset(); mMe.mockReset(); mLogout.mockReset(); });
-afterEach(() => vi.unstubAllGlobals());
+beforeEach(() => { mEnsure.mockReset(); mMe.mockReset(); });
 
 describe('<AgentView>', () => {
-  it('无 token → 渲染 LoginGate(没 me 调用)', async () => {
-    mGetTok.mockReturnValue(null);
-    renderWithProviders(<AgentView />);
-    expect(await screen.findByText(/登录 AI 助手/)).toBeInTheDocument();
-    expect(mMe).not.toHaveBeenCalled();
-  });
-
-  it('有 token + /auth/me 成功 → 渲染 tabs(默认在 文档库)', async () => {
-    mGetTok.mockReturnValue('T');
+  it('一键鉴权成功 → 渲染 tabs(默认在 文档库)+ 用户名', async () => {
+    mEnsure.mockResolvedValue('TOKEN');
     mMe.mockResolvedValue(authMeFixture);
 
     renderWithProviders(<AgentView />);
@@ -57,29 +48,26 @@ describe('<AgentView>', () => {
     expect(screen.getByRole('button', { name: /Agent 任务/ })).toBeInTheDocument();
   });
 
-  it('有 token 但 /auth/me 401 → 回落到 LoginGate', async () => {
-    mGetTok.mockReturnValue('STALE');
+  it('铸 token 失败(our-chat 会话失效)→ 显示 authError,不调 agentMe', async () => {
+    mEnsure.mockRejectedValue(new Error('mint failed'));
+
+    renderWithProviders(<AgentView />);
+
+    expect(await screen.findByText(/需要先登录 our-chat/)).toBeInTheDocument();
+    expect(mMe).not.toHaveBeenCalled();
+  });
+
+  it('铸 token 成功但验活 401 → 显示 authError', async () => {
+    mEnsure.mockResolvedValue('STALE');
     mMe.mockRejectedValue(new Error('unauthorized'));
 
     renderWithProviders(<AgentView />);
-    expect(await screen.findByText(/登录 AI 助手/)).toBeInTheDocument();
-  });
 
-  it('点 退出 → agentLogout 调用 + 回 LoginGate', async () => {
-    mGetTok.mockReturnValue('T');
-    mMe.mockResolvedValue(authMeFixture);
-    const user = userEvent.setup();
-
-    renderWithProviders(<AgentView />);
-    await screen.findByText(authMeFixture.displayName);
-
-    await user.click(screen.getByRole('button', { name: '退出' }));
-    expect(mLogout).toHaveBeenCalled();
-    expect(await screen.findByText(/登录 AI 助手/)).toBeInTheDocument();
+    expect(await screen.findByText(/需要先登录 our-chat/)).toBeInTheDocument();
   });
 
   it('已登录后切到知识对话 tab', async () => {
-    mGetTok.mockReturnValue('T');
+    mEnsure.mockResolvedValue('TOKEN');
     mMe.mockResolvedValue(authMeFixture);
     const user = userEvent.setup();
 

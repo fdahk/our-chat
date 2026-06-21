@@ -203,27 +203,7 @@ const zh = {
 
   agent: {
     brand: 'AI 助手',
-    logout: '退出',
-    loginGate: {
-      title: '登录 AI 助手',
-      sub: 'agent-server 独立账号(后续会切到 OAuth 统一身份)',
-      signIn: '登录',
-      signUp: '注册并登录',
-      toRegister: '没账号?创建一个',
-      toLogin: '已有账号?直接登录',
-      ok: '已连上 AI 助手',
-      fail: '登录失败',
-      displayName: '显示名',
-      errs: {
-        usernameRequired: '请输入用户名',
-        usernameLen: '用户名 3-64 字符',
-        usernameChars: '仅允许字母 / 数字 / 下划线 / 连字符',
-        passwordRequired: '请输入密码',
-        passwordLen: '密码 8-128 字符',
-        displayNameRequired: '请输入显示名',
-        displayNameLen: '显示名最多 128 字符',
-      },
-    },
+    authError: '需要先登录 our-chat 才能使用 AI 助手,登录后刷新重试',
     tabs: {
       documents: '文档库',
       conversations: '知识对话',
@@ -260,13 +240,6 @@ const zh = {
       hint: 'Cmd / Ctrl + Enter 提交',
       empty: '提交一个任务,看看 agent 怎么调用工具完成它',
       submitFail: '任务提交失败',
-    },
-    inChat: {
-      contactTitle: 'AI 助手',
-      contactPreview: '基于你的文档,随时问我',
-      connecting: '正在连接 AI 助手…',
-      connectFail: 'AI 助手连接失败',
-      retry: '重试',
     },
   },
 };

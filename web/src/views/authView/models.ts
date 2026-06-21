@@ -16,7 +16,7 @@ export const PROFILE = {
   age:    { zh: '20 岁', en: '20 y/o' },
   school: { zh: '东华理工大学 · 28 届本科', en: 'East China Univ. of Tech · Class of 2028' },
   intent: { zh: '全栈开发 · 偏前端', en: 'Full-stack · Front-end leaning' },
-  slogan: { zh: '我一直在努力。', en: 'Still working on it.' },
+  slogan: { zh: 'Hi!', en: 'Hi!' },
   award:  { zh: '蓝桥杯算法竞赛 · 国奖', en: 'Lanqiao Algorithm Contest · National Award' },
   phone:  '+86 185 7919 4952',
   email:  '3235159187@qq.com',
@@ -112,17 +112,6 @@ export const PROJECTS: ProjectItem[] = [
     },
     role:  { zh: '独立开发', en: 'Solo' },
     stack: ['React', 'Redux', 'WebRTC', 'Socket.io', 'Node', 'MySQL', 'MongoDB'],
-    year:  '2025',
-  },
-  {
-    name:    { zh: 'Source Agent', en: 'Source Agent' },
-    tagline: { zh: '把规则下的 URL 自动喂进个人知识库', en: 'Auto-ingest rule-based URLs into a personal KB' },
-    detail: {
-      zh: 'React 前端 + Node Nest / Java SpringBoot 混合后端。规则化 URL 抓取 → 结构化整理 → 落入个人知识库,辅助长期阅读检索。',
-      en: 'React front-end + hybrid Nest / SpringBoot backend. Rule-based crawl → structured extract → persisted into a personal KB for long-term retrieval.',
-    },
-    role:  { zh: '独立开发', en: 'Solo' },
-    stack: ['React', 'Nest', 'SpringBoot'],
     year:  '2025',
   },
   {

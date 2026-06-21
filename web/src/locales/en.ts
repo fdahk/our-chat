@@ -192,27 +192,7 @@ const en: LocaleSchema = {
 
   agent: {
     brand: 'AI Agent',
-    logout: 'Sign out',
-    loginGate: {
-      title: 'Sign in to AI Agent',
-      sub: 'agent-server standalone account (will move to OAuth SSO later)',
-      signIn: 'Sign in',
-      signUp: 'Register & sign in',
-      toRegister: 'No account? Create one',
-      toLogin: 'Have an account? Sign in',
-      ok: 'Connected to AI Agent',
-      fail: 'Sign in failed',
-      displayName: 'Display name',
-      errs: {
-        usernameRequired: 'Username required',
-        usernameLen: 'Username must be 3-64 chars',
-        usernameChars: 'Only letters / digits / underscore / hyphen',
-        passwordRequired: 'Password required',
-        passwordLen: 'Password must be 8-128 chars',
-        displayNameRequired: 'Display name required',
-        displayNameLen: 'Display name up to 128 chars',
-      },
-    },
+    authError: 'Please sign in to our-chat to use the AI Agent, then refresh',
     tabs: {
       documents: 'Documents',
       conversations: 'RAG Chat',
@@ -249,13 +229,6 @@ const en: LocaleSchema = {
       hint: 'Cmd / Ctrl + Enter to submit',
       empty: 'Submit a task and watch the agent reason through tool calls',
       submitFail: 'Task submit failed',
-    },
-    inChat: {
-      contactTitle: 'AI Assistant',
-      contactPreview: 'Ask me anything about your docs',
-      connecting: 'Connecting to AI Assistant…',
-      connectFail: 'Failed to connect to AI Assistant',
-      retry: 'Retry',
     },
   },
 };

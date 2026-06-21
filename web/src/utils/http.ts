@@ -67,7 +67,7 @@ const refreshToken = async (): Promise<boolean> => {
     return true;
   } catch (error) {
     console.error('Token刷新失败:', error);
-    window.location.href = '/login';
+    window.location.href = '/auth';
     return false;
   }
 };
@@ -185,7 +185,7 @@ http.interceptors.response.use(
         } else {
           // 其他401错误，直接跳转登录
           toast.err(t('http.unauthorized'));
-          window.location.href = '/login';
+          window.location.href = '/auth';
         }
       } else {
         // 处理其他HTTP错误

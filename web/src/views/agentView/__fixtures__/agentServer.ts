@@ -17,25 +17,11 @@
 import type {
   AgentConversation,
   AgentDocument,
-  AgentLoginResp,
   AgentMessage,
   AgentTaskResp,
   AgentUser,
   RunEvent,
 } from '../type';
-
-// ── POST /auth/login + /auth/register 响应 ─────────────────────────
-// 来源:agent-server/apps/node-server/src/modules/auth/dto/auth-response.dto.ts
-//   { token: string, user: { id, username, displayName, roleCode } }
-export const authLoginRespFixture = {
-  token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.fake.payload',
-  user: {
-    id: 1,
-    username: 'alice',
-    displayName: 'Alice',
-    roleCode: 'user',
-  },
-} satisfies AgentLoginResp;
 
 // ── GET /auth/me 响应 ──────────────────────────────────────────────
 export const authMeFixture = {

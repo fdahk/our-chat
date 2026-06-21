@@ -18,17 +18,12 @@ import { buildServerUrl } from '@/utils/runtime';
 import { defaultAvatar } from '@/assets/images';
 import type { FileItem } from '@/utils/upload';
 import MessageInput from './MessageInput';
-import AiAssistantPanel from './aiAssistant';
 import { useLang } from '@/i18n';
-
-// 置顶虚拟联系人「AI 助手」── 不是真实会话,点击进入横切的 agent-server 对话面板。
-const AI_CONTACT_ID = '__ai_assistant__';
 
 function ChatView() {
 
     const { t } = useLang();
     const dispatch = useDispatch();
-    const [aiActive, setAiActive] = useState(false); // 是否选中置顶的 AI 助手
     const activeConversation = useSelector((state: RootState) => state.chat.activeConversation); // 当前会话id
     const messages = useSelector((state: RootState) => state.chat.globalMessages); //消息列表 注：数据结构为 { [conversationId: string]: Message[] , ... }
     const userId= useSelector((state: RootState) => state.user.id) as number; // 从redux中获取用户id
@@ -54,7 +49,6 @@ function ChatView() {
     // 获取会话消息（懒加载）
     // useCallback 固定引用：作为 prop 传给 memo 化的 DisplayItem，引用稳定 memo 才不会失效。
     const handleClickConversation = useCallback(async (conversationId: string) => {
-        setAiActive(false); // 切回真实会话,退出 AI 面板
         dispatch(initActiveConversation(conversationId));
         await getConversationMessages(conversationId).then((res: ApiResponse<Message[]>) => {
             // dispatch(initGlobalMessages(res.data ?? {})); // 注： 数据结构为 { [conversationId: string]: Message[] , ... }
@@ -280,14 +274,6 @@ function ChatView() {
             <div className={chatViewStyle.chat_view_left}>
                 <SearchModal searchChange={handleSearchChange} placeholder={t('chat.searchPlaceholder')} />
                 <div className={chatViewStyle.chat_view_left_body}>
-                        <DisplayItem
-                            id={AI_CONTACT_ID}
-                            avatar={defaultAvatar}
-                            title={t('agent.inChat.contactTitle')}
-                            content={t('agent.inChat.contactPreview')}
-                            isActive={aiActive}
-                            handleClick={() => setAiActive(true)}
-                        />
                         {Object.values(globalConversations).map((item: Conversation) => (
                             <DisplayItem
                                 key={item.id}
@@ -305,9 +291,7 @@ function ChatView() {
             </div>
             {/* 右侧：聊天窗口 */}
             <div className={chatViewStyle.chat_view_right}>
-                {aiActive ? (
-                    <AiAssistantPanel />
-                ) : activeConversation ? (
+                {activeConversation ? (
                     <>
                         <div className={chatViewStyle.chat_header}>{globalFriendInfoList[parseConversationId(activeConversation)]?.username || ''}</div> {/* 会话标题 */}
                         {/* 消息列表 */}

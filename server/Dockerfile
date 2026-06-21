@@ -44,5 +44,6 @@ USER app
 EXPOSE 3007
 HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=3 \
   CMD wget -qO- http://localhost:3007/health || exit 1
-# 容器启动:apply migration → seed default client(server.ts 内部已做)→ listen
-CMD ["node", "dist/server.js"]
+# 容器启动:apply migration(prisma migrate deploy,幂等/带库级锁)→ seed default client(server.ts 内部已做)→ listen
+# 迁移随容器启动执行,部署即自动同步 DB schema(prisma 仅在有未应用迁移时变更,无则秒过)。
+CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && node dist/server.js"]

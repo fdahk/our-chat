@@ -2,13 +2,8 @@
 // 仅保留前端用到的字段;agent-server 加字段时这里前向兼容(多余字段 TS 不报错)。
 
 // ── 鉴权 ────────────────────────────────────────────────────────────
-// 契约对齐 agent-server/apps/node-server/src/modules/auth/dto/auth-response.dto.ts。
-// 只有 token + user 两个字段;无 tokenType / expiresIn(早先按 OAuth 习惯臆造)。
-export interface AgentLoginResp {
-  token: string;
-  user: AgentUser;
-}
-
+// 一键登录后,前端只读用户身份(GET /auth/me)。token 铸造/续期不在本端契约里
+// (走 our-chat BFF /oauth/agent-token,见 agentAuth.ts)。
 // 服务端 AuthUserDto 字段全是 `!:`(必填);写成可选会让消费者错过空值校验。
 export interface AgentUser {
   id: number;

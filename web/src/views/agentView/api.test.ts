@@ -1,17 +1,19 @@
 // api.ts 单元测试。覆盖:
 //   1. readSSE — 跨 chunk 分帧 / 多行 data / 坏 JSON / 多帧 / 空帧 / event 行 / id 行
-//   2. token 管理 — setToken/getToken/agentLogout 持久化
+//   2. token 管理 — setToken/getToken 持久化
 //   3. request 401 处理 — 自动清 token 并抛 'unauthorized'
 //   4. streamChat — 事件流映射(token / done / error)+ 用真实服务端 SSE 帧格式
 //
 // 设计原则:vi.stubGlobal('fetch', mock) 隔离网络,localStorage 走 happy-dom 真实实现。
 // **所有 mock 数据均从 __fixtures__/agentServer.ts 派生**,任何契约漂移由 TS 类型层捕获。
+//
+// 注:token 铸造已移到 agentAuth.ensureAgentToken(由 agentAuth.test.ts 覆盖),
+// api.ts 不再有 agentLogin/agentLogout。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  agentLogin,
-  agentLogout,
   BASE,
+  createConversation,
   getToken,
   listDocuments,
   readSSE,
@@ -19,7 +21,7 @@ import {
   streamChat,
   type SSEFrame,
 } from './api';
-import { authLoginRespFixture, chatStreamFramesFixture } from './__fixtures__/agentServer';
+import { chatStreamFramesFixture, conversationFixture } from './__fixtures__/agentServer';
 
 // ── 工具:把字符串拼成单/多 chunk ReadableStream ───────────────────
 function streamFromChunks(chunks: string[]): ReadableStream<Uint8Array> {
@@ -156,12 +158,6 @@ describe('token storage', () => {
     setToken(null);
     expect(getToken()).toBeNull();
   });
-
-  it('agentLogout 调用即清', () => {
-    setToken('y');
-    agentLogout();
-    expect(getToken()).toBeNull();
-  });
 });
 
 // ═══════════════════════════════════════════════════════════════════
@@ -184,18 +180,17 @@ describe('request()', () => {
     expect((init.headers as Headers).get('Authorization')).toBe('Bearer TEST_TOKEN');
   });
 
-  it('POST JSON 自动加 Content-Type,登录成功后 token 持久化', async () => {
+  it('POST JSON 自动加 Content-Type + Bearer', async () => {
     // 注意:用 fixture 派生 mock 响应。服务端契约改了 → fixture 改 → 测试自动联动。
-    const mock = vi.fn().mockResolvedValue(new Response(JSON.stringify(authLoginRespFixture), { status: 200 }));
+    const mock = vi.fn().mockResolvedValue(new Response(JSON.stringify(conversationFixture), { status: 200 }));
     vi.stubGlobal('fetch', mock);
 
-    await agentLogin('alice', 'pw');
+    await createConversation('新对话');
 
     const init = mock.mock.calls[0][1];
     expect((init.headers as Headers).get('Content-Type')).toBe('application/json');
+    expect((init.headers as Headers).get('Authorization')).toBe('Bearer TEST_TOKEN');
     expect(init.method).toBe('POST');
-    // 持久化的应该是 token 字段(契约对齐 agent-server,不是早先的 accessToken)
-    expect(getToken()).toBe(authLoginRespFixture.token);
   });
 
   it('401 清 token 并抛 unauthorized', async () => {

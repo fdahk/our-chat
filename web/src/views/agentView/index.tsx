@@ -1,14 +1,13 @@
-// AgentView 主入口。左侧 tab 切换(文档 / 对话 / 任务),右侧 tab 内容。
+// AgentView 主入口:左侧 tab 切换(文档 / 对话 / 任务),右侧 tab 内容。
 //
-// 鉴权门(phase 1):
-//   - 挂载时若 localStorage 有 agentServer.token,调 /auth/me 验活
-//   - 校验失败 → 清 token,显 LoginGate(本面板内置登录/注册)
-//   - 通过 → 展示 tab 主体
-// 这是为了让本面板自洽 ── 不依赖 our-chat 的会话状态,后续切 OAuth 时只换 LoginGate。
+// 一键鉴权(微信式):复用 our-chat 已登录会话,经 BFF POST /oauth/agent-token 铸一枚
+// agent-server-scoped 的 RS256 token(ensureAgentToken),再调 /auth/me 验活——agent-server
+// 用 JWKS 验签并按 (iss,sub) zero-touch 建/取本地账号。用户无需在本面板单独登录;
+// our-chat 会话失效时提示回 our-chat 重新登录。
 import { useEffect, useState } from 'react';
 import { useLang } from '@/i18n';
-import { agentLogout, agentMe, getToken } from './api';
-import LoginGate from './loginGate';
+import { agentMe } from './api';
+import { ensureAgentToken } from './agentAuth';
 import DocumentsTab from './tabs/documentsTab';
 import ConversationsTab from './tabs/conversationsTab';
 import TasksTab from './tabs/tasksTab';
@@ -18,30 +17,32 @@ type TabKey = 'documents' | 'conversations' | 'tasks';
 
 function AgentView() {
   const { t } = useLang();
-  const [authReady, setAuthReady] = useState<'checking' | 'ok' | 'no'>('checking');
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [me, setMe] = useState<{ username: string; displayName: string } | null>(null);
   const [tab, setTab] = useState<TabKey>('documents');
 
-  // 进入页面时验活
+  // 进入页面即一键鉴权:铸 token → 验活(zero-touch 建号)。无需手动登录。
   useEffect(() => {
-    if (!getToken()) { setAuthReady('no'); return; }
-    agentMe()
-      .then((u) => { setMe({ username: u.username, displayName: u.displayName }); setAuthReady('ok'); })
-      .catch(() => { setAuthReady('no'); });
+    let cancelled = false;
+    void (async () => {
+      try {
+        await ensureAgentToken();
+        const u = await agentMe();
+        if (!cancelled) {
+          setMe({ username: u.username, displayName: u.displayName });
+          setStatus('ready');
+        }
+      } catch {
+        // 铸造/验活失败通常意味着 our-chat 会话失效 → 引导回 our-chat 登录
+        if (!cancelled) setStatus('error');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const handleLogin = (user: { username: string; displayName: string }) => {
-    setMe(user);
-    setAuthReady('ok');
-  };
-
-  const handleLogout = () => {
-    agentLogout();
-    setMe(null);
-    setAuthReady('no');
-  };
-
-  if (authReady === 'checking') {
+  if (status === 'loading') {
     return (
       <div className={styles.container}>
         <div className={styles.empty}>{t('common.loading')}</div>
@@ -49,18 +50,18 @@ function AgentView() {
     );
   }
 
-  if (authReady === 'no') {
+  if (status === 'error') {
     return (
       <div className={styles.container}>
-        <LoginGate onLogin={handleLogin} />
+        <div className={styles.empty}>{t('agent.authError')}</div>
       </div>
     );
   }
 
   const tabs: { key: TabKey; label: string; icon: string }[] = [
-    { key: 'documents',     label: t('agent.tabs.documents'),     icon: 'icon-folder' },
+    { key: 'documents', label: t('agent.tabs.documents'), icon: 'icon-folder' },
     { key: 'conversations', label: t('agent.tabs.conversations'), icon: 'icon-message' },
-    { key: 'tasks',         label: t('agent.tabs.tasks'),         icon: 'icon-robot' },
+    { key: 'tasks', label: t('agent.tabs.tasks'), icon: 'icon-robot' },
   ];
 
   return (
@@ -74,9 +75,6 @@ function AgentView() {
           </div>
           <div className={styles.userRow}>
             <span className={styles.userName}>{me?.displayName}</span>
-            <button type="button" className={styles.logoutBtn} onClick={handleLogout}>
-              {t('agent.logout')}
-            </button>
           </div>
         </div>
 
@@ -97,9 +95,9 @@ function AgentView() {
 
       {/* 右侧 tab 内容 */}
       <section className={styles.main}>
-        {tab === 'documents'     && <DocumentsTab />}
+        {tab === 'documents' && <DocumentsTab />}
         {tab === 'conversations' && <ConversationsTab />}
-        {tab === 'tasks'         && <TasksTab />}
+        {tab === 'tasks' && <TasksTab />}
       </section>
     </div>
   );

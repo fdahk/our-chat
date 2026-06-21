@@ -6,9 +6,10 @@
 //   - prod: 在 .env.production 配 VITE_AGENT_API_BASE=https://agent.your-domain.com/api
 //   - 没配时回退 http://localhost:3101/api(本地约定默认值)
 //
-// 鉴权方案 phase 1:agent-server 自带 /api/auth/login 发 HS256 token,token 存
-// localStorage 'agentServer.token'。401 自动清空让上层引导重登。
-// phase 2:换成 our-chat OAuth code+PKCE,本文件只改 ensureToken() 即可。
+// 鉴权(微信式一键登录):token 不在本文件铸造,由 agentAuth.ensureAgentToken()
+// 复用 our-chat 已登录会话,经 BFF 铸一枚 agent-server-scoped 的 RS256 token,
+// 存 localStorage 'agentServer.token'。本文件只负责读写该 token(getToken/setToken)
+// 并在每个请求带上 Authorization,401 自动清空让上层引导回 our-chat 重登。
 //
 // SSE 走 fetch + ReadableStream(EventSource 不能带自定义 header,token 改走
 // query param ?access_token=...,agent-server 已兼容)。
@@ -16,7 +17,6 @@
 import type {
   AgentConversation,
   AgentDocument,
-  AgentLoginResp,
   AgentMessage,
   AgentRun,
   AgentTaskResp,
@@ -70,34 +70,10 @@ async function request<T>(
 }
 
 // ── 鉴权 ───────────────────────────────────────────────────────────
-export async function agentLogin(username: string, password: string): Promise<AgentLoginResp> {
-  const data = await request<AgentLoginResp>('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ username, password }),
-  });
-  setToken(data.token);
-  return data;
-}
-
-// agent-server 的 RegisterDto 三个字段都必填,且 register 成功直接返回 AuthResponseDto
-// (跟 login 一样的形状)── 我们不利用这个,LoginGate 仍走"注册 → 显式登录"两步,
-// 是为了后续切 OAuth 时把这两个动作彻底分开。
-export async function agentRegister(
-  username: string,
-  password: string,
-  displayName: string,
-): Promise<AgentLoginResp> {
-  return request<AgentLoginResp>('/auth/register', {
-    method: 'POST',
-    body: JSON.stringify({ username, password, displayName }),
-  });
-}
-
+// token 铸造在 agentAuth.ensureAgentToken();这里只验活(拿当前 token 取用户)。
 export async function agentMe(): Promise<AgentUser> {
   return request('/auth/me');
 }
-
-export function agentLogout() { setToken(null); }
 
 // ── 健康检查 ──────────────────────────────────────────────────────
 export async function agentHealth(): Promise<{
