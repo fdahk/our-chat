@@ -191,7 +191,9 @@ jobs:
             export SERVER_IMAGE="${IMAGE_PREFIX}-server:${GIT_SHA}"
             export GATEWAY_IMAGE="${IMAGE_PREFIX}-gateway:${GIT_SHA}"
             export WEB_IMAGE="${IMAGE_PREFIX}-web:${GIT_SHA}"
-            docker compose -f docker-compose.prod.yml pull
+            # 基础镜像走国内镜像源偶发抖动,会让整次 pull 失败带崩部署。
+            # 用 --ignore-pull-failures 容忍:应用镜像仍从可达的 GHCR 拉新,其余命中本地缓存。
+            docker compose -f docker-compose.prod.yml pull --ignore-pull-failures
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
             docker image prune -f
             docker logout ghcr.io || true
