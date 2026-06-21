@@ -1,8 +1,12 @@
 // dotenv 必须在任何读取 process.env 的模块之前加载:宿主机本地开发读 .env;
 // 容器内无 .env 文件时静默跳过,改走 compose 的 environment 注入(已存在的 env 不被覆盖)。
 import 'dotenv/config';
+import type { Server as HttpServer } from 'http';
+import type { Server as SocketIOServer } from 'socket.io';
 import app from './app.js';
 import { initSocket } from './utils/socket.js';
+import { prisma } from './database/prisma.js';
+import { redis } from './database/redis.js';
 import {
   applyPendingMigrations,
   loadKeyStore,
@@ -43,7 +47,37 @@ async function start(): Promise<void> {
     process.exit(1);
   });
 
-  initSocket(server);
+  const io = initSocket(server);
+  registerGracefulShutdown(server, io);
+}
+
+// 容器滚动发布会发 SIGTERM:停止接收新连接、断开 socket、收尾 DB/Redis 后再退出,
+// 避免在途请求被掐断与连接泄漏。超时兜底强制退出。
+function registerGracefulShutdown(server: HttpServer, io: SocketIOServer): void {
+  let shuttingDown = false;
+  const shutdown = async (signal: string): Promise<void> => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`收到 ${signal},开始优雅关闭`);
+    const force = setTimeout(() => {
+      console.error('优雅关闭超时(10s),强制退出');
+      process.exit(1);
+    }, 10_000);
+    force.unref();
+    try {
+      // io.close() 会同时关闭其挂载的 HTTP server(停止收新请求并排空在途)
+      await new Promise<void>((resolve) => io.close(() => resolve()));
+      await prisma.$disconnect();
+      await redis.quit();
+      console.log('已优雅关闭,退出');
+      process.exit(0);
+    } catch (err) {
+      console.error('优雅关闭出错:', err);
+      process.exit(1);
+    }
+  };
+  process.on('SIGTERM', () => void shutdown('SIGTERM'));
+  process.on('SIGINT', () => void shutdown('SIGINT'));
 }
 
 start().catch((error) => {

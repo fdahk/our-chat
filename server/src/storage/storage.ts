@@ -17,20 +17,51 @@ import { randomUUID } from 'crypto';
 import path from 'path';
 import type { Readable } from 'stream';
 
-const endpoint = process.env.S3_ENDPOINT ?? 'http://localhost:9000';
-const region = process.env.S3_REGION ?? 'us-east-1';
-const bucket = process.env.S3_BUCKET ?? 'our-chat';
-const accessKeyId = process.env.S3_ACCESS_KEY ?? 'minioadmin';
-const secretAccessKey = process.env.S3_SECRET_KEY ?? 'minioadmin123';
-// MinIO 必须 path-style(endpoint/bucket/key);COS 两种都支持,统一开
-const forcePathStyle = (process.env.S3_FORCE_PATH_STYLE ?? 'true') === 'true';
-const publicBaseUrl = (process.env.S3_PUBLIC_BASE_URL ?? `${endpoint}/${bucket}`).replace(/\/+$/, '');
+export interface S3Config {
+  endpoint: string;
+  region: string;
+  bucket: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  forcePathStyle: boolean;
+  publicBaseUrl: string;
+}
+
+// 解析对象存储配置。生产环境必须显式提供 endpoint/凭证/bucket,缺失即 fail-fast——
+// 否则会静默回落到本地 MinIO 默认值(minioadmin@localhost),导致"看似启动成功、
+// 上传却连到错地方"。dev 无配置时用本地 MinIO 默认值,开箱即用。
+export function resolveS3Config(env: NodeJS.ProcessEnv = process.env): S3Config {
+  if (env.NODE_ENV === 'production') {
+    const missing = ['S3_ENDPOINT', 'S3_ACCESS_KEY', 'S3_SECRET_KEY', 'S3_BUCKET'].filter(
+      (k) => !env[k]?.trim(),
+    );
+    if (missing.length > 0) {
+      throw new Error(`生产环境缺少对象存储配置: ${missing.join(', ')}`);
+    }
+  }
+  const endpoint = env.S3_ENDPOINT ?? 'http://localhost:9000';
+  const bucket = env.S3_BUCKET ?? 'our-chat';
+  return {
+    endpoint,
+    region: env.S3_REGION ?? 'us-east-1',
+    bucket,
+    accessKeyId: env.S3_ACCESS_KEY ?? 'minioadmin',
+    secretAccessKey: env.S3_SECRET_KEY ?? 'minioadmin123',
+    // MinIO 必须 path-style(endpoint/bucket/key);COS 两种都支持,统一开
+    forcePathStyle: (env.S3_FORCE_PATH_STYLE ?? 'true') === 'true',
+    publicBaseUrl: (env.S3_PUBLIC_BASE_URL ?? `${endpoint}/${bucket}`).replace(/\/+$/, ''),
+  };
+}
+
+const config = resolveS3Config();
+const bucket = config.bucket;
+const publicBaseUrl = config.publicBaseUrl;
 
 const client = new S3Client({
-  endpoint,
-  region,
-  credentials: { accessKeyId, secretAccessKey },
-  forcePathStyle,
+  endpoint: config.endpoint,
+  region: config.region,
+  credentials: { accessKeyId: config.accessKeyId, secretAccessKey: config.secretAccessKey },
+  forcePathStyle: config.forcePathStyle,
 });
 
 export const STORAGE_BUCKET = bucket;

@@ -1,6 +1,6 @@
 # server/ — IM 业务/信令后端（先读根 CLAUDE.md）
 
-栈：Node + Express + Prisma + Knex + Socket.io(`@socket.io/redis-adapter`) + ioredis + JWT(`jsonwebtoken` / `jose`) + zod + bcrypt + multer/sharp。
+栈：Node + Express + Prisma + Socket.io(`@socket.io/redis-adapter`) + ioredis + JWT(`jsonwebtoken` / `jose`) + zod + bcrypt + multer/sharp。
 
 ## 命令
 - 开发 `npm run dev`｜构建 `npm run build`｜类型 `npm run typecheck`｜测试 `npm test`

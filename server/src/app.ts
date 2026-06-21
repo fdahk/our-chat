@@ -1,8 +1,10 @@
 import './database/bigint-json.js';
 import express from 'express';
 import type { ErrorRequestHandler } from 'express';
+import helmet from 'helmet'; //安全响应头
 import cors from 'cors'; //跨域中间件
 import cookieParser from 'cookie-parser';
+import { authRateLimiter } from './middleware/rateLimit.js';
 import registerRouter from './routes/register.js';
 import loginRouter from './routes/login.js';
 import conversationRouter from './routes/chat.js';
@@ -14,6 +16,13 @@ import uploadAdvancedRouter from './routes/uploadAdvanced.js';
 import internalRouter from './routes/internal.js';
 
 const app = express(); //Express监听（http）服务器
+
+// 信任前置 nginx 一层代理,使 req.ip 取到真实客户端 IP(限流按真实 IP 计数、XFF 正确)
+app.set('trust proxy', 1);
+
+// 安全响应头(nosniff / 隐藏 X-Powered-By / Referrer-Policy / HSTS 等);
+// 本服务只返回 JSON,不直接发 HTML(SPA 由 nginx 托管),故沿用 helmet 默认即可。
+app.use(helmet());
 
 // 允许携带凭据的来源白名单。来自环境变量 CLIENT_ORIGINS（逗号分隔），
 // 开发环境默认放行本机 Vite。注意：启用 cookie 凭据后，CORS 不能再用通配 '*'。
@@ -54,6 +63,9 @@ app.get('/health', (_req, res) => {
 });
 
 // 路由
+// 认证端点(登录/注册)限流,挂在对应 router 之前
+app.use('/api/login', authRateLimiter);
+app.use('/api/register', authRateLimiter);
 app.use('/api', registerRouter);
 app.use('/api', loginRouter);
 app.use('/user', conversationRouter);

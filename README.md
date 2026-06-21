@@ -6,7 +6,7 @@
 
 | 服务 | 栈 | 端口 | 职责 |
 |---|---|---|---|
-| `server/` | Node + Express + Prisma + Knex + Socket.io + Redis | 3007 | 业务 / 信令 / OAuth IdP |
+| `server/` | Node + Express + Prisma + Socket.io + Redis | 3007 | 业务 / 信令 / OAuth IdP |
 | `gateway/` | Go 1.22 + gorilla/websocket + JWT + Prometheus | 8090 | WebSocket 长连接接入层 |
 | `web/` | React + Redux Toolkit + antd + Vite + i18next | 5173(dev) | Web 端 |
 | `mobile-swift/` | iOS Swift | — | 移动端 |
@@ -28,7 +28,7 @@
           ├─ /ws                           ─→ gateway:8090  (原生 WebSocket)
           └─ /(其余)                       ─→ 本地静态 SPA
                  │                                  │
-            server ── Prisma/Knex ─→ PostgreSQL     │
+            server ── Prisma ────→ PostgreSQL       │
               │   ── ioredis ───────┐                │
             gateway ── go-redis ────┴─→ Redis(pub/sub backplane + presence)
             文件 ──→ S3 兼容对象存储(dev=MinIO / prod=COS)

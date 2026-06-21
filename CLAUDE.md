@@ -9,7 +9,7 @@
 ## 服务地图
 | 服务 | 栈 | 说明 |
 |---|---|---|
-| `server/` | Node + Express + Prisma + Knex + Socket.io + Redis | 业务/信令后端（见 `server/CLAUDE.md`） |
+| `server/` | Node + Express + Prisma + Socket.io + Redis | 业务/信令后端（见 `server/CLAUDE.md`） |
 | `gateway/` | Go 1.22 + gorilla/websocket + JWT + Prometheus | 长连接网关（见 `gateway/CLAUDE.md`） |
 | `web/` | React + Redux Toolkit + antd + socket.io-client + i18next | Web 端（见 `web/CLAUDE.md`） |
 | `mobile-swift/` | iOS Swift | 移动端 |
