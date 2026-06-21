@@ -53,7 +53,11 @@ jobs:
           push: true
           # web 需在构建期烤入「用户实际访问的公开 origin」(构建期变量,无法用 compose 默认覆盖)。
           # secrets 不能用于 strategy.matrix,故在此(step with,secrets 可用)按 name 条件注入。
-          build-args: ${{ matrix.name == 'web' && format('VITE_SERVER_ORIGIN={0}', secrets.WEB_PUBLIC_ORIGIN) || '' }}
+          # 用 | 块标量让两个 build-arg 各占一行;非 web 项每行求值为空串,被 build-push-action 忽略。
+          # VITE_AGENT_API_BASE 走方案A 同源:{公开origin}/agent/api(nginx 反代到 agent 的 /api)。
+          build-args: |
+            ${{ matrix.name == 'web' && format('VITE_SERVER_ORIGIN={0}', secrets.WEB_PUBLIC_ORIGIN) || '' }}
+            ${{ matrix.name == 'web' && format('VITE_AGENT_API_BASE={0}/agent/api', secrets.WEB_PUBLIC_ORIGIN) || '' }}
           tags: |
             ${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:${{ github.sha }}
             ${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:latest
@@ -151,6 +155,10 @@ jobs:
             umask 077
             cd "${DEPLOY_PATH}"
             mkdir -p keys
+
+            # 跨项目共享网络（与 agent-server 互通）：compose 以 external 引用，必须先存在。
+            # 幂等创建——无论 our-chat 还是 agent-server 谁先部署，都能把它建出来。
+            docker network inspect oc-shared >/dev/null 2>&1 || docker network create oc-shared
 
             # —— 写 OAuth 生产私钥（base64 secret 解码）——
             printf '%s' "${OAUTH_PRIVATE_KEY_B64}" | base64 -d > keys/oauth-private-prod.pem

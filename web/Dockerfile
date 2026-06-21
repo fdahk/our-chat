@@ -12,6 +12,10 @@ COPY . .
 # 例: http://1.2.3.4:8080  或  https://chat.example.com
 ARG VITE_SERVER_ORIGIN=
 ENV VITE_SERVER_ORIGIN=$VITE_SERVER_ORIGIN
+# agent-server 同源接入(方案A):前端调 {公开origin}/agent/api,nginx 反代剥 /agent/ → agent 的 /api。
+# 例: http://1.2.3.4:8080/agent/api  或  https://chat.example.com/agent/api
+ARG VITE_AGENT_API_BASE=
+ENV VITE_AGENT_API_BASE=$VITE_AGENT_API_BASE
 RUN pnpm build
 
 # 运行阶段:nginx 托管静态资源 + 反向代理
