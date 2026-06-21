@@ -43,9 +43,8 @@ app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Express 提供的一个中间件，用于提供静态文件服务，暴露 uploads 目录
-// 注：Node里所有相对路径，都是基于"进程启动时的工作目录"来解析的，不是基于当前文件的目录
-app.use('/user/uploads', express.static('../uploads'));
+// 文件不再落本地盘,改由对象存储托管(bucket 公有读),前端直接访问 publicUrl;
+// 故不再需要 express.static 暴露本地 uploads 目录。
 
 // Health 端点:容器编排健康检查 / load balancer 探针用
 // 简单返回 200,不查 DB(避免 DB 抖动时 LB 把所有副本踢下线)。

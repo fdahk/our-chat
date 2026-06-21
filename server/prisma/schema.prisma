@@ -286,6 +286,35 @@ model FileInfo {
   @@map("file_info")
 }
 
+// ============ 文件存储(S3 兼容对象存储:MinIO / 腾讯云 COS)============
+
+// 秒传去重:文件内容 MD5 → 已存在的对象键。check 命中即秒传,不再重复上传。
+model UploadedFile {
+  id        BigInt   @id @default(autoincrement())
+  md5       String   @unique @db.VarChar(32)
+  objectKey String   @map("object_key") @db.VarChar(512)
+  size      BigInt
+  mimeType  String?  @map("mime_type") @db.VarChar(128)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(0)
+
+  @@map("uploaded_files")
+}
+
+// 分片上传会话:前端 fileId → S3 multipart 的 uploadId 与目标对象键。
+// 各分片 ETag 不入库,合并/续传时用 S3 listParts 实时查询(S3 是 part 状态的权威来源)。
+model UploadSession {
+  id          BigInt   @id @default(autoincrement())
+  fileId      String   @unique @map("file_id") @db.VarChar(255)
+  uploadId    String   @map("upload_id") @db.VarChar(255)
+  objectKey   String   @map("object_key") @db.VarChar(512)
+  fileName    String   @map("file_name") @db.VarChar(255)
+  mimeType    String?  @map("mime_type") @db.VarChar(128)
+  totalChunks Int      @map("total_chunks")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(0)
+
+  @@map("upload_sessions")
+}
+
 // ============ OAuth 2.1 / OIDC IdP ============
 
 model OAuthClient {

@@ -1,25 +1,8 @@
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
 
-const uploadDir = path.resolve('../uploads');
-
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// 配置 multer 磁盘存储
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (_req, file, cb) => {
-    // 用时间戳+原始名防止重名
-    const ext = path.extname(file.originalname);
-    const basename = path.basename(file.originalname, ext);
-    const uniqueName = `${basename}-${Date.now()}${ext}`;
-    cb(null, uniqueName);
-  },
+// 文件进内存 buffer(不落盘),由业务层交给 StorageService 上传到对象存储。
+// 头像等小文件场景,限制单文件体积避免内存被打满。
+export const multerInstance = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
 });
-
-export const multerInstance = multer({ storage });
