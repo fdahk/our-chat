@@ -11,7 +11,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
   if (!isAuthenticated) {
     // replace 替换当前路由，不会留下历史记录
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/auth" replace />;
   }
 
   return <>{children}</>;

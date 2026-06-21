@@ -13,7 +13,9 @@ import SocketService from '@/utils/socket';
 import { addGlobalFriend, addGlobalFriendInfo } from '@/store/chatStore';
 import { buildServerUrl } from '@/utils/runtime';
 import { defaultAvatar, searchUserIcon, newFriendIcon } from '@/assets/images';
+import { useLang } from '@/i18n';
 function DirectoryView() {
+    const { t } = useLang();
     const [activeFriend, setActiveFriend] = useState<{ friend_id: number, remark: string | null } | null>(null);
     const globalFriendList = useSelector((state: RootState) => state.chat.globalFriendList);
     const globalFriendInfoList = useSelector((state: RootState) => state.chat.globalFriendInfoList);
@@ -84,8 +86,8 @@ function DirectoryView() {
                 // 创建初始消息 
                 const msg:Message = {
                     conversationId: conversationId,
-                    senderId: friend_id, 
-                    content: '你好，我是' + otherUser.username,
+                    senderId: friend_id,
+                    content: t('directory.hello') + otherUser.username,
                     type: 'text',
                     status: 'sent',
                     mentions: [],
@@ -135,13 +137,13 @@ function DirectoryView() {
             <div className={directoryViewStyle.left}>
                 {/* 头部 */}
                 <div className={directoryViewStyle.left_header}>
-                    <SearchModal searchChange={handleSearchChange} placeholder={isAddingFriend ? '微信号/手机号' : '搜索'} />
+                    <SearchModal searchChange={handleSearchChange} placeholder={isAddingFriend ? t('directory.addSearchPlaceholder') : t('directory.searchPlaceholder')} />
                     {/* 切换添加好友搜索 */}
-                    <div className={directoryViewStyle.left_header_add_user_container} 
+                    <div className={directoryViewStyle.left_header_add_user_container}
                     onClick={handleClickAddFriend}>
                         {
                             isAddingFriend ? (
-                                <p style={{fontSize: '11px'}}>取消</p>
+                                <p style={{fontSize: '11px'}}>{t('directory.cancel')}</p>
                             ) : (
                                 <i className={`iconfont icon-adduser ${directoryViewStyle.left_header_add_user}`}></i>
                             )
@@ -158,14 +160,14 @@ function DirectoryView() {
                                 {
                                     !hasResult && (
                                         <div className={directoryViewStyle.noResult}>
-                                            <p>无法找到该用户，请检查你填写的账号是否正确</p>
+                                            <p>{t('directory.notFound')}</p>
                                         </div>
                                     )
                                 }
                                 <DisplayItem
                                     id={''}
                                     avatar={searchUserIcon}
-                                    title={'搜索：'}
+                                    title={t('directory.searchPrefix')}
                                     content={searchValue}
                                     handleClick={handleClickSearchFriend}
                                 />
@@ -176,7 +178,7 @@ function DirectoryView() {
                                         avatar={friendInfo?.avatar ? buildServerUrl(friendInfo.avatar) : defaultAvatar}
                                         username={friendInfo?.username as string}
                                         wxid={friendInfo?.id.toString() as string}
-                                        region={'中国'}
+                                        region={t('directory.region')}
                                         gender={friendInfo?.gender as string}
                                     />
                                 )}
@@ -187,7 +189,7 @@ function DirectoryView() {
                                 <DisplayItem
                                     id={''}
                                     avatar={newFriendIcon}
-                                    title={'新朋友'}
+                                    title={t('directory.newFriend')}
                                     content={''}
                                     handleClick={handleClickNewFriend}
                                 />
@@ -237,8 +239,8 @@ function DirectoryView() {
                             ? buildServerUrl(globalFriendInfoList[activeFriend?.friend_id as number].avatar) 
                             : defaultAvatar}
                         username={globalFriendInfoList[activeFriend?.friend_id as number]?.username}
-                        wxid={activeFriend?.friend_id.toString() as string} 
-                        region="中国" 
+                        wxid={activeFriend?.friend_id.toString() as string}
+                        region={t('directory.region')}
                         remark={activeFriend?.remark as string | null}
                         gender={globalFriendInfoList[activeFriend?.friend_id as number].gender as string}
                     />
@@ -247,7 +249,7 @@ function DirectoryView() {
                 {isCheckingFriendReq && (
                     <div className={directoryViewStyle.friendReqBox}>
                         <div className={directoryViewStyle.friendReqHeader}>
-                            <p className={directoryViewStyle.title}>新的朋友</p>
+                            <p className={directoryViewStyle.title}>{t('directory.title.newFriendRequests')}</p>
                         </div>
                         <div className={directoryViewStyle.friendReqList}>
                             {
@@ -267,23 +269,23 @@ function DirectoryView() {
                                                     globalFriendReqList[Number(item)].status === 'pending'
                                                     ? (
                                                     <div className={directoryViewStyle.rightBox_btn}>
-                                                        <div className={directoryViewStyle.rightBox_btn_reject} 
+                                                        <div className={directoryViewStyle.rightBox_btn_reject}
                                                         onClick={() => handleReplyFriendReq(Number(item), 'blocked')}>
-                                                            拒绝
+                                                            {t('directory.req.reject')}
                                                         </div>
 
-                                                        <div className={directoryViewStyle.rightBox_btn_accept} 
+                                                        <div className={directoryViewStyle.rightBox_btn_accept}
                                                         onClick={() => handleReplyFriendReq(Number(item), 'accepted')}>
-                                                            同意
+                                                            {t('directory.req.accept')}
                                                         </div>
-                                                    </div>            
+                                                    </div>
                                                     )
                                                     : (
                                                         <div className={directoryViewStyle.rightBox_status}>
                                                             {
                                                                 globalFriendReqList[Number(item)].status === 'sent'
-                                                                ? <p>等待验证</p>
-                                                                : <p>{globalFriendReqList[Number(item)].status === 'accepted' ? '已同意' : '已拒绝'}</p>
+                                                                ? <p>{t('directory.req.pending')}</p>
+                                                                : <p>{globalFriendReqList[Number(item)].status === 'accepted' ? t('directory.req.accepted') : t('directory.req.rejected')}</p>
                                                             }
                                                         </div>
                                                     )

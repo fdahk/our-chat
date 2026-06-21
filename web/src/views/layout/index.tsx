@@ -11,11 +11,13 @@ import VoiceCallModal from '@/globalComponents/voiceCallModal';
 import { buildServerUrl } from '@/utils/runtime';
 import { defaultAvatar } from '@/assets/images';
 import { post } from '@/utils/http';
+import { useLang } from '@/i18n';
 
 function Layout() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const user = useSelector((state: RootState) => state.user);
+    const { t } = useLang();
     useGlobalMessageListener(); // 全局消息监听
     // 导航栏选项列表
     const itemList = [
@@ -28,6 +30,11 @@ function Layout() {
             name: 'directory',
             icon: 'icon-user',
             path: '/directory'
+        },
+        {
+            name: 'agent',
+            icon: 'icon-robot-fill',
+            path: '/agent'
         }
     ]
 
@@ -60,7 +67,7 @@ function Layout() {
         }
         dispatch(logout()); // 清空用户信息
         localStorage.removeItem('persist:root'); // 清空持久化的根状态
-        navigate('/login'); //注：跳转到登录页，layout组件销毁会触发useEffect，断开socket连接
+        navigate('/auth'); //注：跳转到登录页，layout组件销毁会触发useEffect，断开socket连接
     };
     // 关闭设置中心(给子组件)
     const handleCloseSetting = () => {
@@ -78,12 +85,12 @@ function Layout() {
     const menuItems = [
         {
             key: 'setting',
-            label: '设置',
+            label: t('layout.menu.setting'),
             onClick: handleSetting,
         },
         {
             key: 'logout',
-            label: '退出登录',
+            label: t('layout.menu.logout'),
             onClick: handleLogout,
         },
     ];

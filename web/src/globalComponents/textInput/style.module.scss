@@ -1,0 +1,79 @@
+// TextInput 样式。色值全部走 --ui-* CSS 变量,让本组件在 .theme-dark 子树里
+// 自动换皮;其余几何 / 圆角 / 间距走 SCSS token($space-* / $radius-*)。
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  width: 100%;
+}
+
+.label {
+  font-size: 0.8125rem;
+  color: var(--ui-ink-dim);
+  letter-spacing: 0.03em;
+}
+
+.inputWrap {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  height: 2.875rem;
+  padding: 0 $space-3;
+  background: var(--ui-bg-elev1);
+  border: 1px solid var(--ui-border);
+  border-radius: $radius-md;
+  transition: border-color $dur-base $ease-out, background $dur-base $ease-out;
+
+  &:focus-within {
+    border-color: var(--ui-accent);
+    background: var(--ui-bg-elev2);
+    box-shadow: 0 0 0 0.1875rem var(--ui-accent-soft);
+  }
+}
+
+.affix {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ui-ink-faint);
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  color: var(--ui-ink);
+  font-size: 0.9375rem;
+  font-family: inherit;
+  letter-spacing: 0.01em;
+
+  &::placeholder { color: var(--ui-ink-faint); }
+  &:disabled { color: var(--ui-ink-faint); cursor: not-allowed; }
+
+  // 抑制浏览器自动填充的奶黄色背景
+  &:-webkit-autofill,
+  &:-webkit-autofill:hover,
+  &:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--ui-ink);
+    -webkit-box-shadow: 0 0 0 62.5rem var(--ui-bg-elev1) inset;
+    transition: background-color 9999s ease;
+  }
+}
+
+.fieldError .inputWrap {
+  border-color: var(--ui-danger);
+  &:focus-within { box-shadow: 0 0 0 0.1875rem var(--ui-danger-soft); }
+}
+
+.feedback {
+  font-size: 0.75rem;
+  color: var(--ui-ink-faint);
+  min-height: 1rem;
+  line-height: 1.2;
+}
+.fieldError .feedback { color: var(--ui-danger); }

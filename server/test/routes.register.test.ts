@@ -1,16 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 
-vi.mock('../src/database/mySql.js', () => ({
-  mySql: { execute: vi.fn(), query: vi.fn() },
+vi.mock('../src/database/prisma.js', () => ({
+  prisma: {
+    user: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
+    },
+  },
 }));
 
-import { mySql } from '../src/database/mySql.js';
+import { prisma } from '../src/database/prisma.js';
 import app from '../src/app.js';
 
-const execMock = mySql.execute as unknown as ReturnType<typeof vi.fn>;
+const findUniqueMock = prisma.user.findUnique as unknown as ReturnType<typeof vi.fn>;
 
-beforeEach(() => execMock.mockReset());
+beforeEach(() => findUniqueMock.mockReset());
 
 describe('POST /api/register 参数校验', () => {
   it('缺少用户名/邮箱/密码 → 400', async () => {
@@ -44,14 +49,14 @@ describe('GET /api/check-username', () => {
   });
 
   it('用户名可用 → exists:false', async () => {
-    execMock.mockResolvedValue([[], []]);
+    findUniqueMock.mockResolvedValue(null);
     const res = await request(app).get('/api/check-username').query({ username: 'freename' });
     expect(res.status).toBe(200);
     expect(res.body.exists).toBe(false);
   });
 
   it('用户名已存在 → exists:true', async () => {
-    execMock.mockResolvedValue([[{ id: 1 }], []]);
+    findUniqueMock.mockResolvedValue({ id: 1n });
     const res = await request(app).get('/api/check-username').query({ username: 'taken' });
     expect(res.status).toBe(200);
     expect(res.body.exists).toBe(true);
@@ -65,7 +70,7 @@ describe('GET /api/check-email', () => {
   });
 
   it('邮箱可用 → exists:false', async () => {
-    execMock.mockResolvedValue([[], []]);
+    findUniqueMock.mockResolvedValue(null);
     const res = await request(app).get('/api/check-email').query({ email: 'a@b.com' });
     expect(res.body.exists).toBe(false);
   });

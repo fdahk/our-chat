@@ -1,8 +1,7 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
-import type { RowDataPacket } from 'mysql2';
-import { mySql } from '../database/mySql.js';
+import { prisma } from '../database/prisma.js';
 import { config } from '../config/config.js';
 import {
   setAuthCookies,
@@ -16,32 +15,39 @@ import {
 const router = express.Router();
 
 router.post('/login', async (req, res) => {
-  const { username, password, remember } = req.body;
-  // 用户名登录，后期再来扩展
-  const [rows] = await mySql.execute<RowDataPacket[]>(
-    'SELECT * FROM users WHERE username=? LIMIT 1',
-    [username]
-  );
-  const user = rows[0];
-  if (!user) return res.status(400).json({ success: false, message: '用户不存在' });
+  try {
+    const { username, password, remember } = req.body ?? {};
+    // 入参校验：缺失或非字符串直接 400，避免把 undefined 传入 Prisma 触发校验异常
+    if (typeof username !== 'string' || !username || typeof password !== 'string' || !password) {
+      return res.status(400).json({ success: false, message: '用户名和密码不能为空' });
+    }
 
-  const match = await bcrypt.compare(password, user.password);
-  if (!match) return res.status(400).json({ success: false, message: '密码错误' });
+    const user = await prisma.user.findUnique({ where: { username } });
+    if (!user) return res.status(400).json({ success: false, message: '用户不存在' });
 
-  // 勾选记住我签发 7 天，否则 1 小时；cookie maxAge 与之对齐
-  const expiresIn = remember ? config.jwtExpiresIn : '1h';
-  const maxAge = remember ? REMEMBER_MAX_AGE : SESSION_MAX_AGE;
-  const token = jwt.sign({ id: user.id, username: user.username }, config.jwtSecret, {
-    expiresIn,
-  } as jwt.SignOptions);
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) return res.status(400).json({ success: false, message: '密码错误' });
 
-  // token 写入 HttpOnly cookie（前端 JS 读不到），并下发可读的 csrf token
-  const csrfToken = generateCsrfToken();
-  setAuthCookies(res, token, csrfToken, maxAge);
+    // 勾选记住我签发 7 天，否则 1 小时；cookie maxAge 与之对齐
+    const expiresIn = remember ? config.jwtExpiresIn : '1h';
+    const maxAge = remember ? REMEMBER_MAX_AGE : SESSION_MAX_AGE;
+    const token = jwt.sign(
+      { id: Number(user.id), username: user.username },
+      config.jwtSecret,
+      { expiresIn } as jwt.SignOptions,
+    );
 
-  // 响应体只返回用户信息，绝不再回传 token（剔除密码）
-  const { password: _password, ...userInfo } = user;
-  res.json({ success: true, data: userInfo });
+    // token 写入 HttpOnly cookie（前端 JS 读不到），并下发可读的 csrf token
+    const csrfToken = generateCsrfToken();
+    setAuthCookies(res, token, csrfToken, maxAge);
+
+    // 响应体只返回用户信息，绝不再回传 token（剔除密码）
+    const { password: _password, ...userInfo } = user;
+    res.json({ success: true, data: userInfo });
+  } catch (error) {
+    console.error('登录失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
+  }
 });
 
 // Token刷新接口：基于现有 cookie 重签并重设 cookie
@@ -76,20 +82,18 @@ router.post('/refresh', async (req, res) => {
     }
 
     // 验证用户是否仍然存在
-    const [rows] = await mySql.execute<RowDataPacket[]>(
-      'SELECT id, username, email, nickname, avatar, status FROM users WHERE id = ? AND status != "deleted"',
-      [decoded.id]
-    );
+    const user = await prisma.user.findFirst({
+      where: { id: BigInt(decoded.id), NOT: { status: 'deleted' } },
+      select: { id: true, username: true, email: true, nickname: true, avatar: true, status: true },
+    });
 
-    if (rows.length === 0) {
+    if (!user) {
       return res.status(401).json({ success: false, message: '用户不存在或已被禁用' });
     }
 
-    const user = rows[0];
-
     // 重签并重设 cookie（默认续 1 小时），同时轮换 csrf token
     const newToken = jwt.sign(
-      { id: user.id, username: user.username },
+      { id: Number(user.id), username: user.username },
       config.jwtSecret,
       { expiresIn: '1h' }
     );

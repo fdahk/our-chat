@@ -1,22 +1,12 @@
 import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
-import type { RowDataPacket } from 'mysql2';
 import { config } from '../config/config.js';
-import { mySql } from '../database/mySql.js';
+import { prisma } from '../database/prisma.js';
 import { TOKEN_COOKIE, CSRF_COOKIE } from '../utils/authCookies.js';
 
 interface TokenPayload {
   id: number;
   username: string;
-}
-
-interface UserRow extends RowDataPacket {
-  id: number;
-  username: string;
-  email: string | null;
-  nickname: string | null;
-  avatar: string | null;
-  status: string | null;
 }
 
 // 读操作不改变状态，无需 CSRF 校验
@@ -55,12 +45,12 @@ export const authenticateToken: RequestHandler = async (req, res, next) => {
     const decoded = jwt.verify(token, config.jwtSecret) as TokenPayload;
 
     // 验证用户是否仍然存在且状态正常
-    const [rows] = await mySql.execute<UserRow[]>(
-      'SELECT id, username, email, nickname, avatar, status FROM users WHERE id = ? AND status != "deleted"',
-      [decoded.id]
-    );
+    const user = await prisma.user.findFirst({
+      where: { id: BigInt(decoded.id), NOT: { status: 'deleted' } },
+      select: { id: true, username: true, email: true, nickname: true, avatar: true, status: true },
+    });
 
-    if (rows.length === 0) {
+    if (!user) {
       res.status(401).json({
         success: false,
         message: '用户不存在',
@@ -69,7 +59,7 @@ export const authenticateToken: RequestHandler = async (req, res, next) => {
     }
 
     // 将用户信息添加到请求对象（数据库现值为准，与 token 内的快照一致）
-    req.user = { ...rows[0] } as Express.Request['user'];
+    req.user = { ...user, id: Number(user.id) } as Express.Request['user'];
 
     next();
   } catch (error) {
@@ -112,13 +102,13 @@ export const optionalAuth: RequestHandler = async (req, _res, next) => {
 
     const decoded = jwt.verify(token, config.jwtSecret) as TokenPayload;
 
-    const [rows] = await mySql.execute<UserRow[]>(
-      'SELECT id, username, email, nickname, avatar, status FROM users WHERE id = ? AND status != "deleted"',
-      [decoded.id]
-    );
+    const user = await prisma.user.findFirst({
+      where: { id: BigInt(decoded.id), NOT: { status: 'deleted' } },
+      select: { id: true, username: true, email: true, nickname: true, avatar: true, status: true },
+    });
 
-    if (rows.length > 0) {
-      req.user = { ...rows[0] } as Express.Request['user'];
+    if (user) {
+      req.user = { ...user, id: Number(user.id) } as Express.Request['user'];
     } else {
       req.user = undefined;
     }

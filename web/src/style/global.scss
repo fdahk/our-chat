@@ -1,0 +1,135 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// 全局样式入口。由 main.tsx 单次引入,负责:
+//   1. :root 上挂载 CSS 自定义属性(运行期可改;antd ConfigProvider 与本文件
+//      共同决定主题最终态)
+//   2. 局部作用域 `.theme-dark` ── 给 auth 落地页等深色面板用,覆盖默认浅色
+//   3. CSS reset
+// SCSS 变量定义在 tokens.scss,via vite additionalData 自动注入到每个模块。
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ╭─ 默认浅色主题(主 app:聊天 / 通讯录 / 设置)─────────────────────────────╮
+:root {
+  // 排印
+  font-family: $font-sans;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: light dark;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  color: $legacy-text;
+  background-color: rgba(245, 235, 235, 0.67);
+
+  // ── 主题色(主 app)──
+  --color-primary:        #{$brand-wechat};
+  --color-primary-hover:  #{$brand-wechat-hover};
+  --color-primary-soft:   #{$brand-wechat-soft};
+
+  // ── 语义状态色 ──
+  --color-success: #{$color-success};
+  --color-warning: #{$color-warning};
+  --color-danger:  #{$color-danger};
+  --color-info:    #{$color-info};
+
+  // ── 主 app 遗留色,保持向后兼容(原 index.css 已沿用全 app)──
+  --primary-color:           #{$brand-wechat};
+  --background-color:        #{$legacy-bg};
+  --background-color-hover:  #{$legacy-bg-hover};
+  --button-color:            #{$legacy-btn};
+  --button-color-hover:      #{$legacy-btn-hover};
+  --icon-color:              #{$legacy-icon};
+  --text-color:              #{$legacy-text};
+  --warning-color:           #{$legacy-warning};
+
+  // ── antd 覆盖(去掉 input 默认边框,让我们自定义)──
+  --antd-input-border-color:        transparent;
+  --antd-input-hover-border-color:  transparent;
+  --antd-input-focus-border-color:  transparent;
+  --antd-input-box-shadow:          none;
+  --antd-input-focus-box-shadow:    none;
+
+  // ── UI 原语(textInput / button / 等)默认走主 app 配色 ──
+  --ui-accent:           #{$brand-wechat};
+  --ui-accent-hover:     #{$brand-wechat-hover};
+  --ui-accent-soft:      #{$brand-wechat-soft};
+  --ui-accent-contrast:  #ffffff;
+
+  --ui-bg-elev1:    #{$legacy-btn};
+  --ui-bg-elev2:    #ffffff;
+  --ui-ink:         #{$legacy-text};
+  --ui-ink-dim:     #6b6b6b;
+  --ui-ink-faint:   #999999;
+  --ui-border:      rgba(0, 0, 0, 0.08);
+  --ui-border-strong: rgba(0, 0, 0, 0.16);
+  --ui-danger:      #{$color-danger};
+  --ui-danger-soft: rgba(239, 68, 68, 0.16);
+}
+// ╰───────────────────────────────────────────────────────────────────────────╯
+
+// ╭─ 深色面板局部作用域 ── 加 class `.theme-dark` 让子树切到深色 ─────────────╮
+.theme-dark {
+  --ui-accent:          #{$brand-indigo};
+  --ui-accent-hover:    #{$brand-indigo-hover};
+  --ui-accent-soft:     #{$brand-indigo-soft};
+  --ui-accent-contrast: #ffffff;
+
+  --ui-bg-elev1:    #{$dark-bg-elev1};
+  --ui-bg-elev2:    #{$dark-bg-elev2};
+  --ui-ink:         #{$dark-ink};
+  --ui-ink-dim:     #{$dark-ink-dim};
+  --ui-ink-faint:   #{$dark-ink-faint};
+  --ui-border:      #{$dark-border};
+  --ui-border-strong: #{$dark-border-strong};
+}
+// ╰───────────────────────────────────────────────────────────────────────────╯
+
+// ╭─ CSS Reset ──────────────────────────────────────────────────────────────╮
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+p { margin-bottom: 0; }
+a { text-decoration: none; }
+ul, ol { list-style: none; }
+
+button {
+  border: none;
+  outline: none;
+  cursor: pointer;
+  background: transparent;
+  font-family: inherit;
+  font-size: inherit;
+}
+button:focus { outline: none; }
+
+input, textarea, select {
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: inherit;
+}
+input:focus, textarea:focus, select:focus { outline: none; }
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+// 老浏览器兼容
+article, aside, details, figcaption, figure,
+footer, header, hgroup, menu, nav, section { display: block; }
+
+// 选区色
+::selection {
+  background: var(--ui-accent-soft);
+  color: var(--ui-ink);
+}
+// ╰───────────────────────────────────────────────────────────────────────────╯

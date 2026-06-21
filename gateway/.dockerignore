@@ -1,0 +1,5 @@
+.git
+test
+*_test.go
+*.md
+CLAUDE.md

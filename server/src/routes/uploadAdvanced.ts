@@ -1,336 +1,246 @@
-// 高级文件上传路由（支持单文件、多文件、大文件分片、断点续传、秒传、压缩等）
-// 作用：为前端文件上传组件提供RESTful API，处理所有上传相关的后端逻辑
-// 在整个文件上传模块中的意义：
-// - 统一管理所有上传相关的后端接口，便于维护和扩展
-// - 支持多种上传场景（单文件、多文件、大文件、分片、断点续传、秒传、压缩等）
-// - 负责文件的存储、分片合并、MD5校验、压缩处理等核心后端功能
+// 高级文件上传路由(单文件、多文件、大文件分片、断点续传、秒传、压缩、流式)
+// 存储后端为 S3 兼容对象存储(dev=MinIO / prod=COS),业务只调 StorageService,不碰文件系统。
+// 秒传/分片会话元数据落 Postgres(UploadedFile / UploadSession)。
+// 前端接口契约保持不变(见 web/src/globalComponents/fileUploader)。
 
 import express from 'express';
-import fs from 'fs';
-import path from 'path';
-import {
-  upload, // multer实例，处理文件接收和存储
-  calculateStreamMD5, // 计算文件MD5（流）
-  compressImage, // 图片压缩
-  mergeChunks, // 合并分片
-  checkFileExists, // 检查文件是否已存在（秒传）
-} from '../utils/uploadHandler.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { prisma } from '../database/prisma.js';
+import {
+  buildObjectKey,
+  putObject,
+  putObjectStream,
+  publicUrl,
+  headObject,
+  createMultipartUpload,
+  uploadPart,
+  listUploadedParts,
+  completeMultipartUpload,
+} from '../storage/storage.js';
+import { upload, calculateFileMD5, compressImageBuffer } from '../utils/uploadHandler.js';
 
 const router = express.Router();
 
+// 落库一个内存 buffer:先按 MD5 秒传去重,未命中则上传对象存储并登记 UploadedFile。
+// 对象键用 MD5 派生(同内容同 key),并发重复上传幂等。
+async function persistBuffer(buffer: Buffer, originalName: string, mimeType?: string) {
+  const md5 = calculateFileMD5(buffer);
+  const existing = await prisma.uploadedFile.findUnique({ where: { md5 } });
+  if (existing) {
+    return { url: publicUrl(existing.objectKey), md5, size: buffer.length };
+  }
+  const key = buildObjectKey(originalName, md5);
+  await putObject(key, buffer, mimeType);
+  const row = await prisma.uploadedFile.upsert({
+    where: { md5 },
+    create: { md5, objectKey: key, size: BigInt(buffer.length), mimeType },
+    update: {},
+  });
+  return { url: publicUrl(row.objectKey), md5, size: buffer.length };
+}
+
 // ==================== 1. 单文件上传 ====================
-// 接口：POST /api/upload/single
-// 功能：接收单个文件，存储到uploads目录，返回文件信息
+// POST /api/upload/single
 router.post('/single', authenticateToken, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: '没有上传文件',
-      });
+      return res.status(400).json({ success: false, message: '没有上传文件' });
     }
-
-    const filePath = req.file.path; // 文件实际存储路径
-    const url = `/user/uploads/${req.file.filename}`; // 静态资源访问URL
-    const fileMD5 = await calculateStreamMD5(filePath); // 计算MD5
-
+    const { url, md5, size } = await persistBuffer(
+      req.file.buffer,
+      req.file.originalname,
+      req.file.mimetype,
+    );
     res.json({
       success: true,
-      data: {
-        url, // 文件访问URL
-        filename: req.file.filename, // 存储文件名
-        originalName: req.file.originalname, // 原始文件名
-        size: req.file.size, // 文件大小
-        md5: fileMD5, // 文件MD5
-      },
+      data: { url, originalName: req.file.originalname, size, md5 },
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: (error as Error).message,
-    });
+    res.status(500).json({ success: false, message: (error as Error).message });
   }
 });
 
 // ==================== 2. 多文件上传 ====================
-// 接口：POST /api/upload/multiple
-// 功能：批量上传文件，最多10个，返回每个文件的信息
+// POST /api/upload/multiple(最多 10 个)
 router.post('/multiple', authenticateToken, upload.array('files', 10), async (req, res) => {
   try {
     const files = req.files as Express.Multer.File[] | undefined;
     if (!files || files.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: '没有上传文件',
-      });
+      return res.status(400).json({ success: false, message: '没有上传文件' });
     }
-
-    // 并发处理每个文件，返回详细信息
     const results = await Promise.all(
       files.map(async (file) => {
-        const url = `/user/uploads/${file.filename}`;
-        const fileMD5 = await calculateStreamMD5(file.path);
-        return {
-          url,
-          filename: file.filename,
-          originalName: file.originalname,
-          size: file.size,
-          md5: fileMD5,
-        };
-      })
+        const { url, md5, size } = await persistBuffer(file.buffer, file.originalname, file.mimetype);
+        return { url, originalName: file.originalname, size, md5 };
+      }),
     );
-
-    res.json({
-      success: true,
-      data: results,
-    });
+    res.json({ success: true, data: results });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: (error as Error).message,
-    });
+    res.status(500).json({ success: false, message: (error as Error).message });
   }
 });
 
 // ==================== 3. 秒传检查 ====================
-// 接口：POST /api/upload/check
-// 功能：前端上传前先计算MD5，后端查找是否已存在该文件，实现秒传
+// POST /api/upload/check { fileMD5 } → 命中返回已有 URL
 router.post('/check', authenticateToken, async (req, res) => {
   try {
     const { fileMD5 } = req.body;
-
     if (!fileMD5) {
-      return res.status(400).json({
-        success: false,
-        message: '缺少文件MD5',
+      return res.status(400).json({ success: false, message: '缺少文件MD5' });
+    }
+    const hit = await prisma.uploadedFile.findUnique({ where: { md5: fileMD5 } });
+    if (hit) {
+      return res.json({
+        success: true,
+        data: { exists: true, url: publicUrl(hit.objectKey), message: '文件已存在，秒传成功' },
       });
     }
-
-    const result = await checkFileExists(fileMD5);
-
-    if (result.exists) {
-      // 文件已存在，直接返回URL，实现秒传
-      res.json({
-        success: true,
-        data: {
-          exists: true,
-          url: result.url,
-          message: '文件已存在，秒传成功',
-        },
-      });
-    } else {
-      // 文件不存在，需要正常上传
-      res.json({
-        success: true,
-        data: {
-          exists: false,
-          message: '文件不存在，需要上传',
-        },
-      });
-    }
+    res.json({ success: true, data: { exists: false, message: '文件不存在，需要上传' } });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: (error as Error).message,
-    });
+    res.status(500).json({ success: false, message: (error as Error).message });
   }
 });
 
 // ==================== 4. 分片上传 ====================
-// 接口：POST /api/upload/chunk
-// 功能：接收单个分片，存储到chunks目录，等待合并
+// POST /api/upload/chunk?fileId=&chunkIndex=  body: chunk(file), fileName, totalChunks
+// 首片初始化 S3 multipart 并登记 UploadSession;后续片直传到该 uploadId。
+// 约束:S3 multipart 除最后一片外每片最小 5MB(前端切片 5MB/片,正好满足)。
+// partNumber 从 1 开始,前端 chunkIndex 从 0,映射 +1。
 router.post('/chunk', authenticateToken, upload.single('chunk'), async (req, res) => {
   try {
-    const { fileId, chunkIndex } = req.body;
+    const fileId = req.query.fileId as string | undefined;
+    const chunkIndex = parseInt(req.query.chunkIndex as string, 10);
+    const { fileName, totalChunks } = req.body as { fileName?: string; totalChunks?: string };
 
     if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: '没有上传分片',
+      return res.status(400).json({ success: false, message: '没有上传分片' });
+    }
+    if (!fileId || Number.isNaN(chunkIndex) || !fileName) {
+      return res.status(400).json({ success: false, message: '缺少分片参数(fileId/chunkIndex/fileName)' });
+    }
+
+    let session = await prisma.uploadSession.findUnique({ where: { fileId } });
+    if (!session) {
+      const key = buildObjectKey(fileName);
+      const uploadId = await createMultipartUpload(key, req.file.mimetype);
+      session = await prisma.uploadSession.create({
+        data: {
+          fileId,
+          uploadId,
+          objectKey: key,
+          fileName,
+          mimeType: req.file.mimetype,
+          totalChunks: Number(totalChunks) || 0,
+        },
       });
     }
 
-    // 分片上传只负责存储分片，合并由/merge接口完成
-    res.json({
-      success: true,
-      data: {
-        fileId,
-        chunkIndex: parseInt(chunkIndex),
-        message: '分片上传成功',
-      },
-    });
+    await uploadPart(session.objectKey, session.uploadId, chunkIndex + 1, req.file.buffer);
+
+    res.json({ success: true, data: { fileId, chunkIndex, message: '分片上传成功' } });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: (error as Error).message,
-    });
+    res.status(500).json({ success: false, message: (error as Error).message });
   }
 });
 
 // ==================== 5. 合并分片 ====================
-// 接口：POST /api/upload/merge
-// 功能：将所有分片合并为完整文件，返回最终文件信息
+// POST /api/upload/merge { fileId, fileName, totalChunks }
+// 用 S3 completeMultipartUpload 服务端合并,无需后端读写字节;清理会话。
 router.post('/merge', authenticateToken, async (req, res) => {
   try {
-    const { fileId, fileName, totalChunks } = req.body;
+    const { fileId, totalChunks } = req.body as { fileId?: string; totalChunks?: number | string };
+    if (!fileId) {
+      return res.status(400).json({ success: false, message: '缺少必要参数' });
+    }
+    const session = await prisma.uploadSession.findUnique({ where: { fileId } });
+    if (!session) {
+      return res.status(404).json({ success: false, message: '分片会话不存在(请重新上传)' });
+    }
 
-    if (!fileId || !fileName || !totalChunks) {
+    const parts = await listUploadedParts(session.objectKey, session.uploadId);
+    const expected = Number(totalChunks);
+    if (expected && parts.length !== expected) {
       return res.status(400).json({
         success: false,
-        message: '缺少必要参数',
+        message: `分片不完整:已上传 ${parts.length}/${expected}`,
       });
     }
 
-    // 合并所有分片，生成最终文件
-    const outputPath = await mergeChunks(fileId, fileName, parseInt(totalChunks));
-    const url = `/user/uploads/${fileName}`;
-    const fileMD5 = await calculateStreamMD5(outputPath);
+    await completeMultipartUpload(session.objectKey, session.uploadId, parts);
+    await prisma.uploadSession.delete({ where: { fileId } });
 
     res.json({
       success: true,
-      data: {
-        url,
-        fileName,
-        md5: fileMD5,
-        message: '文件合并成功',
-      },
+      data: { url: publicUrl(session.objectKey), fileName: session.fileName, message: '文件合并成功' },
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: (error as Error).message,
-    });
+    res.status(500).json({ success: false, message: (error as Error).message });
   }
 });
 
 // ==================== 6. 流式上传 ====================
-// 接口：POST /api/upload/stream
-// 功能：支持流式数据上传，适合特殊场景
-router.post('/stream', authenticateToken, (req, res) => {
+// POST /api/upload/stream?fileName= —— 边收边传,不在内存聚合整文件(前端未用,低优先级)
+router.post('/stream', authenticateToken, async (req, res) => {
   try {
     const fileName = req.query.fileName as string | undefined;
     if (!fileName) {
-      return res.status(400).json({
-        success: false,
-        message: '缺少文件名',
-      });
+      return res.status(400).json({ success: false, message: '缺少文件名' });
     }
-
-    const filePath = path.join('../uploads', fileName);
-    const writeStream = fs.createWriteStream(filePath);
-
-    req.pipe(writeStream);
-
-    writeStream.on('finish', async () => {
-      const url = `/user/uploads/${fileName}`;
-      const fileMD5 = await calculateStreamMD5(filePath);
-      const stats = fs.statSync(filePath);
-
-      res.json({
-        success: true,
-        data: {
-          url,
-          fileName,
-          size: stats.size,
-          md5: fileMD5,
-          message: '流式上传成功',
-        },
-      });
-    });
-
-    writeStream.on('error', (error) => {
-      res.status(500).json({
-        success: false,
-        message: error.message,
-      });
+    const key = buildObjectKey(fileName);
+    await putObjectStream(key, req, req.headers['content-type']);
+    const meta = await headObject(key);
+    res.json({
+      success: true,
+      data: { url: publicUrl(key), fileName, size: meta?.size ?? 0, message: '流式上传成功' },
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: (error as Error).message,
-    });
+    res.status(500).json({ success: false, message: (error as Error).message });
   }
 });
 
-// ==================== 7. 压缩上传（图片） ====================
-// 接口：POST /api/upload/compress
-// 功能：图片上传时自动压缩，减少存储和带宽
+// ==================== 7. 压缩上传(图片) ====================
+// POST /api/upload/compress  body: file, quality —— buffer→buffer 压缩为 JPEG 后直传
 router.post('/compress', authenticateToken, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: '没有上传文件',
-      });
+      return res.status(400).json({ success: false, message: '没有上传文件' });
     }
+    const quality = parseInt((req.body as { quality?: string }).quality ?? '80', 10);
+    const compressed = await compressImageBuffer(req.file.buffer, quality);
 
-    const { quality = 80 } = req.body;
-    const compressedName = `compressed-${req.file.filename}`;
-    const compressedPath = path.join('../uploads', compressedName);
-
-    // 压缩图片，生成新文件
-    await compressImage(req.file.path, compressedPath, parseInt(quality));
-
-    // 删除原文件，节省空间
-    fs.unlinkSync(req.file.path);
-
-    const url = `/user/uploads/${compressedName}`;
-    const stats = fs.statSync(compressedPath);
-    const fileMD5 = await calculateStreamMD5(compressedPath);
+    const { url, md5, size } = await persistBuffer(compressed, 'image.jpg', 'image/jpeg');
+    const originalSize = req.file.size;
 
     res.json({
       success: true,
       data: {
         url,
-        filename: compressedName,
         originalName: req.file.originalname,
-        size: stats.size,
-        originalSize: req.file.size,
-        compressionRatio:
-          (((req.file.size - stats.size) / req.file.size) * 100).toFixed(2) + '%',
-        md5: fileMD5,
+        size,
+        originalSize,
+        compressionRatio: (((originalSize - size) / originalSize) * 100).toFixed(2) + '%',
+        md5,
       },
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: (error as Error).message,
-    });
+    res.status(500).json({ success: false, message: (error as Error).message });
   }
 });
 
 // ==================== 8. 断点续传 - 查询已上传分片 ====================
-// 接口：GET /api/upload/resume/:fileId
-// 功能：前端分片上传前查询已上传分片，实现断点续传
-router.get('/resume/:fileId', authenticateToken, (req, res) => {
+// GET /api/upload/resume/:fileId → { uploadedChunks: number[] }(0-based,前端跳过已传)
+router.get('/resume/:fileId', authenticateToken, async (req, res) => {
   try {
     const { fileId } = req.params;
-    const chunksDir = path.resolve('../uploads/chunks');
-
-    if (!fs.existsSync(chunksDir)) {
-      return res.json({
-        success: true,
-        data: { uploadedChunks: [] },
-      });
+    const session = await prisma.uploadSession.findUnique({ where: { fileId } });
+    if (!session) {
+      return res.json({ success: true, data: { uploadedChunks: [] } });
     }
-
-    // 查找所有已上传的分片文件
-    const files = fs.readdirSync(chunksDir);
-    const uploadedChunks = files
-      .filter((file) => file.startsWith(`${fileId}-`))
-      .map((file) => parseInt(file.split('-')[1]))
-      .sort((a, b) => a - b);
-
-    res.json({
-      success: true,
-      data: { uploadedChunks },
-    });
+    const parts = await listUploadedParts(session.objectKey, session.uploadId);
+    const uploadedChunks = parts.map((p) => p.partNumber - 1).sort((a, b) => a - b);
+    res.json({ success: true, data: { uploadedChunks } });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: (error as Error).message,
-    });
+    res.status(500).json({ success: false, message: (error as Error).message });
   }
 });
 

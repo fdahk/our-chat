@@ -1,16 +1,23 @@
 import { Server } from 'socket.io'; //基于WebSocket的实时通信库
 import type { Server as HttpServer } from 'http';
+import { randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
-import type { RowDataPacket } from 'mysql2';
-import { Message } from '../database/mongoDB.js';
-import { mySql } from '../database/mySql.js';
+import { createAdapter } from '@socket.io/redis-adapter';
+import type { Prisma } from '../generated/prisma/index.js';
 import { config } from '../config/config.js';
 import { TOKEN_COOKIE } from './authCookies.js';
+import { sendMessageInput, readReportInput } from '../contracts/message.js';
+import { persistMessage, getConversationMembers, markMentions } from '../services/message.js';
+import { isConversationMember, advanceLastRead } from '../services/read.js';
+import { register, refresh, remove, filterOnline, REPLICA_ID } from '../realtime/presence.js';
+import { redis } from '../database/redis.js';
 
 // 握手验签后把用户身份挂到 socket 上，房间号即用户 id。
 declare module 'socket.io' {
   interface Socket {
     userId?: number;
+    // 设备标识:同一用户多端登录时区分物理连接。客户端可在握手时自报,缺省用 socket.id。
+    deviceId?: string;
   }
 }
 
@@ -22,6 +29,19 @@ interface TokenPayload {
 // socket.io 的 Room 类型标注为 string，但本项目历史上一直用数字房间号（join 与 emit 两侧一致）。
 // 为保持运行时行为完全不变，这里仅做类型层面的桥接，不改动实际传入的数值。
 const room = (id: number): string => id as unknown as string;
+
+// 从消息 mentions(客户端上报的被 @ userId 列表)解析出「确实是本会话成员」的 bigint 集合。
+// 客户端可能传非法/越权 id,只保留与会话成员的交集,杜绝跨会话伪造 @提醒。
+const parseMentionIds = (raw: unknown, participants: bigint[]): bigint[] => {
+  if (!Array.isArray(raw)) return [];
+  const memberSet = new Set(participants.map((p) => p.toString()));
+  const out: bigint[] = [];
+  for (const v of raw) {
+    const s = String(v);
+    if (/^\d+$/.test(s) && memberSet.has(s)) out.push(BigInt(s));
+  }
+  return out;
+};
 
 // 从握手请求的 Cookie 头里取出指定 cookie 的值
 const parseCookie = (header: string | undefined, name: string): string | null => {
@@ -57,6 +77,12 @@ export const initSocket = (server: HttpServer): Server => {
     },
   });
 
+  // 跨副本 backplane:接入 Redis adapter 后,io.to(room).emit 会透明地跨所有副本广播。
+  // 内部即「按房间 pub/sub 代投」——别的副本订阅到消息后用本地 fd 投给在该房间的连接,
+  // 因此多副本部署无需粘性会话(任意副本可代投,docs 16 §5.1/§6)。
+  // pub/sub 各用一条独立连接(订阅态连接不能再发普通命令),与 presence 的命令连接隔离。
+  io.adapter(createAdapter(redis.duplicate(), redis.duplicate()));
+
   // 握手鉴权：从 cookie 解析并验签 JWT，身份由服务端派生，绝不信任客户端自报的 userId。
   // 校验不过直接拒绝连接，杜绝匿名 socket 加入任意房间收发他人消息。
   io.use((socket, next) => {
@@ -78,54 +104,153 @@ export const initSocket = (server: HttpServer): Server => {
     // 连接即自动加入「自己」的房间，房间号取服务端验签得到的 userId
     socket.join(room(socket.userId as number));
 
+    // 设备标识取握手自报值,缺省回落 socket.id(每条连接唯一)。登记到 presence 注册表,
+    // 让其它副本/扇出逻辑能查到「该用户此刻有哪些在线连接、在哪台副本」(docs 15 §5.1)。
+    const handshakeDeviceId = (socket.handshake.auth?.deviceId ??
+      socket.handshake.query?.deviceId) as string | undefined;
+    socket.deviceId =
+      typeof handshakeDeviceId === 'string' && handshakeDeviceId ? handshakeDeviceId : socket.id;
+    void register(socket.userId as number, {
+      deviceId: socket.deviceId,
+      replica: REPLICA_ID,
+      socketId: socket.id,
+    }).catch((err) => console.error('presence 登记失败:', err));
+
+    // 心跳:仅续约该设备的 TTL。客户端按 ~25s 间隔发送(docs 16 §5.2)。
+    socket.on('heartbeat', () => {
+      void refresh(socket.userId as number, socket.deviceId as string).catch((err) =>
+        console.error('presence 续约失败:', err)
+      );
+    });
+
     // 兼容前端的 join 事件，但忽略其传参，始终只加入自己的房间
     socket.on('join', () => {
       socket.join(room(socket.userId as number));
       console.log(`用户 ${socket.userId} 加入房间`);
     });
 
-    // 消息处理
+    // 落库 + 读扩散扇出的公共逻辑。clientMsgId 由调用方保证(新协议来自客户端,旧协议服务端兜底生成)。
+    // 落库成功后:向会话在线成员广播 receiveMessage(携带 seq),并把首次/去重结果交给调用方决定是否 ack。
+    const persistAndBroadcast = async (input: {
+      conversationId: string;
+      senderId: bigint;
+      clientMsgId: string;
+      content: string;
+      type?: string;
+      mentions?: Prisma.InputJsonValue;
+      extra?: Prisma.InputJsonValue;
+      fileInfo?: Prisma.InputJsonValue;
+    }) => {
+      const participantIds = await getConversationMembers(input.conversationId, input.senderId);
+      const { message, deduped } = await persistMessage({ ...input, participantIds });
+      // 去重命中时不重复广播(对方已收到过首次广播),仅给发送方回 ack 收敛本地状态。
+      if (!deduped) {
+        // 读扩散扇出:消息只落 1 份,实时只推在线成员,离线成员靠 /sync 按各自 synced 补拉。
+        // 单聊直推双方(成员仅 2 人,省一次 presence 往返);群聊先 filterOnline 收敛到在线子集,
+        // 避免给离线成员做无谓的跨副本 publish(大群下这是主要的扇出成本,docs 14 §6③)。
+        const isGroup = input.conversationId.startsWith('group_');
+        const targets = isGroup
+          ? await filterOnline(participantIds)
+          : new Set(participantIds.map(Number));
+        for (const uid of targets) {
+          io.to(room(uid)).emit('receiveMessage', message);
+        }
+
+        // @提醒旁路:与读扩散主链路解耦(docs 14 §5.3)。标记被 @ 成员的 mentionSeq(供 /mentions 单独查),
+        // 并给在线被 @ 者额外定向推一条 mention 事件高亮——不让 @我 淹没在大群的普通未读里。
+        const mentioned = parseMentionIds(input.mentions, participantIds);
+        if (mentioned.length) {
+          await markMentions(input.conversationId, message.seq, mentioned);
+          for (const uid of await filterOnline(mentioned)) {
+            io.to(room(uid)).emit('mention', {
+              conversationId: input.conversationId,
+              seq: message.seq,
+              serverMsgId: message.id,
+            });
+          }
+        }
+      }
+      return { message, deduped };
+    };
+
+    // 新协议:可靠上行。zod 校验 → 落库后回 message.ack(回带 seq/serverMsgId),
+    // 客户端凭 ack 把本地"发送中"替换为"已发送";收不到则按同 clientMsgId 重发,服务端幂等去重。
+    socket.on('message.send', async (raw) => {
+      const parsed = sendMessageInput.safeParse(raw);
+      if (!parsed.success) {
+        socket.emit('message.error', { message: '消息参数非法', clientMsgId: (raw as { clientMsgId?: string })?.clientMsgId });
+        return;
+      }
+      const data = parsed.data;
+      try {
+        const { message } = await persistAndBroadcast({
+          conversationId: data.conversationId,
+          senderId: BigInt(socket.userId as number), // 发送者以握手验签身份为准,不信任入参
+          clientMsgId: data.clientMsgId,
+          content: data.content,
+          type: data.type,
+          mentions: data.mentions as Prisma.InputJsonValue,
+          extra: data.extra as Prisma.InputJsonValue,
+          fileInfo: data.fileInfo as Prisma.InputJsonValue,
+        });
+        socket.emit('message.ack', {
+          clientMsgId: data.clientMsgId,
+          seq: message.seq,
+          serverMsgId: message.id,
+        });
+      } catch (err) {
+        console.error('message.send 处理失败:', err);
+        socket.emit('message.error', { message: '消息发送失败', clientMsgId: data.clientMsgId });
+      }
+    });
+
+    // 已读上报(实时):单调推进用户级 lastReadSeq,再把 read.sync 推给【同用户的其它设备】,
+    // 让另一端的红点一起清掉(docs 15 §5.3)。只发其它端:io.to(用户房间).except(本连接)——
+    // 既不回声给操作端自己,也不发给会话对方(已读是用户私有状态)。adapter 保证跨副本送达。
+    socket.on('read.report', async (raw) => {
+      const parsed = readReportInput.safeParse(raw);
+      if (!parsed.success) {
+        socket.emit('read.error', { message: '已读上报参数非法' });
+        return;
+      }
+      const { conversationId, uptoSeq } = parsed.data;
+      const userId = BigInt(socket.userId as number);
+      try {
+        if (!(await isConversationMember(userId, conversationId))) {
+          socket.emit('read.error', { message: '无权操作该会话', conversationId });
+          return;
+        }
+        const { advanced } = await advanceLastRead(userId, conversationId, uptoSeq);
+        // 单调未推进(乱序旧值)时无需扰动其它端。
+        if (advanced) {
+          io.to(room(socket.userId as number))
+            .except(socket.id)
+            .emit('read.sync', { conversationId, uptoSeq });
+        }
+      } catch (err) {
+        console.error('read.report 处理失败:', err);
+        socket.emit('read.error', { message: '已读上报失败', conversationId });
+      }
+    });
+
+    // 旧协议:前端尚未迁移时兼容。无 clientMsgId 时服务端生成一个,确保仍走发号/落库,
+    // 但无法跨重发去重(这是迁移到 message.send 的动机)。迁移完成后可移除。
     socket.on('sendMessage', async (msg) => {
       try {
-        // 防伪造：发送者必须是当前已认证用户本人
         if (Number(msg.senderId) !== Number(socket.userId)) {
           socket.emit('error', { message: '非法的发送者身份' });
           return;
         }
-        const splited = msg.conversationId.split('_');
-        const user1 = splited[1];
-        const user2 = splited[2];
-
-        const savedMsg = await Message.create(msg);
-        console.log('消息保存成功:', savedMsg._id);
-
-        // 检查并创建用户会话记录
-        const [res1] = await mySql.execute<RowDataPacket[]>(
-          `SELECT * FROM user_conversations WHERE conversation_id = ? AND user_id = ?`,
-          [msg.conversationId, user1]
-        );
-        if (res1.length === 0) {
-          await mySql.execute(
-            `INSERT INTO user_conversations (conversation_id, user_id) VALUES (?, ?)`,
-            [msg.conversationId, user1]
-          );
-        }
-
-        const [res2] = await mySql.execute<RowDataPacket[]>(
-          `SELECT * FROM user_conversations WHERE conversation_id = ? AND user_id = ?`,
-          [msg.conversationId, user2]
-        );
-        if (res2.length === 0) {
-          await mySql.execute(
-            `INSERT INTO user_conversations (conversation_id, user_id) VALUES (?, ?)`,
-            [msg.conversationId, user2]
-          );
-        }
-
-        // 广播消息
-        io.to(room(parseInt(user1))).emit('receiveMessage', savedMsg);
-        io.to(room(parseInt(user2))).emit('receiveMessage', savedMsg);
-        console.log('消息广播成功');
+        await persistAndBroadcast({
+          conversationId: String(msg.conversationId),
+          senderId: BigInt(Number(socket.userId)),
+          clientMsgId: typeof msg.clientMsgId === 'string' && msg.clientMsgId ? msg.clientMsgId : randomUUID(),
+          content: String(msg.content ?? ''),
+          type: String(msg.type ?? 'text'),
+          mentions: (msg.mentions ?? []) as Prisma.InputJsonValue,
+          extra: (msg.extra ?? {}) as Prisma.InputJsonValue,
+          fileInfo: (msg.fileInfo ?? {}) as Prisma.InputJsonValue,
+        });
       } catch (err) {
         console.error('消息处理失败:', err);
         socket.emit('error', { message: '消息发送失败' });
@@ -232,9 +357,12 @@ export const initSocket = (server: HttpServer): Server => {
       }
     });
 
-    // 断开连接
+    // 断开连接:优雅断开即时从 presence 摘除该设备(非优雅断开靠 TTL 过期兜底)。
     socket.on('disconnect', () => {
       console.log('用户断开连接:', socket.id);
+      void remove(socket.userId as number, socket.deviceId as string).catch((err) =>
+        console.error('presence 摘除失败:', err)
+      );
     });
   });
 

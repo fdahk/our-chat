@@ -1,0 +1,177 @@
+.wrap {
+  flex: 1;
+  display: flex;
+  height: 100%;
+  min-height: 0;
+}
+
+// ── 左:对话列表 ──
+.convList {
+  width: 180px;
+  border-right: 1px solid rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  background: $legacy-btn;
+}
+.convHead {
+  padding: $space-3 $space-3;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: $legacy-text;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+.newBtn {
+  background: transparent;
+  border: 0;
+  color: var(--primary-color);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0;
+  &:hover { text-decoration: underline; }
+}
+.convScroll {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.empty {
+  padding: $space-4;
+  font-size: 0.75rem;
+  color: #999;
+  text-align: center;
+}
+.convItem {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-2 $space-3;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  color: $legacy-text;
+  border-left: 3px solid transparent;
+  transition: background $dur-base $ease-out, border-color $dur-base $ease-out;
+
+  &:hover { background: rgba(0, 0, 0, 0.03); }
+}
+.convItemActive {
+  background: white !important;
+  border-left-color: var(--primary-color);
+  font-weight: 500;
+}
+.convTitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.delBtn {
+  background: transparent;
+  border: 0;
+  font-size: 0.75rem;
+  color: #aaa;
+  cursor: pointer;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: $radius-sm;
+  &:hover { background: rgba(239, 68, 68, 0.12); color: $color-danger; }
+}
+
+// ── 右:聊天区 ──
+.chat {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #aaa;
+  font-size: 0.875rem;
+}
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: $space-4;
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+}
+
+.msgRow {
+  display: flex;
+  justify-content: flex-start;
+}
+.msgRowSelf { justify-content: flex-end; }
+
+.bubble {
+  max-width: 70%;
+  padding: $space-2 $space-3;
+  border-radius: $radius-md;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+.bubbleSelf {
+  background: var(--primary-color);
+  color: white;
+  border-bottom-right-radius: $radius-xs;
+}
+.bubbleOther {
+  background: $legacy-btn;
+  color: $legacy-text;
+  border-bottom-left-radius: $radius-xs;
+}
+.bubbleContent { min-height: 1em; }
+
+.cites {
+  margin-top: $space-2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-1;
+  border-top: 1px dashed rgba(0, 0, 0, 0.08);
+  padding-top: $space-2;
+}
+.cite {
+  font-size: 0.6875rem;
+  color: #777;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 0.125rem $space-2;
+  border-radius: $radius-sm;
+  font-family: $font-mono;
+}
+
+// ── 输入区 ──
+.composer {
+  display: flex;
+  align-items: stretch;
+  gap: $space-2;
+  padding: $space-3 $space-4;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  background: white;
+}
+.input {
+  flex: 1;
+  resize: none;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: $radius-md;
+  padding: $space-2 $space-3;
+  font-size: 0.875rem;
+  font-family: inherit;
+  outline: 0;
+  transition: border-color $dur-base $ease-out;
+  &:focus { border-color: var(--primary-color); }
+  &:disabled { background: #f8f8f8; color: #999; }
+}

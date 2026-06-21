@@ -31,8 +31,17 @@ export default defineConfig(({ command }) => ({
   server: {
     host: '0.0.0.0',
     // 开发 HTTPS：使用系统已安装的 mkcert 生成并安装本地开发 CA，浏览器与局域网设备更容易信任证书。
+    // ── Dev proxy 仅给"必须同源"的服务用 ──
+    // our-chat 后端走 HttpOnly cookie 鉴权,浏览器要带 cookie 必须同源,故必须 proxy。
+    // agent-server 用 Bearer header 鉴权,无 cookie 同源约束,前端直接打 + 后端 CORS
+    // 白名单是更标准的做法,见 src/views/agentView/api.ts 与 docs。
     proxy: {
       '/api': {
+        target: 'http://127.0.0.1:3007',
+        changeOrigin: true,
+      },
+      // /oauth/agent-token 走 our-chat 会话 cookie 鉴权,必须同源,故 proxy 到后端。
+      '/oauth': {
         target: 'http://127.0.0.1:3007',
         changeOrigin: true,
       },
@@ -50,6 +59,16 @@ export default defineConfig(({ command }) => ({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+    },
+  },
+  // 让每个 *.scss / *.module.scss 自动可见 tokens.scss 里的 SCSS 变量,
+  // 模块文件直接写 $space-4 / $brand-wechat 即可,无需各自 @use。
+  // 仅前置 @use 不会产出 CSS,所以零打包代价。
+  css: {
+    preprocessorOptions: {
+      scss: {
+        additionalData: `@use "@/style/tokens.scss" as *;`,
+      },
     },
   },
 }))

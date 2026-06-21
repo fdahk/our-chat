@@ -1,0 +1,53 @@
+excluded:
+  - Derived
+  - .build
+  - DerivedData
+  - Tuist/Dependencies
+
+opt_in_rules:
+  - empty_count
+  - explicit_init
+  - first_where
+  - sorted_imports
+  - closure_spacing
+  - contains_over_first_not_nil
+  - empty_string
+  - fatal_error_message
+  - force_unwrapping
+  - implicit_return
+  - last_where
+  - literal_expression_end_indentation
+  - multiline_arguments
+  - multiline_parameters
+  - operator_usage_whitespace
+  - overridden_super_call
+  - prefer_self_type_over_type_of_self
+  - redundant_nil_coalescing
+  - toggle_bool
+  - unneeded_parentheses_in_closure_argument
+  - vertical_parameter_alignment_on_call
+  - yoda_condition
+
+disabled_rules:
+  - todo
+  - trailing_comma
+
+line_length:
+  warning: 120
+  error: 160
+
+type_body_length:
+  warning: 400
+
+function_body_length:
+  warning: 80
+
+cyclomatic_complexity:
+  warning: 12
+
+identifier_name:
+  min_length: 2
+  excluded:
+    - id
+    - x
+    - y

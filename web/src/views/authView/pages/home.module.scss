@@ -1,0 +1,370 @@
+.page {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+// ───────── Hero ─────────
+.hero {
+  width: 100%;
+  min-height: calc(100vh - 4rem);
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: $space-10;
+  align-items: center;
+  padding: 7rem $space-7 $space-9;
+  max-width: $bp-xl;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+.heroLeft {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+  min-width: 0;
+}
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  color: $dark-ink-dim;
+  text-transform: uppercase;
+}
+.eyebrowDot {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 50%;
+  background: $color-success;
+  box-shadow: 0 0 0.5rem rgba(16, 185, 129, 0.6);
+  animation: blink 1.8s ease-in-out infinite;
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+.title {
+  font-size: clamp(3.25rem, 8vw, 6rem);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  margin: 0;
+  color: $dark-ink;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: $space-3;
+}
+.titlePinyin {
+  font-size: 0.875rem;
+  font-weight: 400;
+  letter-spacing: 0.3em;
+  color: $dark-ink-faint;
+  font-family: $font-mono;
+}
+.tagline {
+  margin: 0;
+  font-size: 1.125rem;
+  color: $brand-indigo;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.intro {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.75;
+  color: $dark-ink-dim;
+  max-width: 32rem;
+}
+.meta {
+  margin-top: $space-2;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $space-3;
+  font-size: 0.8125rem;
+  color: $dark-ink-dim;
+}
+.metaSep {
+  width: 0.25rem;
+  height: 0.25rem;
+  background: $dark-ink-faint;
+  border-radius: 50%;
+}
+
+.heroRight {
+  display: flex;
+  justify-content: flex-end;
+  align-items: stretch;
+  min-width: 0;
+}
+
+// ───────── Section ─────────
+.section {
+  width: 100%;
+  max-width: $bp-xl;
+  margin: 0 auto;
+  padding: $space-11 $space-7;
+  box-sizing: border-box;
+}
+.sectionHead {
+  display: flex;
+  align-items: center;
+  gap: $space-4;
+  margin-bottom: $space-8;
+}
+.sectionIndex {
+  font-family: $font-mono;
+  font-size: 0.75rem;
+  color: $brand-indigo;
+  letter-spacing: 0.1em;
+}
+.sectionLabel {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: $dark-ink;
+  letter-spacing: 0.02em;
+}
+.sectionLine {
+  flex: 1;
+  height: 1px;
+  background: $dark-border;
+}
+
+// ───────── About ─────────
+.aboutGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1px;
+  background: $dark-border;
+  border: 1px solid $dark-border;
+  border-radius: $radius-md;
+  overflow: hidden;
+}
+.cell {
+  padding: $space-6;
+  background: $dark-bg-base;
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  transition: background $dur-slow $ease-out;
+  &:hover { background: $dark-bg-elev1; }
+}
+.cellKey {
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  color: $dark-ink-faint;
+  text-transform: uppercase;
+}
+.cellVal {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: $dark-ink;
+}
+.cellHint {
+  font-size: 0.8125rem;
+  color: $dark-ink-dim;
+}
+
+// ───────── Experience timeline ─────────
+.timeline { display: flex; flex-direction: column; }
+.tlItem {
+  display: grid;
+  grid-template-columns: 11rem 1fr;
+  gap: $space-8;
+  padding: $space-7 0;
+  border-bottom: 1px solid $dark-border;
+  &:last-child { border-bottom: 0; }
+}
+.tlMeta {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  padding-top: $space-1;
+}
+.tlPeriod {
+  font-family: $font-mono;
+  font-size: 0.8125rem;
+  color: $dark-ink-dim;
+  letter-spacing: 0.04em;
+}
+.tlLocation {
+  font-size: 0.75rem;
+  color: $dark-ink-faint;
+  letter-spacing: 0.05em;
+}
+.tlBody {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+}
+.tlHead {
+  display: flex;
+  align-items: baseline;
+  gap: $space-2;
+  flex-wrap: wrap;
+}
+.tlRole {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: $dark-ink;
+}
+.tlAt { color: $dark-ink-faint; }
+.tlCompany {
+  font-size: 1rem;
+  color: $dark-ink-dim;
+}
+.tlList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+
+  li {
+    position: relative;
+    padding-left: $space-4;
+    color: $dark-ink-dim;
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0.75rem;
+      left: 0;
+      width: 0.375rem;
+      height: 1px;
+      background: $brand-indigo;
+    }
+  }
+}
+.tlStack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-1;
+  margin-top: $space-1;
+}
+.tlChip {
+  font-family: $font-mono;
+  font-size: 0.75rem;
+  color: $dark-ink-dim;
+  padding: 0.1875rem $space-2;
+  border: 1px solid $dark-border;
+  border-radius: $radius-xs;
+}
+
+// ───────── Skills ─────────
+.skills { display: flex; flex-direction: column; }
+.skillRow {
+  display: grid;
+  grid-template-columns: 11rem 1fr;
+  gap: $space-8;
+  align-items: baseline;
+  padding: $space-5 0;
+  border-bottom: 1px solid $dark-border;
+  &:last-child { border-bottom: 0; }
+}
+.skillTitle {
+  font-size: 0.9375rem;
+  color: $dark-ink;
+  font-weight: 500;
+}
+.skillTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+}
+.skillTag {
+  font-size: 0.8125rem;
+  color: $dark-ink-dim;
+  padding: 0.3125rem $space-2;
+  border: 1px solid $dark-border;
+  border-radius: $radius-sm;
+  transition: color $dur-slow $ease-out, border-color $dur-slow $ease-out, background $dur-slow $ease-out;
+
+  &:hover {
+    color: $brand-indigo;
+    border-color: rgba(99, 102, 241, 0.5);
+    background: $brand-indigo-faint;
+  }
+}
+
+// ───────── Contact ─────────
+.contact { padding-bottom: $space-9; }
+.contactGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1px;
+  background: $dark-border;
+  border: 1px solid $dark-border;
+  border-radius: $radius-md;
+  overflow: hidden;
+  margin-bottom: $space-9;
+}
+.contactCell {
+  background: $dark-bg-base;
+  padding: $space-6;
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  text-decoration: none;
+  color: inherit;
+  transition: background $dur-slow $ease-out;
+  &:hover { background: $dark-bg-elev1; .contactVal { color: $brand-indigo; } }
+}
+.contactKey {
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  color: $dark-ink-faint;
+  text-transform: uppercase;
+}
+.contactVal {
+  font-size: 1rem;
+  color: $dark-ink;
+  font-family: $font-mono;
+  transition: color $dur-slow $ease-out;
+}
+
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $space-3;
+  padding-top: $space-7;
+  border-top: 1px solid $dark-border;
+  font-size: 0.75rem;
+  color: $dark-ink-faint;
+  letter-spacing: 0.05em;
+}
+.footSep { color: $dark-border-strong; }
+
+// ───────── Responsive ─────────
+@media (max-width: $bp-lg) {
+  .hero {
+    grid-template-columns: 1fr;
+    gap: $space-9;
+    padding-top: $space-10;
+    min-height: auto;
+  }
+  .heroRight { justify-content: flex-start; }
+}
+
+@media (max-width: $bp-md) {
+  .section { padding: $space-9 $space-5; }
+  .hero { padding: $space-10 $space-5 $space-9; gap: $space-7; }
+  .tlItem, .skillRow {
+    grid-template-columns: 1fr;
+    gap: $space-3;
+  }
+}
+
+@media (max-width: $bp-sm) {
+  .title { font-size: 2.75rem; }
+  .intro { font-size: 0.9375rem; }
+  .meta { font-size: 0.75rem; gap: $space-2; }
+  .sectionLabel { font-size: 1.25rem; }
+}

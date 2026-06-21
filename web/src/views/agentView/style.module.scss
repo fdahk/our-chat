@@ -1,0 +1,116 @@
+.container {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  background-color: white;
+  overflow: hidden;
+}
+
+.empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--icon-color);
+  font-size: 0.875rem;
+}
+
+// ── 左侧 sidebar ─────────────────────────────────────────────────
+.sidebar {
+  width: 180px;
+  height: 100%;
+  background-color: $legacy-btn;
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebarHead {
+  padding: $space-4 $space-3 $space-3;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: $legacy-text;
+}
+.brandIcon {
+  font-size: 1.125rem;
+  color: var(--primary-color);
+}
+.brandText {
+  letter-spacing: 0.04em;
+}
+
+.userRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  color: #666;
+}
+.userName {
+  max-width: 70%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.logoutBtn {
+  background: transparent;
+  border: 0;
+  font-size: 0.75rem;
+  color: var(--primary-color);
+  cursor: pointer;
+  padding: 0;
+  &:hover { text-decoration: underline; }
+}
+
+// ── tab 选项 ────────────────────────────────────────────────────
+.tabList {
+  display: flex;
+  flex-direction: column;
+  padding: $space-2 0;
+}
+.tabBtn {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-3 $space-4;
+  background: transparent;
+  border: 0;
+  font-size: 0.875rem;
+  color: $legacy-text;
+  text-align: left;
+  cursor: pointer;
+  transition: background $dur-base $ease-out;
+
+  &:hover { background: rgba(0, 0, 0, 0.04); }
+}
+.tabBtnActive {
+  background: white;
+  color: var(--primary-color);
+  font-weight: 500;
+  border-left: 3px solid var(--primary-color);
+  padding-left: calc(#{$space-4} - 3px);
+}
+.tabIcon {
+  font-size: 1rem;
+}
+
+// ── 右侧主区 ─────────────────────────────────────────────────────
+.main {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  overflow: hidden;
+  min-width: 0;
+}

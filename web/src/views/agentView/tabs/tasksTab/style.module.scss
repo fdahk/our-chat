@@ -1,0 +1,143 @@
+.wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: $space-4;
+  gap: $space-3;
+}
+
+.composer {
+  display: flex;
+  gap: $space-2;
+  align-items: stretch;
+}
+.input {
+  flex: 1;
+  resize: none;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: $radius-md;
+  padding: $space-2 $space-3;
+  font-size: 0.875rem;
+  font-family: inherit;
+  outline: 0;
+  transition: border-color $dur-base $ease-out;
+  &:focus { border-color: var(--primary-color); }
+}
+.hint {
+  font-size: 0.6875rem;
+  color: #999;
+  text-align: right;
+}
+
+.timeline {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+}
+.empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #aaa;
+  font-size: 0.875rem;
+}
+
+.session {
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: $radius-md;
+  overflow: hidden;
+  background: white;
+}
+.sessionHead {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-2 $space-3;
+  background: $legacy-btn;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  font-size: 0.8125rem;
+  color: $legacy-text;
+}
+.sessionTask {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.sessionId {
+  font-family: $font-mono;
+  font-size: 0.6875rem;
+  color: #888;
+}
+
+.dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dotLive {
+  background: $color-warning;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.dotDone { background: $color-success; }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+
+.events {
+  list-style: none;
+  padding: $space-2 $space-3;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+.evt {
+  display: grid;
+  grid-template-columns: 8rem 1fr;
+  gap: $space-2;
+  font-size: 0.75rem;
+  color: $legacy-text;
+}
+.evtType {
+  font-family: $font-mono;
+  font-size: 0.6875rem;
+  color: #666;
+  padding-top: 0.125rem;
+}
+.evtPayload {
+  margin: 0;
+  background: $legacy-btn;
+  padding: $space-2;
+  border-radius: $radius-sm;
+  font-family: $font-mono;
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  color: $legacy-text;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+// 关键事件高亮
+.evt-tool_called .evtType  { color: $color-info; }
+.evt-tool_result .evtType  { color: $color-success; }
+.evt-final_answer {
+  .evtType { color: var(--primary-color); font-weight: 700; }
+  .evtPayload { background: rgba(7, 193, 96, 0.06); border: 1px solid rgba(7, 193, 96, 0.2); }
+}
+.evt-run_failed {
+  .evtType { color: $color-danger; font-weight: 700; }
+  .evtPayload { background: rgba(239, 68, 68, 0.06); border: 1px solid rgba(239, 68, 68, 0.2); }
+}
