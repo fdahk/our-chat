@@ -1,8 +1,8 @@
 name: deploy
 
 # 提交即自动部署：推送到 main → 构建 3 个镜像推 GHCR → SSH 到服务器生成 .env/私钥 → pull + compose up。
-# 配置分层：① 通用非机密在 compose 默认值；② 机密在 GitHub Secrets；③ 因环境而异的非机密在 GitHub Variables。
-# ②③ 由本工作流在部署时统一注入、在服务器生成 .env，服务器零手工维护。
+# 配置分层：① 通用非机密在 compose 默认值；② 其余(机密 + 因环境而异的非机密)统一放 GitHub Secrets(不分 Variables)。
+# ② 由本工作流在部署时统一注入、在服务器生成 .env，服务器零手工维护。
 # 想用 dev 触发，把 branches 改成 [dev]；workflow_dispatch 支持手动触发。
 on:
   push:
@@ -22,6 +22,8 @@ jobs:
   build:
     name: 构建并推送镜像
     runs-on: ubuntu-latest
+    # web 构建要读 environment(pro) 里的 WEB_PUBLIC_ORIGIN，故此 job 也需声明 environment
+    environment: pro
     strategy:
       fail-fast: true
       matrix:
@@ -32,9 +34,6 @@ jobs:
             context: gateway
           - name: web
             context: web
-            # web 需在构建期烤入「用户实际访问的公开 origin」（构建期变量，无法用 compose 默认覆盖）
-            build_args: |
-              VITE_SERVER_ORIGIN=${{ vars.WEB_PUBLIC_ORIGIN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -52,7 +51,9 @@ jobs:
         with:
           context: ${{ matrix.context }}
           push: true
-          build-args: ${{ matrix.build_args }}
+          # web 需在构建期烤入「用户实际访问的公开 origin」(构建期变量,无法用 compose 默认覆盖)。
+          # secrets 不能用于 strategy.matrix,故在此(step with,secrets 可用)按 name 条件注入。
+          build-args: ${{ matrix.name == 'web' && format('VITE_SERVER_ORIGIN={0}', secrets.WEB_PUBLIC_ORIGIN) || '' }}
           tags: |
             ${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:${{ github.sha }}
             ${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:latest
@@ -64,11 +65,42 @@ jobs:
     name: 部署到服务器
     needs: build
     runs-on: ubuntu-latest
+    # 读取 environment(pro) 作用域下的 Secrets/Variables（SSH 私钥等）
+    environment: pro
     concurrency:
       group: deploy-prod
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
+
+      # 先校验 environment(pro) 里的 Secrets 是否都读到（缺啥报啥；也能验证 environment 名字配对）
+      - name: 预检必填 Secrets
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          GATEWAY_INTERNAL_TOKEN: ${{ secrets.GATEWAY_INTERNAL_TOKEN }}
+          S3_ACCESS_KEY: ${{ secrets.S3_ACCESS_KEY }}
+          S3_SECRET_KEY: ${{ secrets.S3_SECRET_KEY }}
+          OAUTH_PRIVATE_KEY_B64: ${{ secrets.OAUTH_PRIVATE_KEY_B64 }}
+          WEB_PUBLIC_ORIGIN: ${{ secrets.WEB_PUBLIC_ORIGIN }}
+          OAUTH_ACTIVE_KID: ${{ secrets.OAUTH_ACTIVE_KID }}
+          S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+          S3_REGION: ${{ secrets.S3_REGION }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          S3_PUBLIC_BASE_URL: ${{ secrets.S3_PUBLIC_BASE_URL }}
+        run: |
+          miss=0
+          for v in SSH_HOST SSH_USER SSH_PRIVATE_KEY POSTGRES_PASSWORD JWT_SECRET GATEWAY_INTERNAL_TOKEN S3_ACCESS_KEY S3_SECRET_KEY OAUTH_PRIVATE_KEY_B64 WEB_PUBLIC_ORIGIN OAUTH_ACTIVE_KID S3_ENDPOINT S3_REGION S3_BUCKET S3_PUBLIC_BASE_URL; do
+            if [ -z "${!v:-}" ]; then echo "❌ 缺少 Secret：$v"; miss=1; else echo "✓ Secret $v 已设置"; fi
+          done
+          if [ "$miss" -ne 0 ]; then
+            echo "::error::有必填 Secret 读不到。确认它们都配在 environment『pro』的 Secrets 页下（本 job 已声明 environment: pro）。若你的环境名不是 pro，请改 workflow 里的 environment 值。"
+            exit 1
+          fi
+          echo "✅ 所有必填 Secret 齐全（environment: pro 读取正常）"
 
       # compose 文件与 nginx 配置同步到部署目录（strip_components 去掉 docker/ 前缀）
       - name: 同步 compose + nginx 到服务器
@@ -79,7 +111,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
           source: 'docker/docker-compose.prod.yml,docker/nginx'
-          target: ${{ vars.DEPLOY_PATH || '/opt/our-chat' }}
+          target: ${{ secrets.DEPLOY_PATH || '/opt/our-chat' }}
           strip_components: 1
           overwrite: true
 
@@ -91,23 +123,22 @@ jobs:
           GIT_SHA: ${{ github.sha }}
           GHCR_USER: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/our-chat' }}
-          # —— ② 机密（GitHub Secrets，日志自动打码）——
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/opt/our-chat' }}
+          # —— ② 机密 + 因环境而异的非机密,统一走 GitHub Secrets ——
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           GATEWAY_INTERNAL_TOKEN: ${{ secrets.GATEWAY_INTERNAL_TOKEN }}
           S3_ACCESS_KEY: ${{ secrets.S3_ACCESS_KEY }}
           S3_SECRET_KEY: ${{ secrets.S3_SECRET_KEY }}
           OAUTH_PRIVATE_KEY_B64: ${{ secrets.OAUTH_PRIVATE_KEY_B64 }}
-          # —— ③ 因环境而异的非机密（GitHub Variables）——
-          WEB_PUBLIC_ORIGIN: ${{ vars.WEB_PUBLIC_ORIGIN }}
-          OAUTH_ACTIVE_KID: ${{ vars.OAUTH_ACTIVE_KID }}
-          S3_ENDPOINT: ${{ vars.S3_ENDPOINT }}
-          S3_REGION: ${{ vars.S3_REGION }}
-          S3_BUCKET: ${{ vars.S3_BUCKET }}
-          S3_PUBLIC_BASE_URL: ${{ vars.S3_PUBLIC_BASE_URL }}
-          POSTGRES_USER: ${{ vars.POSTGRES_USER }}
-          POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+          WEB_PUBLIC_ORIGIN: ${{ secrets.WEB_PUBLIC_ORIGIN }}
+          OAUTH_ACTIVE_KID: ${{ secrets.OAUTH_ACTIVE_KID }}
+          S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+          S3_REGION: ${{ secrets.S3_REGION }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          S3_PUBLIC_BASE_URL: ${{ secrets.S3_PUBLIC_BASE_URL }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
