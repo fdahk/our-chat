@@ -50,7 +50,7 @@ services:
 
   server:
     # tag 由 CI 注入（github.sha）；默认 latest 仅手动兜底。
-    image: ${SERVER_IMAGE:-ghcr.io/fdahk/our-chat-server:latest}
+    image: ${SERVER_IMAGE:-docker.io/fdahk/our-chat-server:latest}
     container_name: our-chat-server
     restart: unless-stopped
     depends_on:
@@ -88,7 +88,7 @@ services:
     networks: [our-chat, oc-shared]
 
   gateway:
-    image: ${GATEWAY_IMAGE:-ghcr.io/fdahk/our-chat-gateway:latest}
+    image: ${GATEWAY_IMAGE:-docker.io/fdahk/our-chat-gateway:latest}
     container_name: our-chat-gateway
     restart: unless-stopped
     depends_on:
@@ -109,7 +109,7 @@ services:
     networks: [our-chat]
 
   web:
-    image: ${WEB_IMAGE:-ghcr.io/fdahk/our-chat-web:latest}
+    image: ${WEB_IMAGE:-docker.io/fdahk/our-chat-web:latest}
     container_name: our-chat-web
     restart: unless-stopped
     depends_on:
