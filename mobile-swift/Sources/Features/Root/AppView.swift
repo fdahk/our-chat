@@ -2,15 +2,25 @@ import ComposableArchitecture
 import SwiftUI
 
 struct AppView: View {
-    let store: StoreOf<RootFeature>
+    @Bindable var store: StoreOf<RootFeature>
 
     var body: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "bubble.left.and.bubble.right.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(.tint)
-            Text("OurChat")
-                .font(.title2.weight(.semibold))
+        switch store.state {
+        case .loading:
+            ProgressView()
+                .task {
+                    store.send(.onAppear)
+                }
+
+        case .login:
+            if let loginStore = store.scope(state: \.login, action: \.login) {
+                LoginView(store: loginStore)
+            }
+
+        case .main:
+            if let mainStore = store.scope(state: \.main, action: \.main) {
+                MainView(store: mainStore)
+            }
         }
     }
 }
