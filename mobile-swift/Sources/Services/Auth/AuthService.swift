@@ -26,7 +26,7 @@ private struct RefreshBody: Encodable {
 extension AuthService: DependencyKey {
     static let liveValue = AuthService(
         login: { username, password, remember in
-            @Dependency(\.apiClient) var apiClient
+            @Dependency(\.baseAPIClient) var apiClient
             @Dependency(\.keychain) var keychain
             let request = try APIRequest.post(
                 "/api/login",
@@ -38,7 +38,7 @@ extension AuthService: DependencyKey {
             return tokens
         },
         refresh: {
-            @Dependency(\.apiClient) var apiClient
+            @Dependency(\.baseAPIClient) var apiClient
             @Dependency(\.keychain) var keychain
             guard let refreshToken = try keychain.load(.refreshToken) else {
                 throw AuthError.notAuthenticated

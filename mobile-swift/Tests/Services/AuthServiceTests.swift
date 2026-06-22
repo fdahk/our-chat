@@ -8,7 +8,7 @@ struct AuthServiceTests {
     func loginStoresTokens() async throws {
         let keychain = KeychainStore.inMemory()
         try await withDependencies {
-            $0.apiClient.perform = { _ in Data(#"{"accessToken":"at","refreshToken":"rt"}"#.utf8) }
+            $0.baseAPIClient.perform = { _ in Data(#"{"accessToken":"at","refreshToken":"rt"}"#.utf8) }
             $0.keychain = keychain
         } operation: {
             let tokens = try await AuthService.liveValue.login(username: "u", password: "p", remember: false)
@@ -23,7 +23,7 @@ struct AuthServiceTests {
         let keychain = KeychainStore.inMemory()
         try keychain.save("old-rt", .refreshToken)
         try await withDependencies {
-            $0.apiClient.perform = { _ in Data(#"{"accessToken":"new-at","refreshToken":"new-rt"}"#.utf8) }
+            $0.baseAPIClient.perform = { _ in Data(#"{"accessToken":"new-at","refreshToken":"new-rt"}"#.utf8) }
             $0.keychain = keychain
         } operation: {
             let tokens = try await AuthService.liveValue.refresh()

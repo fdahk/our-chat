@@ -75,7 +75,22 @@ extension APIClient {
 }
 
 extension APIClient: DependencyKey {
-    static let liveValue = APIClient.live(environment: .dev)
+    static let liveValue: APIClient = {
+        let coordinator = RefreshCoordinator()
+        return APIClient(perform: { request in
+            @Dependency(\.baseAPIClient) var base
+            @Dependency(\.keychain) var keychain
+            @Dependency(\.authService) var authService
+            return try await authenticatedPerform(
+                request,
+                base: base,
+                keychain: keychain,
+                coordinator: coordinator,
+                refresh: { _ = try await authService.refresh() },
+                onRefreshFailure: { try? await authService.logout() }
+            )
+        })
+    }()
 }
 
 extension DependencyValues {
