@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package ourchat.conversation.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// 会话(单聊/群聊)。
+message Conversation {
+  string id = 1; // VarChar(100),可能带 group_ 前缀
+  string conv_type = 2; // single | group
+  string title = 3;
+  string avatar = 4;
+  int64 next_seq = 5; // 会话内单调序号发号器;JSON string
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+// 用户与会话的关系:每用户每会话一行,承载已读/未读状态机。
+message UserConversation {
+  int64 id = 1;
+  int64 user_id = 2;
+  string conversation_id = 3;
+  string last_read_message_id = 4;
+  int64 last_synced_seq = 5; // 已收到的 seq
+  int64 last_read_seq = 6; // 已读到的 seq
+  int64 mention_seq = 7; // @提醒旁路游标
+  int32 unread_count = 8; // 冗余计数,实际 = last_synced_seq - last_read_seq
+  bool is_muted = 9;
+  bool is_pinned = 10;
+  bool is_archived = 11;
+  google.protobuf.Timestamp joined_at = 12;
+  google.protobuf.Timestamp last_activity = 13;
+}

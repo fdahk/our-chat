@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package ourchat.presence.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// 心跳:客户端约 25s 上报一次,刷新该设备的在线 TTL。
+message Heartbeat {
+  string device_id = 1;
+}
+
+// 用户在线状态:用于会话列表/聊天页的在线展示。
+message UserPresence {
+  int64 user_id = 1;
+  bool online = 2;
+  google.protobuf.Timestamp last_seen = 3;
+}
