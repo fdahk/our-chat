@@ -13,6 +13,7 @@ import PackageDescription
             "GRDB": .framework,
             "SnapshotTesting": .framework,
             "Mockable": .framework,
+            "SwiftProtobuf": .framework,
         ]
     )
 #endif
@@ -43,6 +44,10 @@ let package = Package(
         .package(
             url: "https://github.com/groue/GRDB.swift",
             from: "7.0.0"
+        ),
+        .package(
+            url: "https://github.com/apple/swift-protobuf",
+            from: "1.28.0"
         ),
     ]
 )
