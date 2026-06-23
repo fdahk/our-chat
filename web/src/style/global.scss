@@ -91,6 +91,8 @@
   padding: 0;
   box-sizing: border-box;
 }
+// 撑满视口:#root(App.css 已设 100%)依赖 html/body 有确定高度,否则全屏布局塌成内容高
+html, body { height: 100%; }
 p { margin-bottom: 0; }
 a { text-decoration: none; }
 ul, ol { list-style: none; }
