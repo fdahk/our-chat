@@ -93,11 +93,17 @@ function AgentView() {
         </nav>
       </aside>
 
-      {/* 右侧 tab 内容 */}
+      {/* 右侧 tab 内容:三个 tab 常驻挂载,切换只切显隐,保留各自的对话/任务/选中态(不卸载即不丢) */}
       <section className={styles.main}>
-        {tab === 'documents' && <DocumentsTab />}
-        {tab === 'conversations' && <ConversationsTab />}
-        {tab === 'tasks' && <TasksTab />}
+        <div className={tab === 'documents' ? styles.pane : styles.paneHidden}>
+          <DocumentsTab />
+        </div>
+        <div className={tab === 'conversations' ? styles.pane : styles.paneHidden}>
+          <ConversationsTab />
+        </div>
+        <div className={tab === 'tasks' ? styles.pane : styles.paneHidden}>
+          <TasksTab />
+        </div>
       </section>
     </div>
   );
