@@ -117,6 +117,9 @@ type Message struct {
 	Extra          *structpb.Struct       `protobuf:"bytes,12,opt,name=extra,proto3" json:"extra,omitempty"`
 	FileInfo       *FileInfo              `protobuf:"bytes,13,opt,name=file_info,json=fileInfo,proto3" json:"file_info,omitempty"`
 	Timestamp      *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	CreatedAt      *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt      *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	EditHistory    []*structpb.Struct     `protobuf:"bytes,17,rep,name=edit_history,json=editHistory,proto3" json:"edit_history,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -245,6 +248,27 @@ func (x *Message) GetFileInfo() *FileInfo {
 func (x *Message) GetTimestamp() *timestamppb.Timestamp {
 	if x != nil {
 		return x.Timestamp
+	}
+	return nil
+}
+
+func (x *Message) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *Message) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+func (x *Message) GetEditHistory() []*structpb.Struct {
+	if x != nil {
+		return x.EditHistory
 	}
 	return nil
 }
@@ -422,7 +446,7 @@ const file_ourchat_message_v1_message_proto_rawDesc = "" +
 	"\tfile_size\x18\x02 \x01(\x03R\bfileSize\x12\x19\n" +
 	"\bfile_url\x18\x03 \x01(\tR\afileUrl\x12\x1b\n" +
 	"\tfile_type\x18\x04 \x01(\tR\bfileType\x12\x19\n" +
-	"\bfile_md5\x18\x05 \x01(\tR\afileMd5\"\xd7\x03\n" +
+	"\bfile_md5\x18\x05 \x01(\tR\afileMd5\"\x89\x05\n" +
 	"\aMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\"\n" +
 	"\rclient_msg_id\x18\x02 \x01(\tR\vclientMsgId\x12'\n" +
@@ -439,7 +463,12 @@ const file_ourchat_message_v1_message_proto_rawDesc = "" +
 	"is_deleted\x18\v \x01(\bR\tisDeleted\x12-\n" +
 	"\x05extra\x18\f \x01(\v2\x17.google.protobuf.StructR\x05extra\x129\n" +
 	"\tfile_info\x18\r \x01(\v2\x1c.ourchat.message.v1.FileInfoR\bfileInfo\x128\n" +
-	"\ttimestamp\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\"\xc3\x02\n" +
+	"\ttimestamp\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x129\n" +
+	"\n" +
+	"created_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12:\n" +
+	"\fedit_history\x18\x11 \x03(\v2\x17.google.protobuf.StructR\veditHistory\"\xc3\x02\n" +
 	"\x10SendMessageInput\x12\"\n" +
 	"\rclient_msg_id\x18\x01 \x01(\tR\vclientMsgId\x12'\n" +
 	"\x0fconversation_id\x18\x02 \x01(\tR\x0econversationId\x12 \n" +
@@ -482,13 +511,16 @@ var file_ourchat_message_v1_message_proto_depIdxs = []int32{
 	4, // 0: ourchat.message.v1.Message.extra:type_name -> google.protobuf.Struct
 	0, // 1: ourchat.message.v1.Message.file_info:type_name -> ourchat.message.v1.FileInfo
 	5, // 2: ourchat.message.v1.Message.timestamp:type_name -> google.protobuf.Timestamp
-	4, // 3: ourchat.message.v1.SendMessageInput.extra:type_name -> google.protobuf.Struct
-	0, // 4: ourchat.message.v1.SendMessageInput.file_info:type_name -> ourchat.message.v1.FileInfo
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	5, // 3: ourchat.message.v1.Message.created_at:type_name -> google.protobuf.Timestamp
+	5, // 4: ourchat.message.v1.Message.updated_at:type_name -> google.protobuf.Timestamp
+	4, // 5: ourchat.message.v1.Message.edit_history:type_name -> google.protobuf.Struct
+	4, // 6: ourchat.message.v1.SendMessageInput.extra:type_name -> google.protobuf.Struct
+	0, // 7: ourchat.message.v1.SendMessageInput.file_info:type_name -> ourchat.message.v1.FileInfo
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_ourchat_message_v1_message_proto_init() }

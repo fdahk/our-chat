@@ -30,6 +30,9 @@ message Message {
   google.protobuf.Struct extra = 12;
   FileInfo file_info = 13;
   google.protobuf.Timestamp timestamp = 14;
+  google.protobuf.Timestamp created_at = 15;
+  google.protobuf.Timestamp updated_at = 16;
+  repeated google.protobuf.Struct edit_history = 17;
 }
 
 // 上行发消息入参(socket 事件 message.send)。

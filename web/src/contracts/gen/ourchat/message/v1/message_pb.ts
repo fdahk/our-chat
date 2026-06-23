@@ -12,7 +12,7 @@ import type { JsonObject, Message as Message$1 } from "@bufbuild/protobuf";
  * Describes the file ourchat/message/v1/message.proto.
  */
 export const file_ourchat_message_v1_message: GenFile = /*@__PURE__*/
-  fileDesc("CiBvdXJjaGF0L21lc3NhZ2UvdjEvbWVzc2FnZS5wcm90bxISb3VyY2hhdC5tZXNzYWdlLnYxImcKCEZpbGVJbmZvEhEKCWZpbGVfbmFtZRgBIAEoCRIRCglmaWxlX3NpemUYAiABKAMSEAoIZmlsZV91cmwYAyABKAkSEQoJZmlsZV90eXBlGAQgASgJEhAKCGZpbGVfbWQ1GAUgASgJItUCCgdNZXNzYWdlEgoKAmlkGAEgASgDEhUKDWNsaWVudF9tc2dfaWQYAiABKAkSFwoPY29udmVyc2F0aW9uX2lkGAMgASgJEhEKCXNlbmRlcl9pZBgEIAEoAxILCgNzZXEYBSABKAMSDwoHY29udGVudBgGIAEoCRIMCgR0eXBlGAcgASgJEg4KBnN0YXR1cxgIIAEoCRIQCghtZW50aW9ucxgJIAMoAxIRCglpc19lZGl0ZWQYCiABKAgSEgoKaXNfZGVsZXRlZBgLIAEoCBImCgVleHRyYRgMIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSLwoJZmlsZV9pbmZvGA0gASgLMhwub3VyY2hhdC5tZXNzYWdlLnYxLkZpbGVJbmZvEi0KCXRpbWVzdGFtcBgOIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAi8gEKEFNlbmRNZXNzYWdlSW5wdXQSFQoNY2xpZW50X21zZ19pZBgBIAEoCRIXCg9jb252ZXJzYXRpb25faWQYAiABKAkSFgoJc2VuZGVyX2lkGAMgASgDSACIAQESDwoHY29udGVudBgEIAEoCRIMCgR0eXBlGAUgASgJEhAKCG1lbnRpb25zGAYgAygDEiYKBWV4dHJhGAcgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIvCglmaWxlX2luZm8YCCABKAsyHC5vdXJjaGF0Lm1lc3NhZ2UudjEuRmlsZUluZm9CDAoKX3NlbmRlcl9pZCJLCg5TZW5kTWVzc2FnZUFjaxIVCg1jbGllbnRfbXNnX2lkGAEgASgJEgsKA3NlcRgCIAEoAxIVCg1zZXJ2ZXJfbXNnX2lkGAMgASgDQuEBChZjb20ub3VyY2hhdC5tZXNzYWdlLnYxQgxNZXNzYWdlUHJvdG9QAVpPZ2l0aHViLmNvbS9vdXItY2hhdC9nYXRld2F5L2ludGVybmFsL2NvbnRyYWN0cy9nZW4vb3VyY2hhdC9tZXNzYWdlL3YxO21lc3NhZ2V2MaICA09NWKoCEk91cmNoYXQuTWVzc2FnZS5WMcoCEk91cmNoYXRcTWVzc2FnZVxWMeICHk91cmNoYXRcTWVzc2FnZVxWMVxHUEJNZXRhZGF0YeoCFE91cmNoYXQ6Ok1lc3NhZ2U6OlYxYgZwcm90bzM", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
+  fileDesc("CiBvdXJjaGF0L21lc3NhZ2UvdjEvbWVzc2FnZS5wcm90bxISb3VyY2hhdC5tZXNzYWdlLnYxImcKCEZpbGVJbmZvEhEKCWZpbGVfbmFtZRgBIAEoCRIRCglmaWxlX3NpemUYAiABKAMSEAoIZmlsZV91cmwYAyABKAkSEQoJZmlsZV90eXBlGAQgASgJEhAKCGZpbGVfbWQ1GAUgASgJIuQDCgdNZXNzYWdlEgoKAmlkGAEgASgDEhUKDWNsaWVudF9tc2dfaWQYAiABKAkSFwoPY29udmVyc2F0aW9uX2lkGAMgASgJEhEKCXNlbmRlcl9pZBgEIAEoAxILCgNzZXEYBSABKAMSDwoHY29udGVudBgGIAEoCRIMCgR0eXBlGAcgASgJEg4KBnN0YXR1cxgIIAEoCRIQCghtZW50aW9ucxgJIAMoAxIRCglpc19lZGl0ZWQYCiABKAgSEgoKaXNfZGVsZXRlZBgLIAEoCBImCgVleHRyYRgMIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSLwoJZmlsZV9pbmZvGA0gASgLMhwub3VyY2hhdC5tZXNzYWdlLnYxLkZpbGVJbmZvEi0KCXRpbWVzdGFtcBgOIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKY3JlYXRlZF9hdBgPIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKdXBkYXRlZF9hdBgQIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLQoMZWRpdF9oaXN0b3J5GBEgAygLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdCLyAQoQU2VuZE1lc3NhZ2VJbnB1dBIVCg1jbGllbnRfbXNnX2lkGAEgASgJEhcKD2NvbnZlcnNhdGlvbl9pZBgCIAEoCRIWCglzZW5kZXJfaWQYAyABKANIAIgBARIPCgdjb250ZW50GAQgASgJEgwKBHR5cGUYBSABKAkSEAoIbWVudGlvbnMYBiADKAMSJgoFZXh0cmEYByABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0Ei8KCWZpbGVfaW5mbxgIIAEoCzIcLm91cmNoYXQubWVzc2FnZS52MS5GaWxlSW5mb0IMCgpfc2VuZGVyX2lkIksKDlNlbmRNZXNzYWdlQWNrEhUKDWNsaWVudF9tc2dfaWQYASABKAkSCwoDc2VxGAIgASgDEhUKDXNlcnZlcl9tc2dfaWQYAyABKANC4QEKFmNvbS5vdXJjaGF0Lm1lc3NhZ2UudjFCDE1lc3NhZ2VQcm90b1ABWk9naXRodWIuY29tL291ci1jaGF0L2dhdGV3YXkvaW50ZXJuYWwvY29udHJhY3RzL2dlbi9vdXJjaGF0L21lc3NhZ2UvdjE7bWVzc2FnZXYxogIDT01YqgIST3VyY2hhdC5NZXNzYWdlLlYxygIST3VyY2hhdFxNZXNzYWdlXFYx4gIeT3VyY2hhdFxNZXNzYWdlXFYxXEdQQk1ldGFkYXRh6gIUT3VyY2hhdDo6TWVzc2FnZTo6VjFiBnByb3RvMw", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
 
 /**
  * 文件消息附带的文件信息。
@@ -180,6 +180,21 @@ export type Message = Message$1<"ourchat.message.v1.Message"> & {
    * @generated from field: google.protobuf.Timestamp timestamp = 14;
    */
   timestamp?: Timestamp | undefined;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 15;
+   */
+  createdAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 16;
+   */
+  updatedAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: repeated google.protobuf.Struct edit_history = 17;
+   */
+  editHistory: JsonObject[];
 };
 
 /**
@@ -273,6 +288,21 @@ export type MessageJson = {
    * @generated from field: google.protobuf.Timestamp timestamp = 14;
    */
   timestamp?: TimestampJson;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 15;
+   */
+  createdAt?: TimestampJson;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 16;
+   */
+  updatedAt?: TimestampJson;
+
+  /**
+   * @generated from field: repeated google.protobuf.Struct edit_history = 17;
+   */
+  editHistory?: StructJson[];
 };
 
 /**

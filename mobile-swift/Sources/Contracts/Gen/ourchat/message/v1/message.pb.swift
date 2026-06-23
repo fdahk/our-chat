@@ -138,6 +138,29 @@ public nonisolated struct Ourchat_Message_V1_Message: @unchecked Sendable {
   /// Clears the value of `timestamp`. Subsequent reads from it will return its default value.
   public mutating func clearTimestamp() {_uniqueStorage()._timestamp = nil}
 
+  public var createdAt: SwiftProtobuf.Google_Protobuf_Timestamp {
+    get {_storage._createdAt ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_uniqueStorage()._createdAt = newValue}
+  }
+  /// Returns true if `createdAt` has been explicitly set.
+  public var hasCreatedAt: Bool {_storage._createdAt != nil}
+  /// Clears the value of `createdAt`. Subsequent reads from it will return its default value.
+  public mutating func clearCreatedAt() {_uniqueStorage()._createdAt = nil}
+
+  public var updatedAt: SwiftProtobuf.Google_Protobuf_Timestamp {
+    get {_storage._updatedAt ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_uniqueStorage()._updatedAt = newValue}
+  }
+  /// Returns true if `updatedAt` has been explicitly set.
+  public var hasUpdatedAt: Bool {_storage._updatedAt != nil}
+  /// Clears the value of `updatedAt`. Subsequent reads from it will return its default value.
+  public mutating func clearUpdatedAt() {_uniqueStorage()._updatedAt = nil}
+
+  public var editHistory: [SwiftProtobuf.Google_Protobuf_Struct] {
+    get {_storage._editHistory}
+    set {_uniqueStorage()._editHistory = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -271,7 +294,7 @@ nonisolated extension Ourchat_Message_V1_FileInfo: SwiftProtobuf.Message, SwiftP
 
 nonisolated extension Ourchat_Message_V1_Message: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Message"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{3}client_msg_id\0\u{3}conversation_id\0\u{3}sender_id\0\u{1}seq\0\u{1}content\0\u{1}type\0\u{1}status\0\u{1}mentions\0\u{3}is_edited\0\u{3}is_deleted\0\u{1}extra\0\u{3}file_info\0\u{1}timestamp\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{3}client_msg_id\0\u{3}conversation_id\0\u{3}sender_id\0\u{1}seq\0\u{1}content\0\u{1}type\0\u{1}status\0\u{1}mentions\0\u{3}is_edited\0\u{3}is_deleted\0\u{1}extra\0\u{3}file_info\0\u{1}timestamp\0\u{3}created_at\0\u{3}updated_at\0\u{3}edit_history\0")
 
   fileprivate class _StorageClass {
     var _id: Int64 = 0
@@ -288,6 +311,9 @@ nonisolated extension Ourchat_Message_V1_Message: SwiftProtobuf.Message, SwiftPr
     var _extra: SwiftProtobuf.Google_Protobuf_Struct? = nil
     var _fileInfo: Ourchat_Message_V1_FileInfo? = nil
     var _timestamp: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+    var _createdAt: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+    var _updatedAt: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+    var _editHistory: [SwiftProtobuf.Google_Protobuf_Struct] = []
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -312,6 +338,9 @@ nonisolated extension Ourchat_Message_V1_Message: SwiftProtobuf.Message, SwiftPr
       _extra = source._extra
       _fileInfo = source._fileInfo
       _timestamp = source._timestamp
+      _createdAt = source._createdAt
+      _updatedAt = source._updatedAt
+      _editHistory = source._editHistory
     }
   }
 
@@ -344,6 +373,9 @@ nonisolated extension Ourchat_Message_V1_Message: SwiftProtobuf.Message, SwiftPr
         case 12: try { try decoder.decodeSingularMessageField(value: &_storage._extra) }()
         case 13: try { try decoder.decodeSingularMessageField(value: &_storage._fileInfo) }()
         case 14: try { try decoder.decodeSingularMessageField(value: &_storage._timestamp) }()
+        case 15: try { try decoder.decodeSingularMessageField(value: &_storage._createdAt) }()
+        case 16: try { try decoder.decodeSingularMessageField(value: &_storage._updatedAt) }()
+        case 17: try { try decoder.decodeRepeatedMessageField(value: &_storage._editHistory) }()
         default: break
         }
       }
@@ -398,6 +430,15 @@ nonisolated extension Ourchat_Message_V1_Message: SwiftProtobuf.Message, SwiftPr
       try { if let v = _storage._timestamp {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
       } }()
+      try { if let v = _storage._createdAt {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 15)
+      } }()
+      try { if let v = _storage._updatedAt {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 16)
+      } }()
+      if !_storage._editHistory.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._editHistory, fieldNumber: 17)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -421,6 +462,9 @@ nonisolated extension Ourchat_Message_V1_Message: SwiftProtobuf.Message, SwiftPr
         if _storage._extra != rhs_storage._extra {return false}
         if _storage._fileInfo != rhs_storage._fileInfo {return false}
         if _storage._timestamp != rhs_storage._timestamp {return false}
+        if _storage._createdAt != rhs_storage._createdAt {return false}
+        if _storage._updatedAt != rhs_storage._updatedAt {return false}
+        if _storage._editHistory != rhs_storage._editHistory {return false}
         return true
       }
       if !storagesAreEqual {return false}

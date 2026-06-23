@@ -1,25 +1,25 @@
-// 消息类型
-export interface Message {
-    conversationId: string;
-    // 注：项目代码类型混乱，统一数据库、后端、前端，当数据为数字id时，全部统一为number类型
-    // 注： 前端修改类型时会有类型提示，后端要检查的类型修改包括（mongo的schema、后端接口部分
-    senderId: number; 
-    content: string;
-    type: string;  // 'text' | 'file'
-    status: string; 
-    mentions: number[];
-    isEdited: boolean;
-    isDeleted: boolean;
-    extra: Record<string, unknown>;
-    fileInfo?: {  // 新增：文件信息（文件消息特有）
-        fileName: string;
-        fileSize: number;
-        fileUrl: string;
-        fileType: string;
-        fileMD5?: string;
-    };
-    timestamp: string; // 注：数据库及后端都是Date类型，后端传给前端时，Date 会被序列化为字符串，前端采用string类型
-    editHistory: Array<Record<string, unknown>>;
-    createdAt: string;
-    updatedAt: string;
-  }
+import type { MessageJson } from '../contracts/gen/ourchat/message/v1/message_pb';
+
+// 消息(线上 JSON 形状)。单一契约源:proto/ourchat/message/v1/message.proto。
+// 必填/可选对齐前端实际用法:id/clientMsgId/seq 由服务端分配,乐观发送时缺省 → 可选;
+// 其余收发后均存在 → 必填。extra/editHistory 用非递归类型(protobuf JsonObject 是递归
+// JsonValue,会让 Redux Immer 的 WritableDraft 触发 "excessively deep")。fileInfo 沿用生成类型。
+// 注:id 类字段(id/senderId/mentions)按 int64 JSON 映射为 string。
+export type Message = Pick<MessageJson, 'fileInfo'> & {
+  id?: string;
+  clientMsgId?: string;
+  seq?: string;
+  conversationId: string;
+  senderId: string;
+  content: string;
+  type: string;
+  status: string;
+  mentions: string[];
+  isEdited: boolean;
+  isDeleted: boolean;
+  timestamp: string;
+  createdAt: string;
+  updatedAt: string;
+  extra: Record<string, unknown>;
+  editHistory: Array<Record<string, unknown>>;
+};
