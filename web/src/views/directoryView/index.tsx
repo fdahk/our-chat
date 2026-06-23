@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import FriendModal from '@/globalComponents/friendModal';
 import type { RootState } from '@/store/rootStore';
 import DisplayItem from '@/globalComponents/displayItem';
-import SearchModal from '@/globalComponents/searchModal';
+import SearchHeader from '@/globalComponents/searchHeader';
 import { searchUser, replyFriendReq } from '@/globalApi/friendApi';
 import AddFriendModal from '@/globalComponents/addFriendModal';
 import { setFriendReqStatus } from '@/store/friendStore';
@@ -47,8 +47,8 @@ function DirectoryView() {
     const [hasResult, setHasResult] = useState(true);
     const handleClickSearchFriend = async () => {
         if(isCheckingFriendReq) setIsCheckingFriendReq(false);
-        if(searchValue.length < 1) return;
-        const res = await searchUser({keyword: Number(searchValue), userId});
+        if(searchValue.trim().length < 1) return;
+        const res = await searchUser({keyword: searchValue.trim(), userId});
         const searchResult = res.data;
         if (!searchResult) return;
         if(searchResult.exist) {
@@ -135,21 +135,18 @@ function DirectoryView() {
         <div className={directoryViewStyle.container}>
             {/* 左侧 */}
             <div className={directoryViewStyle.left}>
-                {/* 头部 */}
-                <div className={directoryViewStyle.left_header}>
-                    <SearchModal searchChange={handleSearchChange} placeholder={isAddingFriend ? t('directory.addSearchPlaceholder') : t('directory.searchPlaceholder')} />
-                    {/* 切换添加好友搜索 */}
-                    <div className={directoryViewStyle.left_header_add_user_container}
-                    onClick={handleClickAddFriend}>
-                        {
-                            isAddingFriend ? (
-                                <p style={{fontSize: '11px'}}>{t('directory.cancel')}</p>
-                            ) : (
-                                <i className={`iconfont icon-adduser ${directoryViewStyle.left_header_add_user}`}></i>
-                            )
-                        }
-                    </div>
-                </div>
+                {/* 头部:搜索 + 切换添加好友(action 槽) */}
+                <SearchHeader
+                    onSearchChange={handleSearchChange}
+                    placeholder={isAddingFriend ? t('directory.addSearchPlaceholder') : t('directory.searchPlaceholder')}
+                    action={
+                        <div className={directoryViewStyle.left_header_add_user_container} onClick={handleClickAddFriend}>
+                            {isAddingFriend
+                                ? <p style={{ fontSize: '11px' }}>{t('directory.cancel')}</p>
+                                : <i className={`iconfont icon-adduser ${directoryViewStyle.left_header_add_user}`}></i>}
+                        </div>
+                    }
+                />
                 {/* 列表展示 */}
                 <div className={directoryViewStyle.left_body}>
                     {
@@ -229,13 +226,7 @@ function DirectoryView() {
                 {/* 好友信息 */}
                 {activeFriend && (
                     <FriendModal
-                        style={{
-                            backgroundColor: 'transparent',
-                            width: '400px',
-                            height: '300px',
-                            boxShadow: 'none',
-                        }}
-                        avatar={globalFriendInfoList[activeFriend?.friend_id as number]?.avatar 
+                        avatar={globalFriendInfoList[activeFriend?.friend_id as number]?.avatar
                             ? buildServerUrl(globalFriendInfoList[activeFriend?.friend_id as number].avatar) 
                             : defaultAvatar}
                         username={globalFriendInfoList[activeFriend?.friend_id as number]?.username}
@@ -255,13 +246,17 @@ function DirectoryView() {
                             {
                                 Object.keys(globalFriendReqList).map((item: string) => {
                                     const friendInfo = globalFriendInfoList[Number(item)];
+                                    const req = globalFriendReqList[Number(item)];
+                                    // 请求方多半还不是好友,friendInfo 取不到,回退到请求自带的 username/avatar
+                                    const reqName = friendInfo?.username ?? req?.username ?? '';
+                                    const reqAvatar = friendInfo?.avatar ?? req?.avatar;
                                     return (
                                         <div className={directoryViewStyle.friendReqItem} key={item}>
-                                            <DisplayItem 
-                                            id={item} title={friendInfo?.username} content={''} 
-                                            avatar={friendInfo?.avatar 
-                                            ? buildServerUrl(friendInfo.avatar) 
-                                            : defaultAvatar} 
+                                            <DisplayItem
+                                            id={item} title={reqName} content={''}
+                                            avatar={reqAvatar
+                                            ? buildServerUrl(reqAvatar)
+                                            : defaultAvatar}
                                             style={{width: '55px', height: '55px', backgroundColor: 'transparent'}}/>
                                             {/* 请求状态 */}
                                             <div className={directoryViewStyle.rightBox}>

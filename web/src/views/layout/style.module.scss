@@ -5,7 +5,7 @@
     flex-direction: row;
     height: 100vh;
     width: 100%;
-    background-color: white;
+    background-color: var(--surface);
     overflow: hidden;
 }
 // 左导航栏
@@ -65,36 +65,18 @@
     align-items: center;
     justify-content: center;
 }
-// 设置中心菜单
-.menu_center {
+// 设置菜单定位:☰ 右侧偏上(菜单视觉见 globalComponents/popoverMenu)
+.menu_anchor {
     position: absolute;
-    display: flex;
-    flex-direction: column;
-    align-items: start;
-    justify-content: start;
     bottom: 10px;
-    right: -100px;
-    width: 100px;
-    // height: 150px;
-    background-color: var(--background-color);
-    cursor: pointer;
+    left: 56px;
+    z-index: 1000;
+}
 
-    .menu_center_item_box{
-        width: 100%;
-        display: flex;
-        padding-left: 10px;
-        flex-direction: column;
-        align-items: start;
-        &:hover {
-            background-color: var(--background-color-hover);
-        }  
-    }
-    .menu_center_item {
-        height: 45px;
-        display: flex;
-        font-size: 0.9rem;
-        align-items: center;
-        color: var(--icon-color);
-
-    }
+// 个人信息浮层定位:头像右侧(卡片视觉见 globalComponents/profileCard)
+.profile_anchor {
+    position: absolute;
+    top: 16px;
+    left: 64px;
+    z-index: 1000;
 }

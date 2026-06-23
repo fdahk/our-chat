@@ -1,100 +1,118 @@
-
-.modalCard {
-    background-color: #fff;
-    border-radius: 12px;
-    width: 250px;
-    padding: 24px 32px 16px 32px;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+.detail {
+    width: 100%;
+    max-width: 520px;
+    padding: 56px 36px 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .header {
     display: flex;
-    align-items: flex-start;
-    position: relative;
+    gap: 16px;
 }
-
 .avatar {
-    width: 64px;
-    height: 64px;
-    border-radius: 8px;
+    width: 48px;
+    height: 48px;
+    border-radius: 4px;
     object-fit: cover;
-    margin-right: 18px;
+    flex-shrink: 0;
 }
-
-.info {
+.headMain {
     flex: 1;
+    min-width: 0;
 }
-
-.username {
-    font-size: 1.2rem;
-    font-weight: 400;
-    color: #222;
+.nameRow {
     display: flex;
     align-items: center;
     gap: 6px;
+    margin-bottom: 10px;
+}
+.name {
+    font-size: 1.0625rem;
+    font-weight: 600;
+    color: var(--text-1);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.gender {
+    font-size: 14px;
+    color: #4c8bf5;
+    flex-shrink: 0;
+}
+.genderFemale {
+    color: #f06292;
+}
+.sub {
+    font-size: 0.8125rem;
+    color: var(--text-3);
+    line-height: 1.85;
 }
 
-.iconUser {
-    font-size: 1.2rem;
-    color: blue;
-}
-
-.wxid, .region {
-    font-size: 13px;
-    color: #888;
-    margin-top: 2px;
-}
-
-
-
-.line {
+.divider {
     height: 1px;
-    background: #eee;
-    margin: 18px 0 10px 0;
+    background: var(--divider);
+    margin: 22px 0;
 }
 
 .row {
     display: flex;
-    align-items: center;
-    margin-bottom: 10px;
-    font-size: 15px;    
+    font-size: 0.875rem;
+    padding: 6px 0;
 }
-
-.label {
-    color: #888;
-    width: 70px;
+.rowLabel {
+    width: 72px;
     flex-shrink: 0;
+    color: var(--text-3);
 }
-
-.value {
-    color: #333;
+.rowValue {
     flex: 1;
-}
-
-.addRemark {
-    color: #bbb;
+    color: var(--text-1);
+    word-break: break-all;
     cursor: pointer;
 }
-
-.footer {
-    display: flex;
-    justify-content: space-around;
-    margin-top: 18px;
-    border-top: 1px solid #eee;
-    padding-top: 12px;
+.placeholder {
+    color: var(--text-3);
+    cursor: pointer;
+}
+.remarkInput {
+    flex: 1;
+    min-width: 0;
+    height: 26px;
+    padding: 0 8px;
+    font-size: 0.875rem;
+    color: var(--text-1);
+    background: var(--surface-2);
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    outline: none;
+    &::placeholder {
+        color: var(--text-3);
+    }
 }
 
+.actions {
+    display: flex;
+    justify-content: center;
+    gap: 56px;
+    margin-top: 30px;
+}
 .action {
     display: flex;
     flex-direction: column;
     align-items: center;
-    color: #888;
-    font-size: 13px;
+    gap: 8px;
+    background: transparent;
+    border: 0;
     cursor: pointer;
-    transition: color 0.2s;
-    &:hover { color: var(--primary-color); }
+    color: var(--text-2);
+    font-size: 0.8125rem;
+    transition: opacity 0.15s ease;
+    &:hover {
+        opacity: 0.7;
+    }
     i {
-        font-size: 22px;
-        margin-bottom: 4px;
+        font-size: 26px;
+        color: var(--accent);
     }
 }

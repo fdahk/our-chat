@@ -2,23 +2,17 @@
     flex: 1;
     height: 100%;
     display: flex;
-    background-color: white;
+    background-color: var(--surface);
 }
 
 // 左侧
 .left {
     width: 200px;
     height: 100%;
-    background-color: white;
+    background-color: var(--surface);
     display: flex;
     flex-direction: column;
-    border-right: 1px solid rgba(0, 0, 0, 0.2);
-    .left_header {
-        height: 70px;
-        width: 100%;
-        display: flex;
-        padding: 15px 10px;
-    }
+    border-right: 1px solid var(--border);
     .left_body {
         display: flex;
         flex-direction: column;
@@ -29,7 +23,6 @@
     width: 30px;
     height: 30px;
     min-width: 30px;
-    margin-left: 10px;
     background-color: var(--button-color-hover);
     display: flex;
     align-items: center;
@@ -46,9 +39,9 @@
 .right {
     flex: 1;
     height: 100%;
-    background-color: white;
+    background-color: var(--surface);
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
 }
 // 搜索结果不存在时
@@ -104,7 +97,7 @@
             align-items: center;
             justify-content: space-between;
             padding: 10px 0;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid var(--border);
             .rightBox {
                 height: 100%; 
                 display: flex;

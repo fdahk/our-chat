@@ -192,6 +192,12 @@ const zh = {
       zh: '中文',
       en: 'English',
     },
+    theme: {
+      title: '主题',
+      light: '浅色',
+      dark: '深色',
+      system: '跟随系统',
+    },
   },
 
   layout: {
@@ -199,6 +205,14 @@ const zh = {
       setting: '设置',
       logout: '退出登录',
     },
+  },
+
+  profile: {
+    wxid: '微信号',
+    email: '邮箱',
+    sendMsg: '发消息',
+    voiceCall: '语音聊天',
+    videoCall: '视频聊天',
   },
 
   agent: {

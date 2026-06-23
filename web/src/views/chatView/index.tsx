@@ -10,7 +10,7 @@ import { initGlobalMessages, initActiveConversation } from '@/store/chatStore';
 import type { ApiResponse } from '@/globalType/apiResponse';
 import type { RootState } from '@/store/rootStore';
 import DisplayItem from '@/globalComponents/displayItem';
-import SearchModal from '@/globalComponents/searchModal';
+import SearchHeader from '@/globalComponents/searchHeader';
 import FileUploader from '@/globalComponents/fileUploader';
 import { useCall } from '@/hooks/useCall';
 import type { CallUser, CallType } from '@/globalType/call';
@@ -19,6 +19,7 @@ import { defaultAvatar } from '@/assets/images';
 import type { FileItem } from '@/utils/upload';
 import ChatComposer, { type ComposerAction } from '@/globalComponents/chatComposer';
 import { useLang } from '@/i18n';
+import ProfileCard from '@/globalComponents/profileCard';
 
 function ChatView() {
 
@@ -27,15 +28,22 @@ function ChatView() {
     const activeConversation = useSelector((state: RootState) => state.chat.activeConversation); // 当前会话id
     const messages = useSelector((state: RootState) => state.chat.globalMessages); //消息列表 注：数据结构为 { [conversationId: string]: Message[] , ... }
     const userId= useSelector((state: RootState) => state.user.id) as number; // 从redux中获取用户id
+    const userAvatar = useSelector((state: RootState) => state.user.avatar); // 自己头像(渲染自己消息气泡用)
     // 注： RootState 类型是通过 ReturnType<typeof rootStore.getState> 推导出来的。
     // 但 redux-persist 的 persistReducer 会在 state 外层加上一些持久化相关的属性（如 _persist），
     // 导致类型变成 PersistPartial<RootState>，类型推断不再直接有 chat 属性(实际上能获取正确值，但类型推断报错)
     // 以下使用any类型，避免类型推断报错，但并非最佳实践
     const globalConversations = useSelector((state: RootState) => state.chat.globalConversations); // 从redux中获取全局会话列表
     const globalFriendInfoList = useSelector((state: RootState) => state.chat.globalFriendInfoList); // 从redux中获取全局好友信息列表
+    const globalFriendList = useSelector((state: RootState) => state.chat.globalFriendList); // 好友备注表(friendId -> remark)
     const lastMessages = useSelector((state: RootState) => state.chat.lastMessages); // 从redux中获取最后一条消息
+    // 展示名:有备注优先备注,否则用户名
+    const friendDisplayName = (friendId: number) => globalFriendList[friendId] || globalFriendInfoList[friendId]?.username;
     const socket = SocketService.getInstance(); // 获取socket实例
     const chatBodyRef = useRef<HTMLDivElement>(null); // 消息列表的ref，用来实现滚动
+    // 点他人头像弹出的好友资料卡(fixed 定位 + 点击外部关闭)
+    const [friendCard, setFriendCard] = useState<{ friendId: number; top: number; left: number } | null>(null);
+    const friendCardRef = useRef<HTMLDivElement>(null);
     // const inputRef = useRef<HTMLTextAreaElement>(null); // 输入框的ref，用来实现滚动，注：antd组件已实现
     // 从localStorage（应用启动时已从后端中获取最新的会话列表和全局消息存到本地）中获取
     // useEffect(() => {
@@ -60,6 +68,19 @@ function ChatView() {
         const tp = conversationId.split('_');
         return parseInt(tp[1]===userId?.toString() ? tp[2] : tp[1]);
     };
+    // 是否在该消息前显示时间分隔(首条 or 与上一条间隔 > 5 分钟)
+    const msgTime = (m: Message) => new Date(m.timestamp || m.createdAt || '').getTime();
+    const shouldShowTime = (msgs: Message[], i: number) => {
+        if (i <= 0) return true;
+        return msgTime(msgs[i]) - msgTime(msgs[i - 1]) > 5 * 60 * 1000;
+    };
+    const formatMsgTime = (m: Message) => {
+        const d = new Date(m.timestamp || m.createdAt || '');
+        if (isNaN(d.getTime())) return '';
+        const hhmm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        const now = new Date();
+        return d.toDateString() === now.toDateString() ? hhmm : `${d.getMonth() + 1}/${d.getDate()} ${hhmm}`;
+    };
 
     // 消息列表滚动条始终在底部
     useEffect(() => {
@@ -71,6 +92,16 @@ function ChatView() {
             chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
         }
     }, [messages, activeConversation]);
+
+    // 点击外部关闭好友资料卡
+    useEffect(() => {
+        if (!friendCard) return;
+        const onDown = (e: MouseEvent) => {
+            if (friendCardRef.current && !friendCardRef.current.contains(e.target as Node)) setFriendCard(null);
+        };
+        document.addEventListener('mousedown', onDown);
+        return () => document.removeEventListener('mousedown', onDown);
+    }, [friendCard]);
 
     // 发送消息（文本由输入组件传入，草稿态不再驻留本组件）
     const sendMessage = (text: string) => {
@@ -187,7 +218,7 @@ function ChatView() {
         const targetUser: CallUser = {
             id: friendId,
             username: friendInfo.username,
-            nickname: friendInfo.username,
+            nickname: friendDisplayName(friendId) || friendInfo.username,
             avatar: friendInfo.avatar
                 ? buildServerUrl(friendInfo.avatar)
                 : defaultAvatar,
@@ -198,7 +229,7 @@ function ChatView() {
     const handleClickVideo = () => startCallWithFriend('video');
 
     // 渲染消息内容的函数
-    const renderMessageContent = (msg: Message) => {
+    const renderMessageContent = (msg: Message, isSelf: boolean) => {
         // 文件消息
         if (msg.type === 'file' && msg.fileInfo) {
             const { fileName, fileSize, fileUrl, fileType } = msg.fileInfo;
@@ -257,10 +288,32 @@ function ChatView() {
         }
         
         // 文本消息
-        return <div className={chatViewStyle.message_content}>{msg.content}</div>;
+        return (
+            <div className={`${chatViewStyle.bubble} ${isSelf ? chatViewStyle.bubbleSelf : chatViewStyle.bubbleOther}`}>
+                {msg.content}
+            </div>
+        );
     };
 
     const { initiateCall } = useCall();
+
+    // 给指定好友发起通话(语音/视频)
+    const callFriend = (friendId: number, callType: CallType) => {
+        const info = globalFriendInfoList[friendId];
+        if (!info) return;
+        const target: CallUser = {
+            id: friendId,
+            username: info.username,
+            nickname: friendDisplayName(friendId) || info.username,
+            avatar: info.avatar ? buildServerUrl(info.avatar) : defaultAvatar,
+        };
+        initiateCall(target, callType);
+    };
+    // 点他人头像 → 在头像右侧弹出其资料卡
+    const openFriendCard = (friendId: number, e: React.MouseEvent) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        setFriendCard({ friendId, top: Math.min(r.top, window.innerHeight - 280), left: r.right + 8 });
+    };
 
     // 输入框顶部图标(左 4 + 右 2)
     const leftActions: ComposerAction[] = [
@@ -278,7 +331,7 @@ function ChatView() {
         <div className={chatViewStyle.chat_view_container}>
             {/* 左侧：对话列表 */}
             <div className={chatViewStyle.chat_view_left}>
-                <SearchModal searchChange={handleSearchChange} placeholder={t('chat.searchPlaceholder')} />
+                <SearchHeader onSearchChange={handleSearchChange} placeholder={t('chat.searchPlaceholder')} />
                 <div className={chatViewStyle.chat_view_left_body}>
                         {Object.values(globalConversations).map((item: Conversation) => (
                             <DisplayItem
@@ -287,8 +340,9 @@ function ChatView() {
                                 avatar={globalFriendInfoList[parseConversationId(item.id)]?.avatar
                                     ? buildServerUrl(globalFriendInfoList[parseConversationId(item.id)]?.avatar)
                                     : defaultAvatar}
-                                title={globalFriendInfoList[parseConversationId(item.id)]?.username}
+                                title={friendDisplayName(parseConversationId(item.id))}
                                 content={lastMessages[item.id]?.content || ''}
+                                time={lastMessages[item.id] ? formatMsgTime(lastMessages[item.id]) : undefined}
                                 isActive={activeConversation === item.id}
                                 handleClick={handleClickConversation}
                             />
@@ -299,16 +353,32 @@ function ChatView() {
             <div className={chatViewStyle.chat_view_right}>
                 {activeConversation ? (
                     <>
-                        <div className={chatViewStyle.chat_header}>{globalFriendInfoList[parseConversationId(activeConversation)]?.username || ''}</div> {/* 会话标题 */}
+                        <div className={chatViewStyle.chat_header}>{friendDisplayName(parseConversationId(activeConversation)) || ''}</div> {/* 会话标题 */}
                         {/* 消息列表 */}
                         <div className={chatViewStyle.chat_body} ref={chatBodyRef}>
                             <List
                                 className={chatViewStyle.message_list}
                                 dataSource={messages}
-                                renderItem={(msg: Message) => {
+                                renderItem={(msg: Message, index: number) => {
+                                    const isSelf = msg.senderId === userId;
+                                    const friendId = parseConversationId(activeConversation!);
+                                    const avatarSrc = isSelf
+                                        ? (userAvatar ? buildServerUrl(userAvatar) : defaultAvatar)
+                                        : (globalFriendInfoList[friendId]?.avatar ? buildServerUrl(globalFriendInfoList[friendId].avatar) : defaultAvatar);
                                     return (
-                                        <List.Item className={msg.senderId === userId ? chatViewStyle.self_msg : chatViewStyle.other_msg}>
-                                            {renderMessageContent(msg)}
+                                        <List.Item className={chatViewStyle.msg_item}>
+                                            {shouldShowTime(messages, index) && (
+                                                <div className={chatViewStyle.time_sep}>{formatMsgTime(msg)}</div>
+                                            )}
+                                            <div className={isSelf ? chatViewStyle.self_msg : chatViewStyle.other_msg}>
+                                                <img
+                                                    className={chatViewStyle.msg_avatar}
+                                                    src={avatarSrc}
+                                                    alt=""
+                                                    onClick={isSelf ? undefined : (e) => openFriendCard(friendId, e)}
+                                                />
+                                                {renderMessageContent(msg, isSelf)}
+                                            </div>
                                         </List.Item>
                                     )
                                 }}
@@ -317,10 +387,12 @@ function ChatView() {
                         {/* 输入框（全局通用组件，隔离高频草稿态的重渲染） */}
                         <ChatComposer
                             onSend={sendMessage}
-                            placeholder={t('chat.placeholder')}
+                            placeholder=""
                             leftActions={leftActions}
                             rightActions={rightActions}
                             onActionClick={handleClickHeaderIcon}
+                            showSend={false}
+                            inputRows={4}
                         />
                     </>
                 ) : (
@@ -342,6 +414,25 @@ function ChatView() {
                 </div>
                 }
             </div>
+            {/* 点他人头像弹出的好友资料卡 */}
+            {friendCard && (
+                <div
+                    className={chatViewStyle.friend_card}
+                    style={{ top: friendCard.top, left: friendCard.left }}
+                    ref={friendCardRef}
+                >
+                    <ProfileCard
+                        avatar={globalFriendInfoList[friendCard.friendId]?.avatar ? buildServerUrl(globalFriendInfoList[friendCard.friendId].avatar) : ''}
+                        name={globalFriendInfoList[friendCard.friendId]?.username || ''}
+                        rows={[{ label: t('profile.wxid'), value: globalFriendInfoList[friendCard.friendId]?.username || '' }]}
+                        actions={[
+                            { key: 'msg', icon: 'icon-message', label: t('profile.sendMsg'), onClick: () => setFriendCard(null) },
+                            { key: 'voice', icon: 'icon-phone', label: t('profile.voiceCall'), onClick: () => { callFriend(friendCard.friendId, 'voice'); setFriendCard(null); } },
+                            { key: 'video', icon: 'icon-video', label: t('profile.videoCall'), onClick: () => { callFriend(friendCard.friendId, 'video'); setFriendCard(null); } },
+                        ]}
+                    />
+                </div>
+            )}
         </div>
     );
 }

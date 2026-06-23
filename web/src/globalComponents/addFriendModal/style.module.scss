@@ -1,5 +1,5 @@
 .container {
-    background-color: white;
+    background-color: var(--surface);
     // 注：不能用决定定位，虽然会脱离文档流，但是会出现滚动条
     // position: absolute;
     position: fixed;
@@ -31,7 +31,7 @@
 .username {
     font-size: 1.2rem;
     font-weight: 400;
-    color: #222;
+    color: var(--text-1);
     display: flex;
     align-items: center;
     gap: 6px;
@@ -44,7 +44,7 @@
 
 .wxid, .region {
     font-size: 13px;
-    color: #888;
+    color: var(--text-2);
     margin-top: 2px;
 }
 

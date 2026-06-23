@@ -12,7 +12,7 @@ export const getUserConversationList = async (userId: number) => {
 // 注： 不同浏览器中axios对params参数的序列化方式不同，chrome会自动省略空参数（空数组）
 export const getConversationList = async (userConversations: UserConversation[]) => {
   // 性能优化：提取userConversations的conversation_id转换成id数组，减少请求参数大小
-  const userConversationIds = userConversations.map(conversation => conversation.conversation_id);
+  const userConversationIds = userConversations.map(conversation => conversation.conversationId);
   const res = await get<Record<string, Conversation>>(`/user/conversations`, { params: { userConversationIds: JSON.stringify(userConversationIds) } });
   return res;
 };
@@ -33,7 +33,7 @@ export const updateConversationTime = async ({conversationId, userId}: {conversa
 
 // 获取最后一条消息
 export const getLastMessage = async (userConversations: UserConversation[]) => {
-  const userConversationIds = userConversations.map(conversation => conversation.conversation_id);
+  const userConversationIds = userConversations.map(conversation => conversation.conversationId);
   const res = await get<Record<string, Message>>(`/user/lastMessages`, { params: { userConversationIds: JSON.stringify(userConversationIds) } });
   return res;
 };

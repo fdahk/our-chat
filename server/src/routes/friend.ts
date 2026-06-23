@@ -57,6 +57,7 @@ router.get('/searchUser', authenticateToken, async (req, res) => {
         OR: [
           ...(Number.isFinite(numericKeyword) ? [{ id: BigInt(numericKeyword) }] : []),
           { phone: keyword },
+          { username: keyword },
         ],
       },
       select: { id: true, avatar: true, username: true, gender: true },
@@ -114,6 +115,29 @@ router.put('/addFriend', authenticateToken, async (req, res) => {
   }
 });
 
+// 更新好友备注 ── 只能改自己对某位好友的备注
+router.put('/updateRemark', authenticateToken, async (req, res) => {
+  const { userId, friend_id, remark } = req.body;
+  if (req.user!.id.toString() !== userId.toString()) {
+    return res.status(403).json({ success: false, message: '无权修改其他用户的好友备注' });
+  }
+  try {
+    await prisma.friendship.update({
+      where: {
+        userId_friendId: {
+          userId: BigInt(Number(userId)),
+          friendId: BigInt(Number(friend_id)),
+        },
+      },
+      data: { remark: typeof remark === 'string' && remark.trim() ? remark.trim() : null },
+    });
+    res.json({ success: true });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: '更新好友备注失败' });
+  }
+});
+
 // 获取自己收到的好友请求
 router.get('/getFriendReqs', authenticateToken, async (req, res) => {
   const { userId } = req.query as Record<string, string>;
@@ -125,8 +149,19 @@ router.get('/getFriendReqs', authenticateToken, async (req, res) => {
       where: { userId: BigInt(Number(userId)) },
       orderBy: { updatedAt: 'desc' },
     });
+    // 请求方资料随请求一起返回:好友请求列表里对方多半还不是好友,本地 friendInfo 取不到,
+    // 不带上 username/avatar 的话该卡片会渲染成空白(无名无头像)。
+    const requesterIds = rows.map((r) => r.friendId);
+    const requesters = requesterIds.length
+      ? await prisma.user.findMany({
+          where: { id: { in: requesterIds } },
+          select: { id: true, username: true, avatar: true },
+        })
+      : [];
+    const requesterMap = new Map(requesters.map((u) => [String(u.id), u]));
     const result = rows.reduce<Record<string, unknown>>((acc, r) => {
-      acc[String(r.friendId)] = r;
+      const u = requesterMap.get(String(r.friendId));
+      acc[String(r.friendId)] = { ...r, username: u?.username ?? null, avatar: u?.avatar ?? null };
       return acc;
     }, {});
     res.json({ success: true, data: result });

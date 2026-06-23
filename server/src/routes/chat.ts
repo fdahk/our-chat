@@ -72,22 +72,18 @@ router.post('/updateConversationTime', authenticateToken, async (req, res) => {
     return res.status(403).json({ success: false, message: '无权更新其他用户的会话' });
   }
   try {
-    const existed = await prisma.userConversation.findFirst({
-      where: { conversationId },
-      select: { id: true },
-    });
-    // 不存在 → 创建 Conversation + UserConversation(后者有前者的外键)
-    if (!existed) {
-      await prisma.conversation.create({
-        data: { id: conversationId, convType: 'single' },
-      });
-      await prisma.userConversation.create({
-        data: { userId: BigInt(Number(userId)), conversationId },
-      });
-    }
-    await prisma.conversation.update({
+    // 会话与「我的」会话视图各自幂等 upsert:会话可能已被好友接受流程或对方先建好,
+    // 而我的 userConversation 仍可能缺失,二者要分别判断——不能用「我的视图缺失」推断会话不存在,
+    // 否则会对已存在的会话再次 create 触发 P2002 唯一冲突。
+    await prisma.conversation.upsert({
       where: { id: conversationId },
-      data: { updatedAt: new Date() },
+      update: { updatedAt: new Date() },
+      create: { id: conversationId, convType: 'single' },
+    });
+    await prisma.userConversation.upsert({
+      where: { userId_conversationId: { userId: BigInt(Number(userId)), conversationId } },
+      update: {},
+      create: { userId: BigInt(Number(userId)), conversationId },
     });
     res.json({ success: true });
   } catch (error) {

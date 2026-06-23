@@ -8,6 +8,9 @@ export interface FriendReq {
     status: string;
     created_at: string;
     updated_at: string;
+    // 请求方资料:对方多半还不是好友,本地 friendInfo 取不到,卡片渲染要回退到这里
+    username?: string | null;
+    avatar?: string | null;
 }
 interface FriendReqList {
     // key是好友id，value是好友请求

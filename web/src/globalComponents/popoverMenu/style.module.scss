@@ -1,0 +1,30 @@
+.menu {
+  min-width: 150px;
+  background: var(--popover-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--popover-shadow);
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+}
+.item {
+  height: 36px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  font-size: 0.875rem;
+  color: var(--text-1);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s ease;
+  &:hover {
+    background: var(--hover);
+  }
+}
+.danger {
+  color: var(--color-danger);
+}

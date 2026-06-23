@@ -20,6 +20,7 @@ interface DisplayItemProps {
     avatar: string;
     title: string;
     content: string;
+    time?: string; // 右上角时间(会话列表用;通讯录不传)
     isActive?: boolean;
     handleClick?: (id: string) => void;
     style?: {
@@ -35,7 +36,7 @@ interface DisplayItemProps {
  * @param {DisplayItemProps} props - 组件属性
  * @returns {JSX.Element} - 渲染的React元素
  */
-function DisplayItem({ id, avatar, title, content, isActive, handleClick = () => {}, style }: DisplayItemProps) {
+function DisplayItem({ id, avatar, title, content, time, isActive, handleClick = () => {}, style }: DisplayItemProps) {
     return (
         // 外层容器，根据isActive状态添加active类名
         <div
@@ -49,7 +50,10 @@ function DisplayItem({ id, avatar, title, content, isActive, handleClick = () =>
             </div>
             {/* 内容区域 */}
             <div className={styles.item_content_container}>
-                <div className={styles.item_title}>{title}</div>
+                <div className={styles.item_row}>
+                    <div className={styles.item_title}>{title}</div>
+                    {time && <div className={styles.item_time}>{time}</div>}
+                </div>
                 {/* 内容文本，仅在content存在时渲染 */}
                 {content && <div className={styles.item_content}>{content}</div>}
             </div>

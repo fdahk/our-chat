@@ -4,7 +4,7 @@ import type { Message } from './message';
 export interface UserConversation {
     id: string;
     user_id: number;
-    conversation_id: string;
+    conversationId: string;
     last_read_message_id: string;
     unread_count: number;
     is_muted: number;

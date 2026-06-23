@@ -19,6 +19,8 @@ interface ChatComposerProps {
   leftActions?: ComposerAction[];
   rightActions?: ComposerAction[];
   onActionClick?: (method: string) => void;
+  showSend?: boolean; // 是否显示发送按钮(好友聊天像微信一样靠回车发,关掉按钮)
+  inputRows?: number;
 }
 
 // 全局通用聊天输入框。草稿态自管理(每次按键只重渲染本小块,不波及上层消息列表),
@@ -32,6 +34,8 @@ function ChatComposer({
   leftActions,
   rightActions,
   onActionClick,
+  showSend = true,
+  inputRows = 2,
 }: ChatComposerProps) {
   const { t } = useLang();
   const [input, setInput] = useState('');
@@ -84,23 +88,25 @@ function ChatComposer({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          rows={2}
+          rows={inputRows}
           placeholder={placeholder}
           disabled={disabled}
         />
       </div>
-      <div className={styles.footer}>
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={send}
-          loading={sending}
-          disabled={disabled}
-          className={styles.sendBtn}
-        >
-          {sendLabel ?? t('chat.send')}
-        </Button>
-      </div>
+      {showSend && (
+        <div className={styles.footer}>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={send}
+            loading={sending}
+            disabled={disabled}
+            className={styles.sendBtn}
+          >
+            {sendLabel ?? t('chat.send')}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
