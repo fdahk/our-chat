@@ -229,6 +229,10 @@ const en: LocaleSchema = {
       hint: 'Cmd / Ctrl + Enter to submit',
       empty: 'Submit a task and watch the agent reason through tool calls',
       submitFail: 'Task submit failed',
+      thinking: 'Thinking…',
+      thinkProcess: 'Reasoning',
+      steps: '{{count}} steps',
+      failed: 'Task failed',
     },
   },
 };
