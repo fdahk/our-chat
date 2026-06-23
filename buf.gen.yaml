@@ -9,10 +9,12 @@ plugins:
     out: server/src/contracts/gen
     opt:
       - target=ts
+      - json_types=true
   - remote: buf.build/bufbuild/es
     out: web/src/contracts/gen
     opt:
       - target=ts
+      - json_types=true
   - remote: buf.build/protocolbuffers/go
     out: gateway/internal/contracts/gen
     opt:
