@@ -17,7 +17,7 @@ import type { CallUser } from '@/globalType/call';
 import { buildServerUrl } from '@/utils/runtime';
 import { defaultAvatar } from '@/assets/images';
 import type { FileItem } from '@/utils/upload';
-import MessageInput from './MessageInput';
+import ChatComposer, { type ComposerAction } from '@/globalComponents/chatComposer';
 import { useLang } from '@/i18n';
 
 function ChatView() {
@@ -268,6 +268,18 @@ function ChatView() {
 
     const { initiateCall } = useVoiceCall(); // 添加这行
 
+    // 输入框顶部图标(左 4 + 右 2)
+    const leftActions: ComposerAction[] = [
+        { label: t('chat.iconLabels.emoji'),      icon: 'icon-meh',            method: 'handleClickEmoji' },
+        { label: t('chat.iconLabels.file'),       icon: 'icon-folder',         method: 'handleClickFile' },
+        { label: t('chat.iconLabels.screenshot'), icon: 'icon-scissor',        method: 'handleClickScreenshot' },
+        { label: t('chat.iconLabels.record'),     icon: 'icon-comment',        method: 'handleClickChatRecord' },
+    ];
+    const rightActions: ComposerAction[] = [
+        { label: t('chat.iconLabels.voice'),      icon: 'icon-phone',          method: 'handleClickVoice' },
+        { label: t('chat.iconLabels.video'),      icon: 'icon-videocameraadd', method: 'handleClickVideo' },
+    ];
+
     return (
         <div className={chatViewStyle.chat_view_container}>
             {/* 左侧：对话列表 */}
@@ -308,8 +320,14 @@ function ChatView() {
                                 }}
                             />
                         </div>
-                        {/* 输入框（独立组件，隔离高频草稿态的重渲染） */}
-                        <MessageInput onSend={sendMessage} onHeaderIconClick={handleClickHeaderIcon} />
+                        {/* 输入框（全局通用组件，隔离高频草稿态的重渲染） */}
+                        <ChatComposer
+                            onSend={sendMessage}
+                            placeholder={t('chat.placeholder')}
+                            leftActions={leftActions}
+                            rightActions={rightActions}
+                            onActionClick={handleClickHeaderIcon}
+                        />
                     </>
                 ) : (
                     <div className={chatViewStyle.no_chat}>{t('chat.noConversation')}</div>

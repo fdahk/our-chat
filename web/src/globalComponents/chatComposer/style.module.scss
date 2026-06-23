@@ -1,0 +1,66 @@
+// 全局聊天输入框样式。沿用好友聊天原有观感:顶部图标行(可选)+ 无边框 textarea + 右下发送。
+.composer {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  height: 30px;
+  padding: 0 20px;
+}
+.headerSide {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+.icon {
+  cursor: pointer;
+  font-size: 22px;
+  color: rgba(0, 0, 0, 0.5);
+  transition: color 0.15s ease;
+  &:hover {
+    color: var(--primary-color);
+  }
+}
+
+.body {
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+.textarea {
+  flex: 1;
+  resize: none;
+  border: none;
+  outline: none;
+  // 显式白底深字:textarea 默认随 color-scheme 在系统深色模式下被 UA 画成深色
+  background: #fff;
+  color: var(--text-color);
+  padding: 8px 20px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  scrollbar-width: none;
+  &::placeholder {
+    color: #bbb;
+  }
+  &:disabled {
+    background: #f8f8f8;
+    color: #999;
+  }
+}
+
+.footer {
+  height: 50px;
+  padding: 10px 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+.sendBtn {
+  width: 70px;
+  height: 100%;
+}
