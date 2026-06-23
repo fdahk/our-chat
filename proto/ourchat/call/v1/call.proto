@@ -29,6 +29,7 @@ message CallStart {
   CallUser from = 2;
   CallUser to = 3;
   SessionDescription offer = 4;
+  string call_type = 5; // voice | video,视频复用同一套信令
 }
 
 // call:accept 接听。from/to 为 user id(现状如此,与 call:start 的对象形态不同)。

@@ -211,6 +211,7 @@ type CallStart struct {
 	From          *CallUser              `protobuf:"bytes,2,opt,name=from,proto3" json:"from,omitempty"`
 	To            *CallUser              `protobuf:"bytes,3,opt,name=to,proto3" json:"to,omitempty"`
 	Offer         *SessionDescription    `protobuf:"bytes,4,opt,name=offer,proto3" json:"offer,omitempty"`
+	CallType      string                 `protobuf:"bytes,5,opt,name=call_type,json=callType,proto3" json:"call_type,omitempty"` // voice | video,视频复用同一套信令
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -271,6 +272,13 @@ func (x *CallStart) GetOffer() *SessionDescription {
 		return x.Offer
 	}
 	return nil
+}
+
+func (x *CallStart) GetCallType() string {
+	if x != nil {
+		return x.CallType
+	}
+	return ""
 }
 
 // call:accept 接听。from/to 为 user id(现状如此,与 call:start 的对象形态不同)。
@@ -504,12 +512,13 @@ const file_ourchat_call_v1_call_proto_rawDesc = "" +
 	"\asdp_mid\x18\x03 \x01(\tH\x01R\x06sdpMid\x88\x01\x01B\x12\n" +
 	"\x10_sdp_mline_indexB\n" +
 	"\n" +
-	"\b_sdp_mid\"\xb9\x01\n" +
+	"\b_sdp_mid\"\xd6\x01\n" +
 	"\tCallStart\x12\x17\n" +
 	"\acall_id\x18\x01 \x01(\tR\x06callId\x12-\n" +
 	"\x04from\x18\x02 \x01(\v2\x19.ourchat.call.v1.CallUserR\x04from\x12)\n" +
 	"\x02to\x18\x03 \x01(\v2\x19.ourchat.call.v1.CallUserR\x02to\x129\n" +
-	"\x05offer\x18\x04 \x01(\v2#.ourchat.call.v1.SessionDescriptionR\x05offer\"\x86\x01\n" +
+	"\x05offer\x18\x04 \x01(\v2#.ourchat.call.v1.SessionDescriptionR\x05offer\x12\x1b\n" +
+	"\tcall_type\x18\x05 \x01(\tR\bcallType\"\x86\x01\n" +
 	"\n" +
 	"CallAccept\x12\x17\n" +
 	"\acall_id\x18\x01 \x01(\tR\x06callId\x12\x12\n" +

@@ -125,6 +125,9 @@ public nonisolated struct Ourchat_Call_V1_CallStart: Sendable {
   /// Clears the value of `offer`. Subsequent reads from it will return its default value.
   public mutating func clearOffer() {self._offer = nil}
 
+  /// voice | video,视频复用同一套信令
+  public var callType: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -342,7 +345,7 @@ nonisolated extension Ourchat_Call_V1_IceCandidate: SwiftProtobuf.Message, Swift
 
 nonisolated extension Ourchat_Call_V1_CallStart: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CallStart"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}call_id\0\u{1}from\0\u{1}to\0\u{1}offer\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}call_id\0\u{1}from\0\u{1}to\0\u{1}offer\0\u{3}call_type\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -354,6 +357,7 @@ nonisolated extension Ourchat_Call_V1_CallStart: SwiftProtobuf.Message, SwiftPro
       case 2: try { try decoder.decodeSingularMessageField(value: &self._from) }()
       case 3: try { try decoder.decodeSingularMessageField(value: &self._to) }()
       case 4: try { try decoder.decodeSingularMessageField(value: &self._offer) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.callType) }()
       default: break
       }
     }
@@ -376,6 +380,9 @@ nonisolated extension Ourchat_Call_V1_CallStart: SwiftProtobuf.Message, SwiftPro
     try { if let v = self._offer {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
     } }()
+    if !self.callType.isEmpty {
+      try visitor.visitSingularStringField(value: self.callType, fieldNumber: 5)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -384,6 +391,7 @@ nonisolated extension Ourchat_Call_V1_CallStart: SwiftProtobuf.Message, SwiftPro
     if lhs._from != rhs._from {return false}
     if lhs._to != rhs._to {return false}
     if lhs._offer != rhs._offer {return false}
+    if lhs.callType != rhs.callType {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
