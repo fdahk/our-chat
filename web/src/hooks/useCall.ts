@@ -17,11 +17,14 @@ import {
   setError,
 } from '../store/callStore';
 // 通话类型
-import type { CallUser, CallAcceptEvent, CallRejectEvent, CallEndEvent, CallIceEvent, CallStartEvent } from '../globalType/call';
+import type { CallUser, CallType, CallAcceptEvent, CallRejectEvent, CallEndEvent, CallIceEvent, CallStartEvent } from '../globalType/call';
 import { App as AntdApp } from 'antd';
 
 
-export const useVoiceCall = () => {
+// 通话会话核心(语音/视频共用):信令、WebRTC 协商、ICE、生命周期、计时全在这里,
+// 与通话类型无关。类型差异只体现在「采集媒体是否取摄像头」与「邀请文案」两处,由 callState.callType 驱动;
+// 渲染差异交给上层 VoiceCallPanel / VideoCallPanel,二者互不依赖。
+export const useCall = () => {
   const { message } = AntdApp.useApp();
   const dispatch = useDispatch();
   const callState = useSelector((state: RootState) => state.call);//通话状态
@@ -122,6 +125,7 @@ export const useVoiceCall = () => {
           throw new Error('用户未登录');
         }
         // 更新store状态，保存offer,SDP保存在点击接受通话中处理
+        const callType: CallType = event.callType ?? 'voice';
         dispatch(receiveCall({
           callId: event.callId,
           localUser: {
@@ -132,9 +136,10 @@ export const useVoiceCall = () => {
           },
           remoteUser: event.from,
           offer: event.offer, // 保存offer
+          callType,
         }));
         // 显示通话邀请
-        message.info(`${event.from.nickname} 向您发起语音通话`);
+        message.info(`${event.from.nickname} 向您发起${callType === 'video' ? '视频' : '语音'}通话`);
       } catch (error) {
         console.error(' 处理通话邀请失败:', error);
         message.error('处理通话邀请失败');
@@ -305,9 +310,9 @@ export const useVoiceCall = () => {
   }, [dispatch, stopDurationTimer]);
 
   // 发起通话
-  const initiateCall = useCallback(async (targetUser: CallUser) => {
-    console.log('发起通话给:', targetUser.username);
-    
+  const initiateCall = useCallback(async (targetUser: CallUser, callType: CallType = 'voice') => {
+    console.log('发起通话给:', targetUser.username, '类型:', callType);
+
     try {
       if (!currentUser) {
         throw new Error('用户未登录');
@@ -318,7 +323,7 @@ export const useVoiceCall = () => {
       }
 
       const callId = `call_${currentUser.id}_${targetUser.id}_${Date.now()}`;
-      
+
       // 1. 先更新状态
       dispatch(startCall({
         callId,
@@ -329,6 +334,7 @@ export const useVoiceCall = () => {
           avatar: currentUser.avatar,
         },
         remoteUser: targetUser,
+        callType,
       }));
 
       // 2. 重置WebRTC状态，确保干净开始
@@ -336,9 +342,9 @@ export const useVoiceCall = () => {
       webrtcRef.current.reset();
       await new Promise(resolve => setTimeout(resolve, 200));
 
-      // 3. 获取本地音频流
-      console.log('获取麦克风权限...');
-      const localStream = await webrtcRef.current.getUserMedia();
+      // 3. 获取本地媒体流(视频通话同时取摄像头)
+      console.log('获取本地媒体流...');
+      const localStream = await webrtcRef.current.getUserMedia(callType === 'video');
       dispatch(setLocalStream(localStream));
 
       // 4. 创建offer (WebRTC管理器会自动处理轨道添加)
@@ -367,10 +373,11 @@ export const useVoiceCall = () => {
         },
         to: targetUser,
         offer, // SDP 对象
+        callType,
       });
 
       console.log('通话发起成功，等待对方接受');
-      
+
     } catch (error) {
       console.error('发起通话失败:', error);
       const errorMessage = error instanceof Error ? error.message : '发起通话失败';
@@ -397,10 +404,10 @@ export const useVoiceCall = () => {
       await new Promise(resolve => setTimeout(resolve, 200));
       console.log('WebRTC状态重置完成');
 
-      // 2. 获取本地音频流
-      const localStream = await webrtcRef.current.getUserMedia();
+      // 2. 获取本地媒体流(视频通话同时取摄像头)
+      const localStream = await webrtcRef.current.getUserMedia(callState.callType === 'video');
       dispatch(setLocalStream(localStream));
-      console.log('麦克风权限获取成功');
+      console.log('本地媒体流获取成功');
 
       // 3. 状态检查
       const stateBefore = webrtcRef.current.getDetailedState();
@@ -439,7 +446,7 @@ export const useVoiceCall = () => {
       message.error(errorMessage);
       cleanup();
     }
-  }, [callState.callId, callState.pendingOffer, callState.localUser, callState.remoteUser, dispatch, cleanup, message]);
+  }, [callState.callId, callState.pendingOffer, callState.localUser, callState.remoteUser, callState.callType, dispatch, cleanup, message]);
 
   // 拒绝通话
   const rejectCall = useCallback(() => {

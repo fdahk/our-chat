@@ -7,7 +7,7 @@ import { useState, useRef, useEffect } from 'react';
 import SettingView from '@/views/settingView';
 import type { RootState } from '@/store/rootStore';
 import useGlobalMessageListener from '@/hooks/useGlobalMessageListener';
-import VoiceCallModal from '@/globalComponents/voiceCallModal';
+import CallModal from '@/globalComponents/callModal';
 import { buildServerUrl } from '@/utils/runtime';
 import { defaultAvatar } from '@/assets/images';
 import { post } from '@/utils/http';
@@ -151,8 +151,8 @@ function Layout() {
                 <SettingView onClose={handleCloseSetting}/>
             )}
             
-            {/* 语音通话弹窗 */}
-            <VoiceCallModal />
+            {/* 语音/视频通话弹窗 */}
+            <CallModal />
         </div>
     )
 }

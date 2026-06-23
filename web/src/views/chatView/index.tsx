@@ -12,8 +12,8 @@ import type { RootState } from '@/store/rootStore';
 import DisplayItem from '@/globalComponents/displayItem';
 import SearchModal from '@/globalComponents/searchModal';
 import FileUploader from '@/globalComponents/fileUploader';
-import { useVoiceCall } from '@/hooks/useVoiceCall';
-import type { CallUser } from '@/globalType/call';
+import { useCall } from '@/hooks/useCall';
+import type { CallUser, CallType } from '@/globalType/call';
 import { buildServerUrl } from '@/utils/runtime';
 import { defaultAvatar } from '@/assets/images';
 import type { FileItem } from '@/utils/upload';
@@ -172,21 +172,18 @@ function ChatView() {
     const handleClickChatRecord = () => {
         console.log('handleClickChatRecord');
     }
-    // 语音聊天
-    const handleClickVoice = () => {
+    // 发起通话(语音/视频共用:取当前会话对方,再按类型发起)
+    const startCallWithFriend = (callType: CallType) => {
         if (!activeConversation) {
             console.warn(t('chat.errors.noActiveConversation'));
             return;
         }
-
         const friendId = parseConversationId(activeConversation);
         const friendInfo = globalFriendInfoList[friendId];
-
         if (!friendInfo) {
             console.warn(t('chat.errors.noFriendInfo'));
             return;
         }
-
         const targetUser: CallUser = {
             id: friendId,
             username: friendInfo.username,
@@ -195,13 +192,10 @@ function ChatView() {
                 ? buildServerUrl(friendInfo.avatar)
                 : defaultAvatar,
         };
-
-        initiateCall(targetUser);
+        initiateCall(targetUser, callType);
     };
-    // 视频聊天
-    const handleClickVideo = () => {
-        console.log('handleClickVideo');
-    }
+    const handleClickVoice = () => startCallWithFriend('voice');
+    const handleClickVideo = () => startCallWithFriend('video');
 
     // 渲染消息内容的函数
     const renderMessageContent = (msg: Message) => {
@@ -266,7 +260,7 @@ function ChatView() {
         return <div className={chatViewStyle.message_content}>{msg.content}</div>;
     };
 
-    const { initiateCall } = useVoiceCall(); // 添加这行
+    const { initiateCall } = useCall();
 
     // 输入框顶部图标(左 4 + 右 2)
     const leftActions: ComposerAction[] = [

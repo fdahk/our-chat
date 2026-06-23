@@ -1,16 +1,19 @@
 // client/src/store/callStore.ts - 完善版本
 
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { CallUser } from '../globalType/call';
+import type { CallUser, CallType } from '../globalType/call';
 
 export interface CallState {
   isActive: boolean;
   callId: string | null;
-  
+
   // 用户信息
   localUser: CallUser | null;
   remoteUser: CallUser | null;
-  
+
+  // 语音 / 视频。决定 getUserMedia 是否取视频轨,以及弹窗是否渲染视频画面。
+  callType: CallType;
+
   // 通话状态
   status: 'idle' | 'calling' | 'ringing' | 'connected' | 'ended';
   
@@ -35,6 +38,7 @@ const initialState: CallState = {
   callId: null,
   localUser: null,
   remoteUser: null,
+  callType: 'voice',
   status: 'idle',
   localStream: null,
   remoteStream: null,
@@ -54,12 +58,14 @@ const callSlice = createSlice({
       callId: string;
       localUser: CallUser;
       remoteUser: CallUser;
+      callType: CallType;
     }>) => {
-      const { callId, localUser, remoteUser } = action.payload;
+      const { callId, localUser, remoteUser, callType } = action.payload;
       state.isActive = true;
       state.callId = callId;
       state.localUser = localUser;
       state.remoteUser = remoteUser;
+      state.callType = callType;
       state.status = 'calling';
       state.error = null;
     },
@@ -70,12 +76,14 @@ const callSlice = createSlice({
       localUser: CallUser;
       remoteUser: CallUser;
       offer: RTCSessionDescriptionInit; // 新增offer
+      callType: CallType;
     }>) => {
-      const { callId, localUser, remoteUser, offer } = action.payload;
+      const { callId, localUser, remoteUser, offer, callType } = action.payload;
       state.isActive = true;
       state.callId = callId;
       state.localUser = localUser;
       state.remoteUser = remoteUser;
+      state.callType = callType;
       state.status = 'ringing';
       state.pendingOffer = offer; // 保存offer
       state.error = null;

@@ -295,9 +295,9 @@ export class WebRTCManager {
    * 2. 浏览器会显示权限请求弹窗
    * 3. 配置了回声消除/降噪等音频处理参数
    */
-  async getUserMedia(): Promise<MediaStream> {
+  async getUserMedia(withVideo = false): Promise<MediaStream> {
     try {
-      console.log('请求麦克风权限');
+      console.log(withVideo ? '请求麦克风+摄像头权限' : '请求麦克风权限');
 
       const constraints: MediaStreamConstraints = {
         audio: {
@@ -306,7 +306,10 @@ export class WebRTCManager {
           autoGainControl: true,    // 启用自动增益控制
           sampleRate: 44100,        // 设置采样率(CD音质)
         },
-        video: false,               // 不请求视频
+        // 视频通话才请求摄像头;前置摄像头、720p 目标分辨率(由浏览器按能力协商)
+        video: withVideo
+          ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }
+          : false,
       };
 
       const modernGetUserMedia = navigator.mediaDevices?.getUserMedia?.bind(navigator.mediaDevices);

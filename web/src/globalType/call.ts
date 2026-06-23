@@ -1,3 +1,5 @@
+// 通话类型:语音 / 视频。视频复用同一套信令与 WebRTC 协商,仅多请求/渲染视频轨道。
+export type CallType = 'voice' | 'video';
 
 // 用户信息
 export interface CallUser {
@@ -20,6 +22,7 @@ export interface CallStartEvent {
   from: CallUser;
   to: CallUser;
   offer: RTCSessionDescriptionInit;
+  callType: CallType;
 }
 
 // 通话被接受

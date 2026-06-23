@@ -6,8 +6,8 @@ import { useNavigate } from 'react-router-dom';
 import { addConversation, addUserConversation, initActiveConversation, initGlobalMessages } from '@/store/chatStore';
 import type { ApiResponse } from '@/globalType/apiResponse';
 import type { Message } from '@/globalType/message';
-import { useVoiceCall } from '@/hooks/useVoiceCall';
-import {type CallUser } from '@/globalType/call';
+import { useCall } from '@/hooks/useCall';
+import { type CallUser, type CallType } from '@/globalType/call';
 
 interface FriendModalProps {
     style?: React.CSSProperties; //css原型
@@ -32,7 +32,7 @@ function FriendModal({
     const dispatch = useDispatch();
     const userId = useSelector((state: RootState) => state.user.id);
     const globalConversations = useSelector((state: RootState) => state.chat.globalConversations);
-    const { initiateCall } = useVoiceCall();
+    const { initiateCall } = useCall();
     // 点击发送消息
     const handleClickSendMessage = async () => {
         const conversationId = `single_${Math.min(userId, parseInt(wxid))}_${Math.max(userId, parseInt(wxid))}`;
@@ -72,21 +72,18 @@ function FriendModal({
         navigate(`/chat`);        
     }
     
-    // 点击语音聊天
-    const handleClickVoiceChat = () => {
+    // 发起通话(语音/视频共用同一信令,仅类型不同)
+    const startCallWith = (callType: CallType) => {
         const targetUser: CallUser = {
           id: parseInt(wxid),
           username: username,
           nickname: remark || username,
           avatar: avatar,
         };
-      
-        initiateCall(targetUser);
-      };
-    // 点击视频聊天
-    const handleClickVideoChat = () => {
-        console.log('video chat');
-    }
+        initiateCall(targetUser, callType);
+    };
+    const handleClickVoiceChat = () => startCallWith('voice');
+    const handleClickVideoChat = () => startCallWith('video');
     return (
       <div className={styles.modalCard} style={style}>
         {/* 头部 */}
