@@ -114,20 +114,36 @@ export const agentTaskRespFixture = {
 // ── GET /runs/:runId/stream RunEvent 样本 ───────────────────────
 // agent-server 用 @Sse() 发 MessageEvent { id: String(sequenceNo), type, data },
 // id 是 string ── 注意不要 Number(),非纯数字 sequenceNo 会被吞成 0。
+// 注意:runs SSE 的 data 是整条 run_event 行(runs.controller.ts: `data: ev`),
+// 即 { id, runId, sequenceNo, eventType, payload, createdAt };真正的业务字段在 payload 下。
+//   tool_called.payload = { name, args }、tool_result.payload = { name, result }、
+//   final_answer.payload = { content }(对齐 agent-runner.service.ts 的 emit)。
 export const runEventFixtures = {
   toolCalled: {
     id: '1',
     type: 'tool_called',
-    data: { tool: 'retrieve_knowledge', args: { query: 'X' } },
+    data: {
+      id: 1, runId: 'r1', sequenceNo: 1, eventType: 'tool_called',
+      createdAt: '2026-06-07T12:00:00.000Z',
+      payload: { name: 'retrieve_knowledge', args: { query: 'X' } },
+    },
   } as RunEvent,
   toolResult: {
     id: '2',
     type: 'tool_result',
-    data: { ok: true, hits: 3 },
+    data: {
+      id: 2, runId: 'r1', sequenceNo: 2, eventType: 'tool_result',
+      createdAt: '2026-06-07T12:00:01.000Z',
+      payload: { name: 'retrieve_knowledge', result: 'hits: 3 chunks' },
+    },
   } as RunEvent,
   finalAnswer: {
     id: '3',
     type: 'final_answer',
-    data: { text: 'done summary' },
+    data: {
+      id: 3, runId: 'r1', sequenceNo: 3, eventType: 'final_answer',
+      createdAt: '2026-06-07T12:00:02.000Z',
+      payload: { content: 'done summary' },
+    },
   } as RunEvent,
 };
