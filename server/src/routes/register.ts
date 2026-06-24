@@ -94,7 +94,7 @@ router.post('/register', async (req, res) => {
         avatar: created.avatar,
         bio: created.bio,
         status: created.status,
-        created_at: created.createdAt,
+        createdAt: created.createdAt,
       },
     });
   } catch (error) {
