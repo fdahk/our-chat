@@ -101,3 +101,46 @@ describe('authenticateToken', () => {
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'TOKEN_INVALID' }));
   });
 });
+
+describe('authenticateToken — Authorization: Bearer 双鉴权', () => {
+  it('变更类请求带 Bearer 且用户存在 → 免 CSRF,next 并挂载 req.user', async () => {
+    findFirstMock.mockResolvedValue({
+      id: 7n, username: 'neo', email: null, nickname: null, avatar: null, status: 'online',
+    });
+    const token = sign({ id: 7, username: 'neo' });
+    const req = {
+      method: 'POST', // 变更类:cookie 鉴权会要求 CSRF,Bearer 应跳过
+      headers: { authorization: `Bearer ${token}` },
+      cookies: {}, // 无 cookie、无 csrf
+    } as Partial<Request>;
+    const { res, next } = await run(req);
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(res.status).not.toHaveBeenCalled();
+    expect((req as Request).user).toMatchObject({ id: 7, username: 'neo', status: 'online' });
+  });
+
+  it('Bearer 优先于 cookie', async () => {
+    findFirstMock.mockResolvedValue({
+      id: 8n, username: 'bearer-user', email: null, nickname: null, avatar: null, status: 'online',
+    });
+    const bearer = sign({ id: 8, username: 'bearer-user' });
+    const req = {
+      method: 'GET',
+      headers: { authorization: `Bearer ${bearer}` },
+      cookies: { token: 'ignored-cookie' },
+    } as Partial<Request>;
+    const { next } = await run(req);
+    expect(next).toHaveBeenCalledTimes(1);
+    expect((req as Request).user).toMatchObject({ id: 8, username: 'bearer-user' });
+  });
+
+  it('Bearer token 非法 → 401 且 code=TOKEN_INVALID', async () => {
+    const { res } = await run({
+      method: 'GET',
+      headers: { authorization: 'Bearer not-a-jwt' },
+      cookies: {},
+    });
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'TOKEN_INVALID' }));
+  });
+});

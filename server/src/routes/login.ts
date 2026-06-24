@@ -41,9 +41,9 @@ router.post('/login', async (req, res) => {
     const csrfToken = generateCsrfToken();
     setAuthCookies(res, token, csrfToken, maxAge);
 
-    // 响应体只返回用户信息，绝不再回传 token（剔除密码）
+    // Web 用 HttpOnly cookie 鉴权;原生/移动端从响应体取 token,自行存储并以 Authorization: Bearer 携带(双鉴权)。剔除密码。
     const { password: _password, ...userInfo } = user;
-    res.json({ success: true, data: userInfo });
+    res.json({ success: true, data: { ...userInfo, token } });
   } catch (error) {
     console.error('登录失败:', error);
     res.status(500).json({ success: false, message: '服务器内部错误' });
@@ -53,16 +53,23 @@ router.post('/login', async (req, res) => {
 // Token刷新接口：基于现有 cookie 重签并重设 cookie
 router.post('/refresh', async (req, res) => {
   try {
-    const token = req.cookies?.[TOKEN_COOKIE];
+    // 双鉴权:原生端用 Authorization: Bearer(免 CSRF);Web 用 cookie + CSRF。
+    const authHeader = req.headers.authorization;
+    const viaBearer = typeof authHeader === 'string' && authHeader.startsWith('Bearer ');
+    const token = viaBearer
+      ? authHeader.slice('Bearer '.length).trim()
+      : req.cookies?.[TOKEN_COOKIE];
     if (!token) {
       return res.status(401).json({ success: false, message: '缺少刷新令牌' });
     }
 
-    // 双提交 CSRF 校验（刷新是变更类请求）
-    const headerCsrf = req.headers['x-csrf-token'];
-    const cookieCsrf = req.cookies?.[CSRF_COOKIE];
-    if (!cookieCsrf || !headerCsrf || headerCsrf !== cookieCsrf) {
-      return res.status(403).json({ success: false, message: 'CSRF 校验失败' });
+    // 仅 cookie 鉴权需双提交 CSRF 校验(刷新是变更类请求);Bearer 走显式头,跳过。
+    if (!viaBearer) {
+      const headerCsrf = req.headers['x-csrf-token'];
+      const cookieCsrf = req.cookies?.[CSRF_COOKIE];
+      if (!cookieCsrf || !headerCsrf || headerCsrf !== cookieCsrf) {
+        return res.status(403).json({ success: false, message: 'CSRF 校验失败' });
+      }
     }
 
     // 验证token（即使过期也要能解析出用户信息）
@@ -99,7 +106,7 @@ router.post('/refresh', async (req, res) => {
     );
     setAuthCookies(res, newToken, generateCsrfToken(), SESSION_MAX_AGE);
 
-    res.json({ success: true, data: { user }, message: 'Token刷新成功' });
+    res.json({ success: true, data: { user, token: newToken }, message: 'Token刷新成功' });
   } catch (error) {
     console.error('Token刷新失败:', error);
     res.status(500).json({ success: false, message: '服务器内部错误' });
