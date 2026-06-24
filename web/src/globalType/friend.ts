@@ -1,6 +1,6 @@
 // 好友数据类型
 export interface Friend {
-    friend_id: number;
+    friendId: number;
     remark: string | null;
 }
 export interface FriendList {

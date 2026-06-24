@@ -8,9 +8,14 @@ import type {
   ConversationJson,
   UserConversationJson,
 } from './gen/ourchat/conversation/v1/conversation_pb';
+import type { FriendJson, FriendRequestJson } from './gen/ourchat/friend/v1/friend_pb';
+import type { CallUserJson } from './gen/ourchat/call/v1/call_pb';
 import type { Message } from '../globalType/message';
 import type { User } from '../globalType/user';
 import type { Conversation, UserConversation } from '../globalType/chat';
+import type { Friend } from '../globalType/friend';
+import type { CallUser } from '../globalType/call';
+import type { FriendReq } from '../store/friendStore';
 
 type AssertKeysSubset<Web, Contract> =
   Exclude<keyof Web, keyof Contract> extends never
@@ -21,3 +26,6 @@ export const _messageConforms: AssertKeysSubset<Message, MessageJson> = true;
 export const _userConforms: AssertKeysSubset<User, UserJson> = true;
 export const _conversationConforms: AssertKeysSubset<Conversation, ConversationJson> = true;
 export const _userConversationConforms: AssertKeysSubset<UserConversation, UserConversationJson> = true;
+export const _friendConforms: AssertKeysSubset<Friend, FriendJson> = true;
+export const _friendRequestConforms: AssertKeysSubset<FriendReq, FriendRequestJson> = true;
+export const _callUserConforms: AssertKeysSubset<CallUser, CallUserJson> = true;

@@ -22,18 +22,18 @@ export const searchUser = ({keyword, userId}: {keyword: string | number, userId:
     return get<SearchUserResponse>(`/user/searchUser`, { params: { keyword, userId } });
 }
 // 发起好友请求
-export const addFriend = ({userId, friend_id}: {userId: number, friend_id: number}) => {
-    return put<void, { userId: number; friend_id: number }>(`/user/addFriend`, { userId, friend_id });
+export const addFriend = ({userId, friendId}: {userId: number, friendId: number}) => {
+    return put<void, { userId: number; friendId: number }>(`/user/addFriend`, { userId, friendId });
 }
 //获取好友请求
 export const getFriendReqs = (userId: number) => {
     return get<Record<number, FriendReq>>(`/user/getFriendReqs`, { params: { userId } });
 }
 //回复好友请求
-export const replyFriendReq = ({userId, friend_id, status}: {userId: number, friend_id: number, status: string}) => {
-    return put<void, { userId: number; friend_id: number; status: string }>(`/user/replyFriendReq`, { userId, friend_id, status });
+export const replyFriendReq = ({userId, friendId, status}: {userId: number, friendId: number, status: string}) => {
+    return put<void, { userId: number; friendId: number; status: string }>(`/user/replyFriendReq`, { userId, friendId, status });
 }
 // 更新好友备注(remark 为空串/全空白时清空备注)
-export const updateRemark = ({userId, friend_id, remark}: {userId: number, friend_id: number, remark: string | null}) => {
-    return put<void, { userId: number; friend_id: number; remark: string | null }>(`/user/updateRemark`, { userId, friend_id, remark });
+export const updateRemark = ({userId, friendId, remark}: {userId: number, friendId: number, remark: string | null}) => {
+    return put<void, { userId: number; friendId: number; remark: string | null }>(`/user/updateRemark`, { userId, friendId, remark });
 }

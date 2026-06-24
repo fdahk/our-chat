@@ -93,21 +93,21 @@ router.get('/searchUser', authenticateToken, async (req, res) => {
 
 // 发起好友请求(双向写入,以 sent/pending 标记发起方与接收方)
 router.put('/addFriend', authenticateToken, async (req, res) => {
-  const { userId, friend_id } = req.body;
+  const { userId, friendId } = req.body;
   if (req.user!.id.toString() !== userId.toString()) {
     return res.status(403).json({ success: false, message: '无权代替其他用户发起好友请求' });
   }
   try {
     await prisma.friendship.createMany({
       data: [
-        { userId: BigInt(Number(userId)), friendId: BigInt(Number(friend_id)), status: 'sent' },
-        { userId: BigInt(Number(friend_id)), friendId: BigInt(Number(userId)), status: 'pending' },
+        { userId: BigInt(Number(userId)), friendId: BigInt(Number(friendId)), status: 'sent' },
+        { userId: BigInt(Number(friendId)), friendId: BigInt(Number(userId)), status: 'pending' },
       ],
     });
     res.json({
       success: true,
       message: '发起好友请求成功',
-      data: { isFriend: false, friend_id },
+      data: { isFriend: false, friendId },
     });
   } catch (error) {
     console.log(error);
@@ -117,7 +117,7 @@ router.put('/addFriend', authenticateToken, async (req, res) => {
 
 // 更新好友备注 ── 只能改自己对某位好友的备注
 router.put('/updateRemark', authenticateToken, async (req, res) => {
-  const { userId, friend_id, remark } = req.body;
+  const { userId, friendId, remark } = req.body;
   if (req.user!.id.toString() !== userId.toString()) {
     return res.status(403).json({ success: false, message: '无权修改其他用户的好友备注' });
   }
@@ -126,7 +126,7 @@ router.put('/updateRemark', authenticateToken, async (req, res) => {
       where: {
         userId_friendId: {
           userId: BigInt(Number(userId)),
-          friendId: BigInt(Number(friend_id)),
+          friendId: BigInt(Number(friendId)),
         },
       },
       data: { remark: typeof remark === 'string' && remark.trim() ? remark.trim() : null },
@@ -173,24 +173,24 @@ router.get('/getFriendReqs', authenticateToken, async (req, res) => {
 
 // 回复好友请求,双向更新状态;accepted 时创建 single 会话
 router.put('/replyFriendReq', authenticateToken, async (req, res) => {
-  const { userId, friend_id, status } = req.body;
+  const { userId, friendId, status } = req.body;
   if (req.user!.id.toString() !== userId.toString()) {
     return res.status(403).json({ success: false, message: '无权代替其他用户回复好友请求' });
   }
   try {
     if (status === 'accepted') {
-      const conversationId = `single_${Math.min(userId, friend_id)}_${Math.max(userId, friend_id)}`;
+      const conversationId = `single_${Math.min(userId, friendId)}_${Math.max(userId, friendId)}`;
       // 如果会话已存在则跳过(P2002 唯一冲突),整体过程仍 success
       await prisma.conversation
         .create({ data: { id: conversationId, convType: 'single' } })
         .catch(() => undefined);
     }
     await prisma.friendship.updateMany({
-      where: { userId: BigInt(Number(userId)), friendId: BigInt(Number(friend_id)) },
+      where: { userId: BigInt(Number(userId)), friendId: BigInt(Number(friendId)) },
       data: { status },
     });
     await prisma.friendship.updateMany({
-      where: { userId: BigInt(Number(friend_id)), friendId: BigInt(Number(userId)) },
+      where: { userId: BigInt(Number(friendId)), friendId: BigInt(Number(userId)) },
       data: { status },
     });
     res.json({ success: true, message: '回复好友请求成功' });

@@ -63,8 +63,8 @@ function FriendModal({
         if (next === currentRemark) return;
         setCurrentRemark(next);
         const friendId = parseInt(wxid);
-        await updateRemark({ userId, friend_id: friendId, remark: next });
-        dispatch(addGlobalFriend({ friend_id: friendId, remark: next }));
+        await updateRemark({ userId, friendId: friendId, remark: next });
+        dispatch(addGlobalFriend({ friendId: friendId, remark: next }));
     };
 
     // 点击发送消息

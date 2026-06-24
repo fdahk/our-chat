@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package ourchat.friend.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// 好友关系(Friendship 表一行)。proto 字段蛇形,JSON 输出驼峰(friendId 等)。
+message Friend {
+  int64 id = 1;
+  int64 user_id = 2;
+  int64 friend_id = 3;
+  string status = 4; // sent | pending | accepted | blocked
+  string remark = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+// 好友展示信息。
+message FriendInfo {
+  string username = 1;
+  string avatar = 2;
+  string gender = 3;
+}
+
+// 好友请求(含申请人信息;getFriendReqs 响应项 / socket receiveFriendReq 载荷)。
+message FriendRequest {
+  int64 id = 1;
+  int64 user_id = 2;
+  int64 friend_id = 3;
+  string remark = 4;
+  string status = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+  string username = 8;
+  string avatar = 9;
+}
+
+// 添加好友入参(PUT /friend/addFriend)。
+message AddFriendInput {
+  int64 user_id = 1;
+  int64 friend_id = 2;
+}
+
+// 修改好友备注入参(PUT /friend/updateRemark)。
+message UpdateRemarkInput {
+  int64 user_id = 1;
+  int64 friend_id = 2;
+  string remark = 3;
+}
+
+// 回复好友请求入参(PUT /friend/replyFriendReq)。
+message ReplyFriendReqInput {
+  int64 user_id = 1;
+  int64 friend_id = 2;
+  string status = 3;
+}
