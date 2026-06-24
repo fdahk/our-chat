@@ -108,7 +108,7 @@ function ChatView() {
         if (!text.trim() || !activeConversation) return;
         const msg:Message = {
             conversationId: activeConversation,
-            senderId: String(userId),
+            senderId: userId,
             content: text,
             type: 'text',
             status: 'sent',
@@ -165,7 +165,7 @@ function ChatView() {
             files.forEach(file => {
                 const fileMessage: Message = {
                     conversationId: activeConversation!,
-                    senderId: String(userId),
+                    senderId: userId,
                     content: t('chat.sentFile'),
                     type: 'file',
                     status: 'sent',
@@ -175,10 +175,10 @@ function ChatView() {
                     extra: {},
                     fileInfo: {
                         fileName: file.name,
-                        fileSize: String(file.size),
+                        fileSize: file.size,
                         fileUrl: file.url ?? '',
                         fileType: file.type || 'application/octet-stream',
-                        fileMd5: file.md5,
+                        fileMD5: file.md5
                     },
                     timestamp: new Date().toISOString(),
                     editHistory: [],
@@ -232,10 +232,7 @@ function ChatView() {
     const renderMessageContent = (msg: Message, isSelf: boolean) => {
         // 文件消息
         if (msg.type === 'file' && msg.fileInfo) {
-            const fileName = msg.fileInfo.fileName ?? '';
-            const fileUrl = msg.fileInfo.fileUrl ?? '';
-            const fileType = msg.fileInfo.fileType ?? '';
-            const fileSize = Number(msg.fileInfo.fileSize ?? 0);
+            const { fileName, fileSize, fileUrl, fileType } = msg.fileInfo;
             
             // 格式化文件大小
             const formatFileSize = (bytes: number) => {
@@ -363,7 +360,7 @@ function ChatView() {
                                 className={chatViewStyle.message_list}
                                 dataSource={messages}
                                 renderItem={(msg: Message, index: number) => {
-                                    const isSelf = String(msg.senderId) === String(userId);
+                                    const isSelf = msg.senderId === userId;
                                     const friendId = parseConversationId(activeConversation!);
                                     const avatarSrc = isSelf
                                         ? (userAvatar ? buildServerUrl(userAvatar) : defaultAvatar)
