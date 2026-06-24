@@ -215,6 +215,92 @@ public nonisolated struct Ourchat_Call_V1_CallIce: Sendable {
   fileprivate var _candidate: Ourchat_Call_V1_IceCandidate? = nil
 }
 
+/// call:rejoin 刷新/断连后重新入会:重连方新建 PeerConnection,携新 offer 请求对端重协商。
+public nonisolated struct Ourchat_Call_V1_CallRejoin: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var callID: String = String()
+
+  public var from: Ourchat_Call_V1_CallUser {
+    get {_from ?? Ourchat_Call_V1_CallUser()}
+    set {_from = newValue}
+  }
+  /// Returns true if `from` has been explicitly set.
+  public var hasFrom: Bool {self._from != nil}
+  /// Clears the value of `from`. Subsequent reads from it will return its default value.
+  public mutating func clearFrom() {self._from = nil}
+
+  public var to: Ourchat_Call_V1_CallUser {
+    get {_to ?? Ourchat_Call_V1_CallUser()}
+    set {_to = newValue}
+  }
+  /// Returns true if `to` has been explicitly set.
+  public var hasTo: Bool {self._to != nil}
+  /// Clears the value of `to`. Subsequent reads from it will return its default value.
+  public mutating func clearTo() {self._to = nil}
+
+  public var offer: Ourchat_Call_V1_SessionDescription {
+    get {_offer ?? Ourchat_Call_V1_SessionDescription()}
+    set {_offer = newValue}
+  }
+  /// Returns true if `offer` has been explicitly set.
+  public var hasOffer: Bool {self._offer != nil}
+  /// Clears the value of `offer`. Subsequent reads from it will return its default value.
+  public mutating func clearOffer() {self._offer = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _from: Ourchat_Call_V1_CallUser? = nil
+  fileprivate var _to: Ourchat_Call_V1_CallUser? = nil
+  fileprivate var _offer: Ourchat_Call_V1_SessionDescription? = nil
+}
+
+/// call:busy 服务端→主叫:被叫已在另一通通话中(忙线),不振铃。
+public nonisolated struct Ourchat_Call_V1_CallBusy: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var callID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// call:handled 服务端→被叫的其它设备/标签页:该通话已在别处被处理,停止振铃。
+public nonisolated struct Ourchat_Call_V1_CallHandled: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var callID: String = String()
+
+  /// accepted | rejected | ended
+  public var status: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// call:peer-reconnecting 服务端→对端:通话对方设备掉线,处于 grace 重连窗内。
+public nonisolated struct Ourchat_Call_V1_CallPeerReconnecting: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var callID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "ourchat.call.v1"
@@ -540,6 +626,150 @@ nonisolated extension Ourchat_Call_V1_CallIce: SwiftProtobuf.Message, SwiftProto
   public static func ==(lhs: Ourchat_Call_V1_CallIce, rhs: Ourchat_Call_V1_CallIce) -> Bool {
     if lhs.callID != rhs.callID {return false}
     if lhs._candidate != rhs._candidate {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ourchat_Call_V1_CallRejoin: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CallRejoin"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}call_id\0\u{1}from\0\u{1}to\0\u{1}offer\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.callID) }()
+      case 2: try { try decoder.decodeSingularMessageField(value: &self._from) }()
+      case 3: try { try decoder.decodeSingularMessageField(value: &self._to) }()
+      case 4: try { try decoder.decodeSingularMessageField(value: &self._offer) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.callID.isEmpty {
+      try visitor.visitSingularStringField(value: self.callID, fieldNumber: 1)
+    }
+    try { if let v = self._from {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
+    try { if let v = self._to {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+    } }()
+    try { if let v = self._offer {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ourchat_Call_V1_CallRejoin, rhs: Ourchat_Call_V1_CallRejoin) -> Bool {
+    if lhs.callID != rhs.callID {return false}
+    if lhs._from != rhs._from {return false}
+    if lhs._to != rhs._to {return false}
+    if lhs._offer != rhs._offer {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ourchat_Call_V1_CallBusy: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CallBusy"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}call_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.callID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.callID.isEmpty {
+      try visitor.visitSingularStringField(value: self.callID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ourchat_Call_V1_CallBusy, rhs: Ourchat_Call_V1_CallBusy) -> Bool {
+    if lhs.callID != rhs.callID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ourchat_Call_V1_CallHandled: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CallHandled"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}call_id\0\u{1}status\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.callID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.status) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.callID.isEmpty {
+      try visitor.visitSingularStringField(value: self.callID, fieldNumber: 1)
+    }
+    if !self.status.isEmpty {
+      try visitor.visitSingularStringField(value: self.status, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ourchat_Call_V1_CallHandled, rhs: Ourchat_Call_V1_CallHandled) -> Bool {
+    if lhs.callID != rhs.callID {return false}
+    if lhs.status != rhs.status {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ourchat_Call_V1_CallPeerReconnecting: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CallPeerReconnecting"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}call_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.callID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.callID.isEmpty {
+      try visitor.visitSingularStringField(value: self.callID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ourchat_Call_V1_CallPeerReconnecting, rhs: Ourchat_Call_V1_CallPeerReconnecting) -> Bool {
+    if lhs.callID != rhs.callID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

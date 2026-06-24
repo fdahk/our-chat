@@ -493,6 +493,218 @@ func (x *CallIce) GetCandidate() *IceCandidate {
 	return nil
 }
 
+// call:rejoin 刷新/断连后重新入会:重连方新建 PeerConnection,携新 offer 请求对端重协商。
+type CallRejoin struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CallId        string                 `protobuf:"bytes,1,opt,name=call_id,json=callId,proto3" json:"call_id,omitempty"`
+	From          *CallUser              `protobuf:"bytes,2,opt,name=from,proto3" json:"from,omitempty"`
+	To            *CallUser              `protobuf:"bytes,3,opt,name=to,proto3" json:"to,omitempty"`
+	Offer         *SessionDescription    `protobuf:"bytes,4,opt,name=offer,proto3" json:"offer,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CallRejoin) Reset() {
+	*x = CallRejoin{}
+	mi := &file_ourchat_call_v1_call_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CallRejoin) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CallRejoin) ProtoMessage() {}
+
+func (x *CallRejoin) ProtoReflect() protoreflect.Message {
+	mi := &file_ourchat_call_v1_call_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CallRejoin.ProtoReflect.Descriptor instead.
+func (*CallRejoin) Descriptor() ([]byte, []int) {
+	return file_ourchat_call_v1_call_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *CallRejoin) GetCallId() string {
+	if x != nil {
+		return x.CallId
+	}
+	return ""
+}
+
+func (x *CallRejoin) GetFrom() *CallUser {
+	if x != nil {
+		return x.From
+	}
+	return nil
+}
+
+func (x *CallRejoin) GetTo() *CallUser {
+	if x != nil {
+		return x.To
+	}
+	return nil
+}
+
+func (x *CallRejoin) GetOffer() *SessionDescription {
+	if x != nil {
+		return x.Offer
+	}
+	return nil
+}
+
+// call:busy 服务端→主叫:被叫已在另一通通话中(忙线),不振铃。
+type CallBusy struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CallId        string                 `protobuf:"bytes,1,opt,name=call_id,json=callId,proto3" json:"call_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CallBusy) Reset() {
+	*x = CallBusy{}
+	mi := &file_ourchat_call_v1_call_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CallBusy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CallBusy) ProtoMessage() {}
+
+func (x *CallBusy) ProtoReflect() protoreflect.Message {
+	mi := &file_ourchat_call_v1_call_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CallBusy.ProtoReflect.Descriptor instead.
+func (*CallBusy) Descriptor() ([]byte, []int) {
+	return file_ourchat_call_v1_call_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *CallBusy) GetCallId() string {
+	if x != nil {
+		return x.CallId
+	}
+	return ""
+}
+
+// call:handled 服务端→被叫的其它设备/标签页:该通话已在别处被处理,停止振铃。
+type CallHandled struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CallId        string                 `protobuf:"bytes,1,opt,name=call_id,json=callId,proto3" json:"call_id,omitempty"`
+	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"` // accepted | rejected | ended
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CallHandled) Reset() {
+	*x = CallHandled{}
+	mi := &file_ourchat_call_v1_call_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CallHandled) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CallHandled) ProtoMessage() {}
+
+func (x *CallHandled) ProtoReflect() protoreflect.Message {
+	mi := &file_ourchat_call_v1_call_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CallHandled.ProtoReflect.Descriptor instead.
+func (*CallHandled) Descriptor() ([]byte, []int) {
+	return file_ourchat_call_v1_call_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *CallHandled) GetCallId() string {
+	if x != nil {
+		return x.CallId
+	}
+	return ""
+}
+
+func (x *CallHandled) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+// call:peer-reconnecting 服务端→对端:通话对方设备掉线,处于 grace 重连窗内。
+type CallPeerReconnecting struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CallId        string                 `protobuf:"bytes,1,opt,name=call_id,json=callId,proto3" json:"call_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CallPeerReconnecting) Reset() {
+	*x = CallPeerReconnecting{}
+	mi := &file_ourchat_call_v1_call_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CallPeerReconnecting) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CallPeerReconnecting) ProtoMessage() {}
+
+func (x *CallPeerReconnecting) ProtoReflect() protoreflect.Message {
+	mi := &file_ourchat_call_v1_call_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CallPeerReconnecting.ProtoReflect.Descriptor instead.
+func (*CallPeerReconnecting) Descriptor() ([]byte, []int) {
+	return file_ourchat_call_v1_call_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *CallPeerReconnecting) GetCallId() string {
+	if x != nil {
+		return x.CallId
+	}
+	return ""
+}
+
 var File_ourchat_call_v1_call_proto protoreflect.FileDescriptor
 
 const file_ourchat_call_v1_call_proto_rawDesc = "" +
@@ -532,7 +744,20 @@ const file_ourchat_call_v1_call_proto_rawDesc = "" +
 	"\acall_id\x18\x01 \x01(\tR\x06callId\"_\n" +
 	"\aCallIce\x12\x17\n" +
 	"\acall_id\x18\x01 \x01(\tR\x06callId\x12;\n" +
-	"\tcandidate\x18\x02 \x01(\v2\x1d.ourchat.call.v1.IceCandidateR\tcandidateB\xc9\x01\n" +
+	"\tcandidate\x18\x02 \x01(\v2\x1d.ourchat.call.v1.IceCandidateR\tcandidate\"\xba\x01\n" +
+	"\n" +
+	"CallRejoin\x12\x17\n" +
+	"\acall_id\x18\x01 \x01(\tR\x06callId\x12-\n" +
+	"\x04from\x18\x02 \x01(\v2\x19.ourchat.call.v1.CallUserR\x04from\x12)\n" +
+	"\x02to\x18\x03 \x01(\v2\x19.ourchat.call.v1.CallUserR\x02to\x129\n" +
+	"\x05offer\x18\x04 \x01(\v2#.ourchat.call.v1.SessionDescriptionR\x05offer\"#\n" +
+	"\bCallBusy\x12\x17\n" +
+	"\acall_id\x18\x01 \x01(\tR\x06callId\">\n" +
+	"\vCallHandled\x12\x17\n" +
+	"\acall_id\x18\x01 \x01(\tR\x06callId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\"/\n" +
+	"\x14CallPeerReconnecting\x12\x17\n" +
+	"\acall_id\x18\x01 \x01(\tR\x06callIdB\xc9\x01\n" +
 	"\x13com.ourchat.call.v1B\tCallProtoP\x01ZIgithub.com/our-chat/gateway/internal/contracts/gen/ourchat/call/v1;callv1\xa2\x02\x03OCX\xaa\x02\x0fOurchat.Call.V1\xca\x02\x0fOurchat\\Call\\V1\xe2\x02\x1bOurchat\\Call\\V1\\GPBMetadata\xea\x02\x11Ourchat::Call::V1b\x06proto3"
 
 var (
@@ -547,16 +772,20 @@ func file_ourchat_call_v1_call_proto_rawDescGZIP() []byte {
 	return file_ourchat_call_v1_call_proto_rawDescData
 }
 
-var file_ourchat_call_v1_call_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_ourchat_call_v1_call_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_ourchat_call_v1_call_proto_goTypes = []any{
-	(*CallUser)(nil),           // 0: ourchat.call.v1.CallUser
-	(*SessionDescription)(nil), // 1: ourchat.call.v1.SessionDescription
-	(*IceCandidate)(nil),       // 2: ourchat.call.v1.IceCandidate
-	(*CallStart)(nil),          // 3: ourchat.call.v1.CallStart
-	(*CallAccept)(nil),         // 4: ourchat.call.v1.CallAccept
-	(*CallReject)(nil),         // 5: ourchat.call.v1.CallReject
-	(*CallEnd)(nil),            // 6: ourchat.call.v1.CallEnd
-	(*CallIce)(nil),            // 7: ourchat.call.v1.CallIce
+	(*CallUser)(nil),             // 0: ourchat.call.v1.CallUser
+	(*SessionDescription)(nil),   // 1: ourchat.call.v1.SessionDescription
+	(*IceCandidate)(nil),         // 2: ourchat.call.v1.IceCandidate
+	(*CallStart)(nil),            // 3: ourchat.call.v1.CallStart
+	(*CallAccept)(nil),           // 4: ourchat.call.v1.CallAccept
+	(*CallReject)(nil),           // 5: ourchat.call.v1.CallReject
+	(*CallEnd)(nil),              // 6: ourchat.call.v1.CallEnd
+	(*CallIce)(nil),              // 7: ourchat.call.v1.CallIce
+	(*CallRejoin)(nil),           // 8: ourchat.call.v1.CallRejoin
+	(*CallBusy)(nil),             // 9: ourchat.call.v1.CallBusy
+	(*CallHandled)(nil),          // 10: ourchat.call.v1.CallHandled
+	(*CallPeerReconnecting)(nil), // 11: ourchat.call.v1.CallPeerReconnecting
 }
 var file_ourchat_call_v1_call_proto_depIdxs = []int32{
 	0, // 0: ourchat.call.v1.CallStart.from:type_name -> ourchat.call.v1.CallUser
@@ -564,11 +793,14 @@ var file_ourchat_call_v1_call_proto_depIdxs = []int32{
 	1, // 2: ourchat.call.v1.CallStart.offer:type_name -> ourchat.call.v1.SessionDescription
 	1, // 3: ourchat.call.v1.CallAccept.answer:type_name -> ourchat.call.v1.SessionDescription
 	2, // 4: ourchat.call.v1.CallIce.candidate:type_name -> ourchat.call.v1.IceCandidate
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	0, // 5: ourchat.call.v1.CallRejoin.from:type_name -> ourchat.call.v1.CallUser
+	0, // 6: ourchat.call.v1.CallRejoin.to:type_name -> ourchat.call.v1.CallUser
+	1, // 7: ourchat.call.v1.CallRejoin.offer:type_name -> ourchat.call.v1.SessionDescription
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_ourchat_call_v1_call_proto_init() }
@@ -583,7 +815,7 @@ func file_ourchat_call_v1_call_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ourchat_call_v1_call_proto_rawDesc), len(file_ourchat_call_v1_call_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

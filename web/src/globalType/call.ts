@@ -10,4 +10,8 @@ export type {
   CallReject as CallRejectEvent,
   CallEnd as CallEndEvent,
   CallIce as CallIceEvent,
+  CallRejoin as CallRejoinEvent,
+  CallBusy as CallBusyEvent,
+  CallHandled as CallHandledEvent,
+  CallPeerReconnecting as CallPeerReconnectingEvent,
 } from '../contracts/gen/ourchat/call/v1/call';

@@ -66,3 +66,28 @@ export interface CallIce {
   callId: string;
   candidate?: IceCandidate | undefined;
 }
+
+/** call:rejoin 刷新/断连后重新入会:重连方新建 PeerConnection,携新 offer 请求对端重协商。 */
+export interface CallRejoin {
+  callId: string;
+  from?: CallUser | undefined;
+  to?: CallUser | undefined;
+  offer?: SessionDescription | undefined;
+}
+
+/** call:busy 服务端→主叫:被叫已在另一通通话中(忙线),不振铃。 */
+export interface CallBusy {
+  callId: string;
+}
+
+/** call:handled 服务端→被叫的其它设备/标签页:该通话已在别处被处理,停止振铃。 */
+export interface CallHandled {
+  callId: string;
+  /** accepted | rejected | ended */
+  status: string;
+}
+
+/** call:peer-reconnecting 服务端→对端:通话对方设备掉线,处于 grace 重连窗内。 */
+export interface CallPeerReconnecting {
+  callId: string;
+}

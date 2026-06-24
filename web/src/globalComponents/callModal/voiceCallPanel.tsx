@@ -44,6 +44,12 @@ const VoiceCallPanel: React.FC<VoiceCallPanelProps> = ({
           <Text className={styles.duration}>{formatDuration(callState.duration)}</Text>
         </>
       )}
+      {callState.status === 'reconnecting' && (
+        <>
+          <Text className={styles.status}>重连中…</Text>
+          <Text className={styles.duration}>{formatDuration(callState.duration)}</Text>
+        </>
+      )}
       {callState.status === 'ended' && (
         <>
           <Text className={styles.status}>
@@ -68,7 +74,7 @@ const VoiceCallPanel: React.FC<VoiceCallPanelProps> = ({
           </Space>
         </div>
       )}
-      {callState.status === 'connected' && (
+      {(callState.status === 'connected' || callState.status === 'reconnecting') && (
         <div className={styles.controls}>
           <Space size="large">
             <Button

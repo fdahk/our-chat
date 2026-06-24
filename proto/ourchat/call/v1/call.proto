@@ -55,3 +55,27 @@ message CallIce {
   string call_id = 1;
   IceCandidate candidate = 2;
 }
+
+// call:rejoin 刷新/断连后重新入会:重连方新建 PeerConnection,携新 offer 请求对端重协商。
+message CallRejoin {
+  string call_id = 1;
+  CallUser from = 2;
+  CallUser to = 3;
+  SessionDescription offer = 4;
+}
+
+// call:busy 服务端→主叫:被叫已在另一通通话中(忙线),不振铃。
+message CallBusy {
+  string call_id = 1;
+}
+
+// call:handled 服务端→被叫的其它设备/标签页:该通话已在别处被处理,停止振铃。
+message CallHandled {
+  string call_id = 1;
+  string status = 2; // accepted | rejected | ended
+}
+
+// call:peer-reconnecting 服务端→对端:通话对方设备掉线,处于 grace 重连窗内。
+message CallPeerReconnecting {
+  string call_id = 1;
+}

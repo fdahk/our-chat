@@ -64,6 +64,8 @@ const VideoCallPanel: React.FC<VideoCallPanelProps> = ({
               ? '正在等待对方接受...'
               : callState.status === 'ringing'
               ? '邀请你视频通话'
+              : callState.status === 'reconnecting'
+              ? '重连中…'
               : callState.error
               ? `通话失败: ${callState.error}`
               : '通话已结束'}

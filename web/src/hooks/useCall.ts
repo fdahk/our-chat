@@ -8,6 +8,9 @@ import {
   startCall,
   receiveCall,
   connectCall,
+  reconnectingCall,
+  restoreCall,
+  updatePendingOffer,
   endCall,
   resetCall,
   setLocalStream,
@@ -17,7 +20,8 @@ import {
   setError,
 } from '../store/callStore';
 // 通话类型
-import type { CallUser, CallType, CallAcceptEvent, CallRejectEvent, CallEndEvent, CallIceEvent, CallStartEvent, SessionDescription } from '../globalType/call';
+import type { CallUser, CallType, CallAcceptEvent, CallRejectEvent, CallEndEvent, CallIceEvent, CallStartEvent, CallRejoinEvent, CallBusyEvent, CallHandledEvent, CallPeerReconnectingEvent, SessionDescription } from '../globalType/call';
+import { saveActiveCall, loadActiveCall, clearActiveCall, type PersistedCall } from '../utils/callPersist';
 import { App as AntdApp } from 'antd';
 
 // wire 的 SessionDescription(type 为 string)适配为浏览器 RTCSessionDescriptionInit。
@@ -27,6 +31,9 @@ const toRtcSdp = (sd: SessionDescription): RTCSessionDescriptionInit => ({
   sdp: sd.sdp,
 });
 
+
+// 客户端重连宽限窗:ICE 中断后等待恢复的兜底时长,略大于服务端 grace(12s),让服务端先决断。
+const RECONNECT_GRACE_MS = 15000;
 
 // 通话会话核心(语音/视频共用):信令、WebRTC 协商、ICE、生命周期、计时全在这里,
 // 与通话类型无关。类型差异只体现在「采集媒体是否取摄像头」与「邀请文案」两处,由 callState.callType 驱动;
@@ -49,6 +56,11 @@ export const useCall = () => {
   
   // 防止重复发送accept的标记
   const acceptSentRef = useRef<Set<string>>(new Set());
+
+  // 客户端重连宽限:ICE 中断后等待恢复的兜底定时器
+  const reconnectGraceRef = useRef<NodeJS.Timeout | null>(null);
+  // 刷新重载后只尝试一次 rejoin 的标记
+  const rejoinAttemptedRef = useRef(false);
 
   // 初始化WebRTC管理器
   useEffect(() => {
@@ -88,20 +100,27 @@ export const useCall = () => {
     // 连接状态变化回调
     webrtc.onConnectionStateChange = async (state) => {
       console.log('WebRTC连接状态变化:', state);
-      
+
       if (state === 'connected') {
-        console.log('WebRTC连接建立成功，开始通话');
-        dispatch(connectCall()); // 连接成功，更新状态
-        startDurationTimer(); // 开始计时
-        message.success('通话连接成功');
+        // 连接(或重连)建立:清重连宽限定时器;connectCall 保留 startTime,重连不清零通话时长。
+        if (reconnectGraceRef.current) { clearTimeout(reconnectGraceRef.current); reconnectGraceRef.current = null; }
+        dispatch(connectCall());
+        startDurationTimer();
+        message.success('通话已连接');
       } else if (state === 'connecting') {
         console.log('WebRTC正在建立连接...');
-      } else if (state === 'failed') {
-        console.error('WebRTC连接失败');
-        handleConnectionFailed(); // 连接失败，处理错误
-      } else if (state === 'disconnected') {
-        console.warn('WebRTC连接断开');
-        // 注意：断开不立即清理，给浏览器重连机会
+      } else if (state === 'failed' || state === 'disconnected') {
+        // 中断不立即结束:进入 reconnecting 等对端 rejoin / 本端恢复;宽限超时仍未恢复才兜底结束。
+        console.warn('WebRTC连接中断,进入重连等待:', state);
+        dispatch(reconnectingCall());
+        if (!reconnectGraceRef.current) {
+          reconnectGraceRef.current = setTimeout(() => {
+            reconnectGraceRef.current = null;
+            dispatch(setError('重连超时,通话结束'));
+            message.error('重连超时,通话已结束');
+            cleanup();
+          }, RECONNECT_GRACE_MS);
+        }
       }
     };
     
@@ -248,12 +267,73 @@ export const useCall = () => {
       }
     };
 
+    // 对端刷新/断连后回来:收到其新 offer → 重置本端 PC、重取媒体、回 answer 完成重协商。
+    const handleCallRejoin = async (event: CallRejoinEvent) => {
+      if (!webrtcRef.current || event.callId !== callState.callId || !event.offer) return;
+      // 主叫刷新后重发新 offer,而本端是仍在振铃的被叫:仅替换 pendingOffer,等用户接听(不在此自动协商)。
+      if (callState.status === 'ringing') {
+        dispatch(updatePendingOffer(toRtcSdp(event.offer)));
+        return;
+      }
+      try {
+        dispatch(reconnectingCall());
+        currentCallIdRef.current = event.callId;
+        webrtcRef.current.reset();
+        await new Promise((r) => setTimeout(r, 200));
+        const localStream = await webrtcRef.current.getUserMedia(callState.callType === 'video');
+        dispatch(setLocalStream(localStream));
+        const answer = await webrtcRef.current.handleOffer(toRtcSdp(event.offer));
+        socketRef.current.emit('call:accept', {
+          callId: event.callId,
+          from: callState.localUser?.id,
+          to: callState.remoteUser?.id,
+          answer,
+        });
+      } catch (error) {
+        console.error('处理对端重连失败:', error);
+      }
+    };
+
+    // 主叫收到:被叫忙线(已在另一通通话中)。
+    const handleCallBusy = (event: CallBusyEvent) => {
+      if (event.callId !== callState.callId) return;
+      message.info('对方忙线中');
+      dispatch(endCall());
+      cleanup();
+    };
+
+    // 本人其它设备/标签页已处理此来电(接听/拒接)→ 本端静默收起,不再振铃。
+    const handleCallHandled = (event: CallHandledEvent) => {
+      if (event.callId !== callState.callId) return;
+      if (reconnectGraceRef.current) { clearTimeout(reconnectGraceRef.current); reconnectGraceRef.current = null; }
+      webrtcRef.current?.cleanup();
+      stopDurationTimer();
+      processedEvents.current.clear();
+      acceptSentRef.current.clear();
+      currentCallIdRef.current = null;
+      clearActiveCall();
+      dispatch(resetCall());
+    };
+
+    // 服务端通知:对端掉线,处于 grace 重连窗。仅在通话中切到「重连中」;
+    // 邀请期(ringing/calling)不切,保留来电/呼叫界面。
+    const handlePeerReconnecting = (event: CallPeerReconnectingEvent) => {
+      if (event.callId !== callState.callId) return;
+      if (callState.status === 'connected' || callState.status === 'reconnecting') {
+        dispatch(reconnectingCall());
+      }
+    };
+
     // 绑定事件监听器
     socket.on('call:start', handleCallStart);
     socket.on('call:accept', handleCallAccept);
     socket.on('call:reject', handleCallReject);
     socket.on('call:end', handleCallEnd);
     socket.on('call:ice', handleCallIce);
+    socket.on('call:rejoin', handleCallRejoin);
+    socket.on('call:busy', handleCallBusy);
+    socket.on('call:handled', handleCallHandled);
+    socket.on('call:peer-reconnecting', handlePeerReconnecting);
 
     // 清理监听器
     return () => {
@@ -264,8 +344,12 @@ export const useCall = () => {
       socket.off('call:reject', handleCallReject);
       socket.off('call:end', handleCallEnd);
       socket.off('call:ice', handleCallIce);
+      socket.off('call:rejoin', handleCallRejoin);
+      socket.off('call:busy', handleCallBusy);
+      socket.off('call:handled', handleCallHandled);
+      socket.off('call:peer-reconnecting', handlePeerReconnecting);
     };
-  }, [callState.callId, currentUser, dispatch]);
+  }, [callState.callId, callState.status, callState.callType, callState.localUser, callState.remoteUser, currentUser, dispatch]);
 
   // 同步callId到ref，避免ICE候选回调中的闭包问题
   useEffect(() => {
@@ -291,17 +375,11 @@ export const useCall = () => {
     }
   }, []);
 
-  // 连接失败处理
-  const handleConnectionFailed = useCallback(() => {
-    console.warn('WebRTC连接失败');
-    dispatch(setError('网络连接失败'));
-    message.error('网络连接失败，请检查网络设置');
-    cleanup();
-  }, [dispatch]);
-
   // 清理通话资源
   const cleanup = useCallback(() => {
     console.log('清理通话资源');
+    if (reconnectGraceRef.current) { clearTimeout(reconnectGraceRef.current); reconnectGraceRef.current = null; }
+    clearActiveCall(); // 清持久化,刷新后不再误恢复
     stopDurationTimer();
     if (webrtcRef.current) {
       webrtcRef.current.cleanup();
@@ -397,13 +475,59 @@ export const useCall = () => {
     }
   }, [currentUser, dispatch, cleanup, message]);
 
+  // 刷新/重载后重新入会:新建 PC、重取媒体、发新 offer,请对端重协商恢复连接。
+  // 重连方永远是「发 offer」的一方(无论原先是主叫还是被叫),对端收到 call:rejoin 后回 answer。
+  const rejoinCall = useCallback(async (persisted: PersistedCall) => {
+    if (!webrtcRef.current || !currentUser) return;
+    try {
+      currentCallIdRef.current = persisted.callId;
+      webrtcRef.current.reset();
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      const localStream = await webrtcRef.current.getUserMedia(persisted.callType === 'video');
+      dispatch(setLocalStream(localStream));
+      const offer = await webrtcRef.current.createOffer();
+      socketRef.current.emit('call:rejoin', {
+        callId: persisted.callId,
+        from: {
+          id: currentUser.id,
+          username: currentUser.username,
+          nickname: currentUser.nickname,
+          avatar: currentUser.avatar,
+        },
+        to: persisted.peer,
+        offer,
+      });
+    } catch (error) {
+      console.error('重新入会失败:', error);
+      dispatch(setError('重连失败'));
+      cleanup();
+    }
+  }, [currentUser, dispatch, cleanup]);
+
   // 接受通话
   const acceptCall = useCallback(async () => {
     console.log('开始接受通话流程');
     
     try {
-      if (!webrtcRef.current || !callState.callId || !callState.pendingOffer) {
+      if (!webrtcRef.current || !callState.callId || !callState.remoteUser) {
         throw new Error('通话状态异常');
+      }
+
+      // 恢复的来电(刷新后 pendingOffer 已失效):改由本端发新 offer 重新协商,而非复用旧 offer。
+      // 对端(主叫,仍在呼叫中)收到 call:rejoin 走重建分支回 answer,双方重新收集 ICE 候选。
+      if (!callState.pendingOffer) {
+        dispatch(reconnectingCall());
+        await rejoinCall({
+          callId: callState.callId,
+          peer: callState.remoteUser,
+          callType: callState.callType,
+          role: 'callee',
+          status: 'connected',
+          startTime: callState.startTime,
+          isMuted: callState.isMuted,
+          savedAt: Date.now(),
+        });
+        return;
       }
 
       // 1. 重置WebRTC状态，确保干净的开始
@@ -456,7 +580,7 @@ export const useCall = () => {
       message.error(errorMessage);
       cleanup();
     }
-  }, [callState.callId, callState.pendingOffer, callState.localUser, callState.remoteUser, callState.callType, dispatch, cleanup, message]);
+  }, [callState.callId, callState.pendingOffer, callState.localUser, callState.remoteUser, callState.callType, callState.startTime, callState.isMuted, rejoinCall, dispatch, cleanup, message]);
 
   // 拒绝通话
   const rejectCall = useCallback(() => {
@@ -509,6 +633,57 @@ export const useCall = () => {
       return () => clearInterval(interval);
     }
   }, [callState.isActive]);
+
+  // 刷新重载后:若有未过期的活跃通话持久化 → 按阶段恢复(仅一次)。
+  // - ringing(被叫来电中):复原来电界面,等用户接听(接听时再重新协商,旧 offer 已失效)。
+  // - calling(主叫呼叫中)/ connected(通话中):重发新 offer 重新协商。
+  useEffect(() => {
+    if (rejoinAttemptedRef.current || !currentUser) return;
+    rejoinAttemptedRef.current = true;
+    const persisted = loadActiveCall();
+    if (!persisted) return;
+    const localUser = {
+      id: currentUser.id,
+      username: currentUser.username,
+      nickname: currentUser.nickname,
+      avatar: currentUser.avatar,
+    };
+    const restoreStatus =
+      persisted.status === 'ringing' ? 'ringing' : persisted.status === 'calling' ? 'calling' : 'reconnecting';
+    dispatch(restoreCall({
+      callId: persisted.callId,
+      localUser,
+      remoteUser: persisted.peer,
+      callType: persisted.callType,
+      status: restoreStatus,
+      startTime: persisted.startTime,
+      isMuted: persisted.isMuted,
+    }));
+    // ringing 不自动协商,等用户接听;calling/connected 立即重发 offer。
+    if (persisted.status !== 'ringing') void rejoinCall(persisted);
+  }, [currentUser, dispatch, rejoinCall]);
+
+  // 邀请期(calling/ringing)与通话中(connected/reconnecting)都持久化精简上下文;结束/空闲清除。
+  useEffect(() => {
+    const s = callState.status;
+    if (
+      (s === 'calling' || s === 'ringing' || s === 'connected' || s === 'reconnecting') &&
+      callState.callId && callState.localUser && callState.remoteUser
+    ) {
+      const callerId = Number(callState.callId.split('_')[1]);
+      saveActiveCall({
+        callId: callState.callId,
+        peer: callState.remoteUser,
+        callType: callState.callType,
+        role: callState.localUser.id === callerId ? 'caller' : 'callee',
+        status: s === 'calling' ? 'calling' : s === 'ringing' ? 'ringing' : 'connected',
+        startTime: callState.startTime ?? null,
+        isMuted: callState.isMuted,
+      });
+    } else if (s === 'idle' || s === 'ended') {
+      clearActiveCall();
+    }
+  }, [callState.status, callState.callId, callState.isMuted, callState.startTime, callState.callType, callState.localUser, callState.remoteUser]);
 
   return {
     callState,
