@@ -171,8 +171,8 @@ export class WebRTCManager {
         // 将原生候选转换为ICECandidate对象，方便后续处理
         const candidate: ICECandidate = {
           candidate: event.candidate.candidate, // 候选
-          sdpMLineIndex: event.candidate.sdpMLineIndex, // 候选所在的SDP轨道索引
-          sdpMid: event.candidate.sdpMid, // 候选所在的SDP轨道ID
+          sdpMlineIndex: event.candidate.sdpMLineIndex ?? undefined, // 候选所在的SDP轨道索引
+          sdpMid: event.candidate.sdpMid ?? undefined, // 候选所在的SDP轨道ID
         };
         this.onICECandidate?.(candidate);// 将候选通过信令服务器发送给对端
       }
@@ -621,7 +621,7 @@ export class WebRTCManager {
       // 将候选转换为RTCIceCandidate对象
       const rtcCandidate = new RTCIceCandidate({
         candidate: candidate.candidate,
-        sdpMLineIndex: candidate.sdpMLineIndex,
+        sdpMLineIndex: candidate.sdpMlineIndex,
         sdpMid: candidate.sdpMid,
       });
       

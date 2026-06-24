@@ -125,7 +125,7 @@ function Layout() {
                 <div className={layoutStyle.left_nav_item_avatar} onClick={handleProfile}>
                         <img src={user.avatar ? buildServerUrl(user.avatar) : defaultAvatar} alt="" />
                 </div>
-                {/* 个人信息浮层:自己的资料卡(设置/退出) */}
+                {/* 个人信息浮层:自己的资料卡(只读;设置/退出走左下角菜单) */}
                 {profileVisible && (
                     <div className={layoutStyle.profile_anchor} ref={profileRef}>
                         <ProfileCard
@@ -135,10 +135,7 @@ function Layout() {
                                 { label: t('profile.wxid'), value: String(user.id) },
                                 ...(user.email ? [{ label: t('profile.email'), value: user.email }] : []),
                             ]}
-                            actions={[
-                                { key: 'setting', icon: 'icon-setting', label: t('layout.menu.setting'), onClick: () => { setProfileVisible(false); handleSetting(); } },
-                                { key: 'logout', icon: 'icon-logout', label: t('layout.menu.logout'), onClick: () => { setProfileVisible(false); handleLogout(); } },
-                            ]}
+                            actions={[]}
                         />
                     </div>
                 )}

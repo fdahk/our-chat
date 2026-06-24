@@ -8,10 +8,10 @@ import Button from '@/globalComponents/button';
 import { useToast } from '@/globalComponents/toast';
 import { useLang } from '@/i18n';
 import { deleteDocument, listDocuments, uploadDocument } from '../../api';
-import type { AgentDocument, DocStatus } from '../../type';
+import type { AgentDocument } from '../../type';
 import styles from './style.module.scss';
 
-const TERMINAL: DocStatus[] = ['ready', 'failed'];
+const TERMINAL: string[] = ['ready', 'failed'];
 
 function DocumentsTab() {
   const { t } = useLang();
@@ -38,7 +38,7 @@ function DocumentsTab() {
 
   // 如果还有未完成的文档,5 秒轮询一次
   useEffect(() => {
-    const pending = docs.some((d) => !TERMINAL.includes(d.status as DocStatus));
+    const pending = docs.some((d) => !TERMINAL.includes(d.status));
     if (!pending) return;
     const id = window.setInterval(() => void refresh(), 5000);
     return () => window.clearInterval(id);
@@ -110,7 +110,7 @@ function DocumentsTab() {
                   </div>
                   {d.errorMsg && <div className={styles.itemErr}>{d.errorMsg}</div>}
                 </div>
-                <StatusBadge status={d.status as DocStatus} />
+                <StatusBadge status={d.status} />
                 <button
                   type="button"
                   className={styles.delBtn}
@@ -128,7 +128,7 @@ function DocumentsTab() {
   );
 }
 
-function StatusBadge({ status }: { status: DocStatus }) {
+function StatusBadge({ status }: { status: string }) {
   const tone = status === 'ready' ? 'ok' : status === 'failed' ? 'err' : 'pending';
   return <span className={`${styles.badge} ${styles[`badge-${tone}` as const]}`}>{status}</span>;
 }

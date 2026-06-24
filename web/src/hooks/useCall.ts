@@ -17,8 +17,15 @@ import {
   setError,
 } from '../store/callStore';
 // 通话类型
-import type { CallUser, CallType, CallAcceptEvent, CallRejectEvent, CallEndEvent, CallIceEvent, CallStartEvent } from '../globalType/call';
+import type { CallUser, CallType, CallAcceptEvent, CallRejectEvent, CallEndEvent, CallIceEvent, CallStartEvent, SessionDescription } from '../globalType/call';
 import { App as AntdApp } from 'antd';
+
+// wire 的 SessionDescription(type 为 string)适配为浏览器 RTCSessionDescriptionInit。
+// type 在信令 wire 上即 'offer' | 'answer',故此处单个受控 cast 是安全的。
+const toRtcSdp = (sd: SessionDescription): RTCSessionDescriptionInit => ({
+  type: sd.type as RTCSdpType,
+  sdp: sd.sdp,
+});
 
 
 // 通话会话核心(语音/视频共用):信令、WebRTC 协商、ICE、生命周期、计时全在这里,
@@ -124,8 +131,9 @@ export const useCall = () => {
         if (!currentUser) {
           throw new Error('用户未登录');
         }
+        if (!event.from || !event.offer) return;
         // 更新store状态，保存offer,SDP保存在点击接受通话中处理
-        const callType: CallType = event.callType ?? 'voice';
+        const callType: CallType = event.callType === 'video' ? 'video' : 'voice';
         dispatch(receiveCall({
           callId: event.callId,
           localUser: {
@@ -135,7 +143,7 @@ export const useCall = () => {
             avatar: currentUser.avatar,
           },
           remoteUser: event.from,
-          offer: event.offer, // 保存offer
+          offer: toRtcSdp(event.offer), // 保存offer
           callType,
         }));
         // 显示通话邀请
@@ -181,7 +189,8 @@ export const useCall = () => {
 
         // 处理Answer
         // WebRTC标准允许在某些情况下状态可能不是严格的have-local-offer
-        await webrtcRef.current.handleAnswer(event.answer);
+        if (!event.answer) return;
+        await webrtcRef.current.handleAnswer(toRtcSdp(event.answer));
         console.log('Answer处理完成，等待连接建立');
         
       } catch (error) {
@@ -228,6 +237,7 @@ export const useCall = () => {
           return;
         }
         
+        if (!event.candidate) return;
         console.log('候选类型:', event.candidate.candidate?.split(' ')[7]);
         await webrtcRef.current.addIceCandidate(event.candidate);
         console.log('ICE候选处理成功');

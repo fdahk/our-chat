@@ -430,7 +430,7 @@ function ChatView() {
                     <ProfileCard
                         avatar={globalFriendInfoList[friendCard.friendId]?.avatar ? buildServerUrl(globalFriendInfoList[friendCard.friendId].avatar) : ''}
                         name={globalFriendInfoList[friendCard.friendId]?.username || ''}
-                        rows={[{ label: t('profile.wxid'), value: globalFriendInfoList[friendCard.friendId]?.username || '' }]}
+                        rows={[{ label: t('profile.wxid'), value: String(friendCard.friendId) }]}
                         actions={[
                             { key: 'msg', icon: 'icon-message', label: t('profile.sendMsg'), onClick: () => setFriendCard(null) },
                             { key: 'voice', icon: 'icon-phone', label: t('profile.voiceCall'), onClick: () => { callFriend(friendCard.friendId, 'voice'); setFriendCard(null); } },
