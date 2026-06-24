@@ -17,9 +17,9 @@ const initialState: UserState = {
   bio: '',
   phone: '',
   status: '',
-  created_at: '',
-  updated_at: '',
-  last_seen: '',
+  createdAt: '',
+  updatedAt: '',
+  lastSeen: '',
   isAuthenticated: false,
 };
 
@@ -39,9 +39,9 @@ const userSlice = createSlice({
       state.bio = action.payload.bio;
       state.phone = action.payload.phone;
       state.status = action.payload.status;
-      state.created_at = action.payload.created_at;
-      state.updated_at = action.payload.updated_at;
-      state.last_seen = action.payload.last_seen;
+      state.createdAt = action.payload.createdAt;
+      state.updatedAt = action.payload.updatedAt;
+      state.lastSeen = action.payload.lastSeen;
       state.isAuthenticated = true;
       console.log("store储存成功");
     },
@@ -55,9 +55,9 @@ const userSlice = createSlice({
       state.bio = '';
       state.phone = '';
       state.status = '';
-      state.created_at = '';
-      state.updated_at = '';
-      state.last_seen = '';
+      state.createdAt = '';
+      state.updatedAt = '';
+      state.lastSeen = '';
       state.isAuthenticated = false;
       
       console.log("store清空成功");

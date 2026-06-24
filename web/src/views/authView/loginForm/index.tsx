@@ -53,8 +53,8 @@ function LoginForm({ switchModel }: { switchModel: () => void }) {
       dispatch(login({
         id: data.id, username: data.username, nickname: data.nickname,
         email: data.email, avatar: data.avatar, bio: data.bio, phone: data.phone,
-        status: data.status, created_at: data.created_at, updated_at: data.updated_at,
-        last_seen: data.last_seen,
+        status: data.status, createdAt: data.createdAt, updatedAt: data.updatedAt,
+        lastSeen: data.lastSeen,
       }));
       toast.ok(t('auth.login.ok'));
       navigate('/chat');

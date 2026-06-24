@@ -1,4 +1,5 @@
-// 用户类型数据类型
+// 用户类型。单一契约源:proto/ourchat/user/v1/user.proto(字段统一驼峰)。
+// 注:本项目 wire 约定 int64 id 序列化为 number(server bigint-json polyfill)。
 export interface User {
     id: number;
     username: string;
@@ -8,7 +9,7 @@ export interface User {
     avatar: string;
     bio: string;
     status: string;
-    last_seen: string;
-    created_at: string;
-    updated_at: string;
+    lastSeen: string;
+    createdAt: string;
+    updatedAt: string;
 }
