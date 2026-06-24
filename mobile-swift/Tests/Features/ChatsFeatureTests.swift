@@ -1,0 +1,25 @@
+import ComposableArchitecture
+import Testing
+@testable import OurChat
+
+@MainActor
+struct ChatsFeatureTests {
+    @Test
+    func onAppearLoadsConversations() async {
+        let sample = [
+            Conversation(id: "1", title: "段宇皓", preview: "OK", timeText: "昨天"),
+        ]
+        let store = TestStore(initialState: ChatsFeature.State()) {
+            ChatsFeature()
+        } withDependencies: {
+            $0.chatClient.conversations = { sample }
+            $0.chatClient.otherDeviceCount = { 0 }
+        }
+        await store.send(.onAppear) { $0.isLoading = true }
+        await store.receive(\.conversationsResponse) {
+            $0.isLoading = false
+            $0.conversations = sample
+            $0.otherDeviceCount = 0
+        }
+    }
+}
