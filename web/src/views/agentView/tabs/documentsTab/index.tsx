@@ -38,7 +38,7 @@ function DocumentsTab() {
 
   // 如果还有未完成的文档,5 秒轮询一次
   useEffect(() => {
-    const pending = docs.some((d) => !TERMINAL.includes(d.status));
+    const pending = docs.some((d) => !TERMINAL.includes(d.status as DocStatus));
     if (!pending) return;
     const id = window.setInterval(() => void refresh(), 5000);
     return () => window.clearInterval(id);
@@ -110,7 +110,7 @@ function DocumentsTab() {
                   </div>
                   {d.errorMsg && <div className={styles.itemErr}>{d.errorMsg}</div>}
                 </div>
-                <StatusBadge status={d.status} />
+                <StatusBadge status={d.status as DocStatus} />
                 <button
                   type="button"
                   className={styles.delBtn}

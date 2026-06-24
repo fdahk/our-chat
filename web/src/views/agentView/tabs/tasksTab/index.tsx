@@ -101,7 +101,7 @@ function AssistantBubble({ item }: { item: AssistantItem }) {
   const finalEvt = item.events.find((e) => e.type === 'final_answer');
   const failed = item.events.some((e) => e.type === 'run_failed');
   // SSE 的 data 是整条 run_event 行,真正的字段在 data.payload 下
-  const finalPayload = (finalEvt?.data.payload ?? {}) as Record<string, unknown>;
+  const finalPayload = (finalEvt?.data?.payload ?? {}) as Record<string, unknown>;
   const answer = typeof finalPayload.content === 'string' ? finalPayload.content : '';
   const toolCount = item.events.filter((e) => e.type === 'tool_called').length;
 
@@ -132,7 +132,7 @@ function AssistantBubble({ item }: { item: AssistantItem }) {
 
 function StepRow({ evt }: { evt: RunEvent }) {
   // SSE 的 data 是整条 run_event 行,真正的字段在 data.payload 下
-  const payload = (evt.data.payload ?? {}) as Record<string, unknown>;
+  const payload = (evt.data?.payload ?? {}) as Record<string, unknown>;
   if (evt.type === 'tool_called') {
     const name = String(payload.name ?? '');
     const argsObj = (payload.args ?? {}) as Record<string, unknown>;

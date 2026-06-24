@@ -308,7 +308,7 @@ describe('streamRun()', () => {
     expect(got[0].type).toBe('final_answer');
     expect(got[0].id).toBe('4');
     // 回归点:答案在 data.payload.content,不是 data.content
-    expect((got[0].data.payload as { content: string }).content).toBe('done summary');
+    expect((got[0].data?.payload as { content: string }).content).toBe('done summary');
 
     close();
     expect(es.closed).toBe(true);
@@ -324,8 +324,8 @@ describe('streamRun()', () => {
     es.push('tool_result', JSON.stringify(runEventFixtures.toolResult.data), '3');
 
     expect(got.map((e) => e.type)).toEqual(['tool_called', 'tool_result']);
-    expect((got[0].data.payload as { name: string }).name).toBe('retrieve_knowledge');
-    expect((got[1].data.payload as { result: string }).result).toBe('hits: 3 chunks');
+    expect((got[0].data?.payload as { name: string }).name).toBe('retrieve_knowledge');
+    expect((got[1].data?.payload as { result: string }).result).toBe('hits: 3 chunks');
   });
 
   it('坏 JSON 帧被跳过,不抛', () => {

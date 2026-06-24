@@ -41,7 +41,7 @@ export const documentReadyFixture = {
   sizeBytes: 12_345,
   status: 'ready',
   chunkCount: 8,
-  errorMsg: null,
+  errorMsg: undefined,
   createdAt: '2026-06-07T12:00:00.000Z',
   updatedAt: '2026-06-07T12:00:00.000Z',
 } satisfies AgentDocument;
@@ -75,6 +75,7 @@ export const conversationFixture = {
   title: '聊天 1',
   createdAt: '2026-06-07T12:00:00.000Z',
   updatedAt: '2026-06-07T12:00:00.000Z',
+  messages: [],
 } satisfies AgentConversation;
 
 export const userMsgFixture = {
@@ -82,6 +83,7 @@ export const userMsgFixture = {
   conversationId: 1,
   role: 'user',
   content: 'hello',
+  citations: [],
   createdAt: '2026-06-07T12:00:00.000Z',
 } satisfies AgentMessage;
 

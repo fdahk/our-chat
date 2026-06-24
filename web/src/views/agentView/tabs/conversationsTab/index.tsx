@@ -91,6 +91,7 @@ function ConversationsTab() {
       conversationId: activeId,
       role: 'user',
       content: q,
+      citations: [],
       createdAt: ts,
     };
     const placeholder: DraftMessage = {
