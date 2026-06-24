@@ -46,6 +46,7 @@ let project = Project(
                 .external(name: "DependenciesMacros"),
                 .external(name: "Kingfisher"),
                 .external(name: "GRDB"),
+                .external(name: "SwiftProtobuf"),
             ],
             settings: .settings(
                 base: [

@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package ourchat.call.v1;
+
+// 通话参与者精简信息。
+message CallUser {
+  int64 id = 1;
+  string username = 2;
+  string nickname = 3;
+  string avatar = 4;
+}
+
+// WebRTC 会话描述(RTCSessionDescriptionInit)。
+message SessionDescription {
+  string type = 1; // offer | answer
+  string sdp = 2;
+}
+
+// WebRTC ICE 候选。
+message IceCandidate {
+  string candidate = 1;
+  optional int32 sdp_mline_index = 2;
+  optional string sdp_mid = 3;
+}
+
+// call:start 发起通话。
+message CallStart {
+  string call_id = 1; // call_{fromId}_{toId}_{timestamp}
+  CallUser from = 2;
+  CallUser to = 3;
+  SessionDescription offer = 4;
+  string call_type = 5; // voice | video,视频复用同一套信令
+}
+
+// call:accept 接听。from/to 为 user id(现状如此,与 call:start 的对象形态不同)。
+message CallAccept {
+  string call_id = 1;
+  int64 from = 2;
+  int64 to = 3;
+  SessionDescription answer = 4;
+}
+
+// call:reject 拒接。
+message CallReject {
+  string call_id = 1;
+}
+
+// call:end 挂断。
+message CallEnd {
+  string call_id = 1;
+}
+
+// call:ice ICE 候选交换。
+message CallIce {
+  string call_id = 1;
+  IceCandidate candidate = 2;
+}

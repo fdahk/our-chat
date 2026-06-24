@@ -63,8 +63,8 @@ function FriendModal({
         if (next === currentRemark) return;
         setCurrentRemark(next);
         const friendId = parseInt(wxid);
-        await updateRemark({ userId, friend_id: friendId, remark: next });
-        dispatch(addGlobalFriend({ friend_id: friendId, remark: next }));
+        await updateRemark({ userId, friendId: friendId, remark: next });
+        dispatch(addGlobalFriend({ friendId: friendId, remark: next }));
     };
 
     // 点击发送消息
@@ -77,23 +77,27 @@ function FriendModal({
             if(!globalConversations[conversationId as string]) {
                 dispatch(addConversation({
                     id: conversationId,
-                    conv_type: 'single',
+                    convType: 'single',
                     title: username,
                     avatar: avatar,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
+                    nextSeq: 0,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
                 }))
                 dispatch(addUserConversation({
-                    id: '',
-                    user_id: userId,
+                    id: 0,
+                    userId: userId,
                     conversationId: conversationId,
-                    last_read_message_id: '',
-                    unread_count: 0,
-                    is_muted: 0,
-                    is_pinned: 0,
-                    is_archived: 0,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
+                    lastReadMessageId: '',
+                    lastSyncedSeq: 0,
+                    lastReadSeq: 0,
+                    mentionSeq: 0,
+                    unreadCount: 0,
+                    isMuted: false,
+                    isPinned: false,
+                    isArchived: false,
+                    joinedAt: new Date().toISOString(),
+                    lastActivity: new Date().toISOString(),
                 }))
             }
         });

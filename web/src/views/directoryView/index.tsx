@@ -16,7 +16,7 @@ import { defaultAvatar, searchUserIcon, newFriendIcon } from '@/assets/images';
 import { useLang } from '@/i18n';
 function DirectoryView() {
     const { t } = useLang();
-    const [activeFriend, setActiveFriend] = useState<{ friend_id: number, remark: string | null } | null>(null);
+    const [activeFriend, setActiveFriend] = useState<{ friendId: number, remark: string | null } | null>(null);
     const globalFriendList = useSelector((state: RootState) => state.chat.globalFriendList);
     const globalFriendInfoList = useSelector((state: RootState) => state.chat.globalFriendInfoList);
     const globalFriendReqList = useSelector((state: RootState) => state.friendReq);
@@ -25,7 +25,7 @@ function DirectoryView() {
     const [isCheckingFriendReq, setIsCheckingFriendReq] = useState(false);
     const socket = SocketService.getInstance();
     // 点击好友
-    const handleFriendClick = (friend: { friend_id: number, remark: string | null }) => {
+    const handleFriendClick = (friend: { friendId: number, remark: string | null }) => {
         setIsCheckingFriendReq(false);
         setActiveFriend(friend);
     }
@@ -54,7 +54,7 @@ function DirectoryView() {
         if(searchResult.exist) {
             if(searchResult.isFriend) {
                 // 用户存在且是好友
-                setActiveFriend({ friend_id: searchResult.friendInfo.id, remark: globalFriendList[searchResult.friendInfo.id] || null });
+                setActiveFriend({ friendId: searchResult.friendInfo.id, remark: globalFriendList[searchResult.friendInfo.id] || null });
             } else {
                 // 用户存在且不是好友
                 setShowAddFriendModal(true);
@@ -71,22 +71,25 @@ function DirectoryView() {
         setIsCheckingFriendReq(true);
     }
     // 回复好友请求
-    const handleReplyFriendReq = async (friend_id: number, status: string) => {
-        replyFriendReq({userId, friend_id, status}).then( async () => {
-            dispatch(setFriendReqStatus({friend_id, status}));
+    const handleReplyFriendReq = async (friendId: number, status: string) => {
+        replyFriendReq({userId, friendId, status}).then( async () => {
+            dispatch(setFriendReqStatus({friendId, status}));
             if(status === "accepted") {
-                const otherInfo = await searchUser({keyword: friend_id, userId});
+                const otherInfo = await searchUser({keyword: friendId, userId});
                 const otherUser = otherInfo.data?.friendInfo;
                 if (!otherUser) {
                     return;
                 }
-                const conversationId = `single_${Math.min(userId, friend_id)}_${Math.max(userId, friend_id)}`;                
+                const conversationId = `single_${Math.min(userId, friendId)}_${Math.max(userId, friendId)}`;                
                 // 创建会话记录
                 
                 // 创建初始消息 
                 const msg:Message = {
+                    id: 0,
+                    clientMsgId: '',
+                    seq: 0,
                     conversationId: conversationId,
-                    senderId: friend_id,
+                    senderId: friendId,
                     content: t('directory.hello') + otherUser.username,
                     type: 'text',
                     status: 'sent',
@@ -101,8 +104,8 @@ function DirectoryView() {
                 };
                 socket.emit('sendMessage', msg);
                 // 更新好友列表
-                dispatch(addGlobalFriend({friend_id, remark: null}));
-                dispatch(addGlobalFriendInfo({friend_id, friendInfo: {
+                dispatch(addGlobalFriend({friendId, remark: null}));
+                dispatch(addGlobalFriendInfo({friendId, friendInfo: {
                     username: otherUser.username,
                     avatar: otherUser.avatar,
                     gender: otherUser.gender,
@@ -205,9 +208,9 @@ function DirectoryView() {
                                                 id={item}
                                                 title={globalFriendList[friendId] || friendInfo?.username}
                                                 content={''}
-                                                isActive={activeFriend?.friend_id === friendId}
+                                                isActive={activeFriend?.friendId === friendId}
                                                 handleClick={() => handleFriendClick({ 
-                                                    friend_id: friendId, 
+                                                    friendId: friendId, 
                                                     remark: globalFriendList[friendId] 
                                                 })}
                                                 avatar={friendInfo?.avatar 
@@ -226,14 +229,14 @@ function DirectoryView() {
                 {/* 好友信息 */}
                 {activeFriend && (
                     <FriendModal
-                        avatar={globalFriendInfoList[activeFriend?.friend_id as number]?.avatar
-                            ? buildServerUrl(globalFriendInfoList[activeFriend?.friend_id as number].avatar) 
+                        avatar={globalFriendInfoList[activeFriend?.friendId as number]?.avatar
+                            ? buildServerUrl(globalFriendInfoList[activeFriend?.friendId as number].avatar) 
                             : defaultAvatar}
-                        username={globalFriendInfoList[activeFriend?.friend_id as number]?.username}
-                        wxid={activeFriend?.friend_id.toString() as string}
+                        username={globalFriendInfoList[activeFriend?.friendId as number]?.username}
+                        wxid={activeFriend?.friendId.toString() as string}
                         region={t('directory.region')}
                         remark={activeFriend?.remark as string | null}
-                        gender={globalFriendInfoList[activeFriend?.friend_id as number].gender as string}
+                        gender={globalFriendInfoList[activeFriend?.friendId as number].gender as string}
                     />
                 )}
                 {/* 检查新朋友 */}

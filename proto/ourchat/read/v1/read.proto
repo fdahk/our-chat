@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package ourchat.read.v1;
+
+// 已读上报:socket 事件 read.report / REST POST /user/read。
+message ReadReportInput {
+  string conversation_id = 1;
+  int64 upto_seq = 2; // JSON string
+}
+
+// 已读同步:socket 下行 read.sync,多端一致推进。
+message ReadSync {
+  string conversation_id = 1;
+  int64 upto_seq = 2;
+}

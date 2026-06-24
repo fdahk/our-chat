@@ -261,7 +261,7 @@ export const initSocket = (server: HttpServer): Server => {
     socket.on('sendFriendReq', async (friendReq) => {
       try {
         console.log('转发好友请求:', friendReq);
-        io.to(friendReq.user_id).emit('receiveFriendReq', friendReq);
+        io.to(friendReq.userId).emit('receiveFriendReq', friendReq);
       } catch (error) {
         console.error('转发好友请求失败:', error);
       }

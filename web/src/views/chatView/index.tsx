@@ -107,6 +107,9 @@ function ChatView() {
     const sendMessage = (text: string) => {
         if (!text.trim() || !activeConversation) return;
         const msg:Message = {
+            id: 0,
+            clientMsgId: '',
+            seq: 0,
             conversationId: activeConversation,
             senderId: userId,
             content: text,
@@ -164,6 +167,9 @@ function ChatView() {
         try {
             files.forEach(file => {
                 const fileMessage: Message = {
+                    id: 0,
+                    clientMsgId: '',
+                    seq: 0,
                     conversationId: activeConversation!,
                     senderId: userId,
                     content: t('chat.sentFile'),
@@ -178,7 +184,7 @@ function ChatView() {
                         fileSize: file.size,
                         fileUrl: file.url ?? '',
                         fileType: file.type || 'application/octet-stream',
-                        fileMD5: file.md5
+                        fileMd5: file.md5 ?? ''
                     },
                     timestamp: new Date().toISOString(),
                     editHistory: [],
@@ -424,7 +430,7 @@ function ChatView() {
                     <ProfileCard
                         avatar={globalFriendInfoList[friendCard.friendId]?.avatar ? buildServerUrl(globalFriendInfoList[friendCard.friendId].avatar) : ''}
                         name={globalFriendInfoList[friendCard.friendId]?.username || ''}
-                        rows={[{ label: t('profile.wxid'), value: globalFriendInfoList[friendCard.friendId]?.username || '' }]}
+                        rows={[{ label: t('profile.wxid'), value: String(friendCard.friendId) }]}
                         actions={[
                             { key: 'msg', icon: 'icon-message', label: t('profile.sendMsg'), onClick: () => setFriendCard(null) },
                             { key: 'voice', icon: 'icon-phone', label: t('profile.voiceCall'), onClick: () => { callFriend(friendCard.friendId, 'voice'); setFriendCard(null); } },

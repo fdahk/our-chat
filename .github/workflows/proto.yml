@@ -1,0 +1,45 @@
+name: proto
+
+# 契约防漂移:校验 proto 规范、不兼容变更、以及各端生成物是否最新。
+on:
+  pull_request:
+    paths:
+      - 'proto/**'
+      - 'buf.yaml'
+      - 'buf.gen.yaml'
+      - 'server/src/contracts/gen/**'
+      - 'web/src/contracts/gen/**'
+      - 'gateway/internal/contracts/gen/**'
+      - 'mobile-swift/Sources/Contracts/Gen/**'
+  push:
+    branches: [main]
+    paths:
+      - 'proto/**'
+      - 'buf.yaml'
+      - 'buf.gen.yaml'
+
+jobs:
+  proto:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # buf breaking 需要 main 历史做基线
+      - uses: bufbuild/buf-setup-action@v1
+      - name: Lint
+        run: buf lint
+      - name: Breaking change check (vs main)
+        run: |
+          if git cat-file -e main:buf.yaml 2>/dev/null; then
+            buf breaking --against '.git#branch=main'
+          else
+            echo "main 尚无 proto 基线,跳过 breaking 检查(合并到 main 后自动生效)"
+          fi
+      - name: Generated code freshness
+        run: |
+          buf generate
+          git diff --exit-code -- \
+            server/src/contracts/gen \
+            web/src/contracts/gen \
+            gateway/internal/contracts/gen \
+            mobile-swift/Sources/Contracts/Gen

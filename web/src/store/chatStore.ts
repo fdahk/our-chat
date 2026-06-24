@@ -69,14 +69,14 @@ const chatSlice = createSlice({
     initGlobalFriendList(state, action: PayloadAction<FriendList>) {
       state.globalFriendList = action.payload;
     },
-    addGlobalFriend(state, action: PayloadAction<{friend_id: number, remark: string | null}>) {
-      state.globalFriendList[action.payload.friend_id] = action.payload.remark;
+    addGlobalFriend(state, action: PayloadAction<{friendId: number, remark: string | null}>) {
+      state.globalFriendList[action.payload.friendId] = action.payload.remark;
     },
     initGlobalFriendInfoList(state, action: PayloadAction<FriendInfoList>) {
       state.globalFriendInfoList = action.payload;
     },
-    addGlobalFriendInfo(state, action: PayloadAction<{friend_id: number, friendInfo: FriendInfo}>) {
-      state.globalFriendInfoList[action.payload.friend_id] = action.payload.friendInfo;
+    addGlobalFriendInfo(state, action: PayloadAction<{friendId: number, friendInfo: FriendInfo}>) {
+      state.globalFriendInfoList[action.payload.friendId] = action.payload.friendInfo;
     },
     // 设置当前会话
     initActiveConversation(state, action: PayloadAction<string | null>) {

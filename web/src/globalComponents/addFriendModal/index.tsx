@@ -23,26 +23,26 @@ const AddFriendModal = forwardRef<HTMLDivElement, AddFriendModalProps>(
     const [isSent, setIsSent] = useState(false);
     // 发起好友请求
     const handleAddFriend = async () => {
-        addFriend({userId, friend_id: Number(wxid)});
+        addFriend({userId, friendId: Number(wxid)});
         // 注意视角切换，别搞反了
         socket.emit('sendFriendReq', {
           id: 0,
-          friend_id: userId, 
-          user_id: Number(wxid), 
+          friendId: userId, 
+          userId: Number(wxid),
           status: 'pending', 
-          created_at: new Date().toISOString(), 
-          updated_at: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
           username: userInfo.username,
           avatar: userInfo.avatar,
       });  
       dispatch(addFriendReq({
         id: 0,
-        friend_id: Number(wxid),
-        user_id: userId,
+        friendId: Number(wxid),
+        userId: userId,
         status: 'sent',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        remark: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        remark: '',
       }));
         setIsSent(true);
     }

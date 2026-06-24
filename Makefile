@@ -8,7 +8,7 @@
 DEV_COMPOSE := docker/docker-compose.dev.yml
 ENV_DEBUG   := docker/.env.debug
 
-.PHONY: dev middleware down env deps
+.PHONY: dev middleware down env deps proto proto-check
 
 # 一键起全部:env/依赖就绪 → 起中间件 → 等 PG → 并发跑三个业务(Ctrl-C 一起退出)
 dev: env deps middleware
@@ -39,3 +39,17 @@ deps:
 	@test -d server/node_modules || (cd server && pnpm install)
 	@test -d web/node_modules || (cd web && pnpm install)
 	@test -d server/src/generated/prisma || (cd server && pnpm db:generate)
+
+# 从 proto/ 单一契约源生成四端类型(server/web/gateway/mobile-swift)
+proto:
+	buf generate
+
+# CI:校验 proto 规范 + 生成物是否最新(不一致则失败)
+proto-check:
+	buf lint
+	buf generate
+	git diff --exit-code -- \
+		server/src/contracts/gen \
+		web/src/contracts/gen \
+		gateway/internal/contracts/gen \
+		mobile-swift/Sources/Contracts/Gen

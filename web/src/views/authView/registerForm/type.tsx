@@ -19,5 +19,5 @@ export interface RegisterResponseModel {
     avatar: string;
     bio: string;
     status: string;
-    created_at: string;
+    createdAt: string;
 }
