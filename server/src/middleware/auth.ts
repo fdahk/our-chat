@@ -25,13 +25,23 @@ const verifyCsrf = (req: Request, res: Response): boolean => {
   return true;
 };
 
-// JWT Token验证中间件：从 HttpOnly cookie 读取 token，并对变更类请求做 CSRF 校验
+// 提取访问令牌:优先 Authorization: Bearer(原生/移动端 token 鉴权),回落 HttpOnly cookie(Web)。
+// 双鉴权并存:Web 用 cookie + CSRF;Bearer 由客户端显式携带,浏览器不会自动附带,天然免疫 CSRF。
+const extractToken = (req: Request): { token: string | undefined; viaBearer: boolean } => {
+  const authHeader = req.headers.authorization;
+  if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+    const bearer = authHeader.slice('Bearer '.length).trim();
+    if (bearer) return { token: bearer, viaBearer: true };
+  }
+  return { token: req.cookies?.[TOKEN_COOKIE], viaBearer: false };
+};
+
+// JWT Token 验证中间件:支持 cookie(Web)与 Authorization: Bearer(原生端)双鉴权;CSRF 仅对 cookie 鉴权强制。
 export const authenticateToken: RequestHandler = async (req, res, next) => {
   try {
-    if (!verifyCsrf(req, res)) return;
-
-    // 从 HttpOnly cookie 读取访问令牌（不再信任 Authorization 头）
-    const token = req.cookies?.[TOKEN_COOKIE];
+    const { token, viaBearer } = extractToken(req);
+    // CSRF 仅针对 cookie 鉴权(浏览器会自动带上 cookie);Bearer 走显式头,不存在 CSRF 风险,跳过。
+    if (!viaBearer && !verifyCsrf(req, res)) return;
 
     if (!token) {
       res.status(401).json({
@@ -93,7 +103,7 @@ export const authenticateToken: RequestHandler = async (req, res, next) => {
 // 可选的Token验证中间件
 export const optionalAuth: RequestHandler = async (req, _res, next) => {
   try {
-    const token = req.cookies?.[TOKEN_COOKIE];
+    const { token } = extractToken(req);
 
     if (!token) {
       req.user = undefined;
