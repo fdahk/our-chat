@@ -53,7 +53,7 @@ function LoginForm({ switchModel }: { switchModel: () => void }) {
       dispatch(login({
         id: data.id, username: data.username, nickname: data.nickname,
         email: data.email, avatar: data.avatar, bio: data.bio, phone: data.phone,
-        status: data.status, createdAt: data.createdAt, updatedAt: data.updatedAt,
+        status: data.status, gender: data.gender, createdAt: data.createdAt, updatedAt: data.updatedAt,
         lastSeen: data.lastSeen,
       }));
       toast.ok(t('auth.login.ok'));

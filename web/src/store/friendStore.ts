@@ -1,17 +1,8 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import type { FriendRequest } from '../contracts/gen/ourchat/friend/v1/friend';
 
-export interface FriendReq {
-    id: number;
-    userId: number;
-    friendId: number;
-    remark: string | null;
-    status: string;
-    createdAt: string;
-    updatedAt: string;
-    // 请求方资料:对方多半还不是好友,本地 friendInfo 取不到,卡片渲染要回退到这里
-    username?: string | null;
-    avatar?: string | null;
-}
+// username/avatar:请求方多半还不是好友,本地 friendInfo 取不到,卡片渲染要回退到这里
+export type FriendReq = FriendRequest;
 interface FriendReqList {
     // key是好友id，value是好友请求
     [key: number]: FriendReq;

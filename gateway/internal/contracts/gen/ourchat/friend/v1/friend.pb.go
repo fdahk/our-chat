@@ -186,8 +186,8 @@ type FriendRequest struct {
 	Status        string                 `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
 	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	Username      string                 `protobuf:"bytes,8,opt,name=username,proto3" json:"username,omitempty"`
-	Avatar        string                 `protobuf:"bytes,9,opt,name=avatar,proto3" json:"avatar,omitempty"`
+	Username      *string                `protobuf:"bytes,8,opt,name=username,proto3,oneof" json:"username,omitempty"` // 请求方资料,本地 friendInfo 取不到时回退用,可缺
+	Avatar        *string                `protobuf:"bytes,9,opt,name=avatar,proto3,oneof" json:"avatar,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -272,15 +272,15 @@ func (x *FriendRequest) GetUpdatedAt() *timestamppb.Timestamp {
 }
 
 func (x *FriendRequest) GetUsername() string {
-	if x != nil {
-		return x.Username
+	if x != nil && x.Username != nil {
+		return *x.Username
 	}
 	return ""
 }
 
 func (x *FriendRequest) GetAvatar() string {
-	if x != nil {
-		return x.Avatar
+	if x != nil && x.Avatar != nil {
+		return *x.Avatar
 	}
 	return ""
 }
@@ -479,7 +479,7 @@ const file_ourchat_friend_v1_friend_proto_rawDesc = "" +
 	"FriendInfo\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x16\n" +
 	"\x06avatar\x18\x02 \x01(\tR\x06avatar\x12\x16\n" +
-	"\x06gender\x18\x03 \x01(\tR\x06gender\"\xaf\x02\n" +
+	"\x06gender\x18\x03 \x01(\tR\x06gender\"\xd1\x02\n" +
 	"\rFriendRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\x03R\x06userId\x12\x1b\n" +
@@ -489,9 +489,11 @@ const file_ourchat_friend_v1_friend_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1a\n" +
-	"\busername\x18\b \x01(\tR\busername\x12\x16\n" +
-	"\x06avatar\x18\t \x01(\tR\x06avatar\"F\n" +
+	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1f\n" +
+	"\busername\x18\b \x01(\tH\x00R\busername\x88\x01\x01\x12\x1b\n" +
+	"\x06avatar\x18\t \x01(\tH\x01R\x06avatar\x88\x01\x01B\v\n" +
+	"\t_usernameB\t\n" +
+	"\a_avatar\"F\n" +
 	"\x0eAddFriendInput\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x1b\n" +
 	"\tfriend_id\x18\x02 \x01(\x03R\bfriendId\"a\n" +
@@ -544,6 +546,7 @@ func file_ourchat_friend_v1_friend_proto_init() {
 	if File_ourchat_friend_v1_friend_proto != nil {
 		return
 	}
+	file_ourchat_friend_v1_friend_proto_msgTypes[2].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

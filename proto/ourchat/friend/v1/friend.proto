@@ -31,8 +31,8 @@ message FriendRequest {
   string status = 5;
   google.protobuf.Timestamp created_at = 6;
   google.protobuf.Timestamp updated_at = 7;
-  string username = 8;
-  string avatar = 9;
+  optional string username = 8; // 请求方资料,本地 friendInfo 取不到时回退用,可缺
+  optional string avatar = 9;
 }
 
 // 添加好友入参(PUT /friend/addFriend)。

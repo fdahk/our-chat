@@ -42,7 +42,7 @@ const AddFriendModal = forwardRef<HTMLDivElement, AddFriendModalProps>(
         status: 'sent',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        remark: null,
+        remark: '',
       }));
         setIsSent(true);
     }

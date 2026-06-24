@@ -85,6 +85,9 @@ function DirectoryView() {
                 
                 // 创建初始消息 
                 const msg:Message = {
+                    id: 0,
+                    clientMsgId: '',
+                    seq: 0,
                     conversationId: conversationId,
                     senderId: friendId,
                     content: t('directory.hello') + otherUser.username,

@@ -114,9 +114,24 @@ public nonisolated struct Ourchat_Friend_V1_FriendRequest: Sendable {
   /// Clears the value of `updatedAt`. Subsequent reads from it will return its default value.
   public mutating func clearUpdatedAt() {self._updatedAt = nil}
 
-  public var username: String = String()
+  /// 请求方资料,本地 friendInfo 取不到时回退用,可缺
+  public var username: String {
+    get {_username ?? String()}
+    set {_username = newValue}
+  }
+  /// Returns true if `username` has been explicitly set.
+  public var hasUsername: Bool {self._username != nil}
+  /// Clears the value of `username`. Subsequent reads from it will return its default value.
+  public mutating func clearUsername() {self._username = nil}
 
-  public var avatar: String = String()
+  public var avatar: String {
+    get {_avatar ?? String()}
+    set {_avatar = newValue}
+  }
+  /// Returns true if `avatar` has been explicitly set.
+  public var hasAvatar: Bool {self._avatar != nil}
+  /// Clears the value of `avatar`. Subsequent reads from it will return its default value.
+  public mutating func clearAvatar() {self._avatar = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -124,6 +139,8 @@ public nonisolated struct Ourchat_Friend_V1_FriendRequest: Sendable {
 
   fileprivate var _createdAt: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
   fileprivate var _updatedAt: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+  fileprivate var _username: String? = nil
+  fileprivate var _avatar: String? = nil
 }
 
 /// 添加好友入参(PUT /friend/addFriend)。
@@ -300,8 +317,8 @@ nonisolated extension Ourchat_Friend_V1_FriendRequest: SwiftProtobuf.Message, Sw
       case 5: try { try decoder.decodeSingularStringField(value: &self.status) }()
       case 6: try { try decoder.decodeSingularMessageField(value: &self._createdAt) }()
       case 7: try { try decoder.decodeSingularMessageField(value: &self._updatedAt) }()
-      case 8: try { try decoder.decodeSingularStringField(value: &self.username) }()
-      case 9: try { try decoder.decodeSingularStringField(value: &self.avatar) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self._username) }()
+      case 9: try { try decoder.decodeSingularStringField(value: &self._avatar) }()
       default: break
       }
     }
@@ -333,12 +350,12 @@ nonisolated extension Ourchat_Friend_V1_FriendRequest: SwiftProtobuf.Message, Sw
     try { if let v = self._updatedAt {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 7)
     } }()
-    if !self.username.isEmpty {
-      try visitor.visitSingularStringField(value: self.username, fieldNumber: 8)
-    }
-    if !self.avatar.isEmpty {
-      try visitor.visitSingularStringField(value: self.avatar, fieldNumber: 9)
-    }
+    try { if let v = self._username {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 8)
+    } }()
+    try { if let v = self._avatar {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 9)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -350,8 +367,8 @@ nonisolated extension Ourchat_Friend_V1_FriendRequest: SwiftProtobuf.Message, Sw
     if lhs.status != rhs.status {return false}
     if lhs._createdAt != rhs._createdAt {return false}
     if lhs._updatedAt != rhs._updatedAt {return false}
-    if lhs.username != rhs.username {return false}
-    if lhs.avatar != rhs.avatar {return false}
+    if lhs._username != rhs._username {return false}
+    if lhs._avatar != rhs._avatar {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -17,6 +17,7 @@ const initialState: UserState = {
   bio: '',
   phone: '',
   status: '',
+  gender: '',
   createdAt: '',
   updatedAt: '',
   lastSeen: '',
@@ -39,6 +40,7 @@ const userSlice = createSlice({
       state.bio = action.payload.bio;
       state.phone = action.payload.phone;
       state.status = action.payload.status;
+      state.gender = action.payload.gender;
       state.createdAt = action.payload.createdAt;
       state.updatedAt = action.payload.updatedAt;
       state.lastSeen = action.payload.lastSeen;
@@ -55,6 +57,7 @@ const userSlice = createSlice({
       state.bio = '';
       state.phone = '';
       state.status = '';
+      state.gender = '';
       state.createdAt = '';
       state.updatedAt = '';
       state.lastSeen = '';
