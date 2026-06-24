@@ -19,8 +19,9 @@ private struct LoginBody: Encodable {
     var remember: Bool
 }
 
-private struct RefreshBody: Encodable {
-    var refreshToken: String
+// 服务端 /api/login、/api/refresh 的 data 形如 { ...user, token }。原生端只取 token 走 Bearer。
+private struct TokenData: Decodable {
+    var token: String
 }
 
 extension AuthService: DependencyKey {
@@ -32,7 +33,9 @@ extension AuthService: DependencyKey {
                 "/api/login",
                 json: LoginBody(username: username, password: password, remember: remember)
             )
-            let tokens = try await apiClient.send(request, decoding: AuthTokens.self)
+            let data = try await apiClient.sendUnwrapping(request, as: TokenData.self)
+            // 服务端为单 JWT 模型(刷新即重签),无独立 refresh token;两处都存同一 token 以兼容 Keychain 结构。
+            let tokens = AuthTokens(accessToken: data.token, refreshToken: data.token)
             try keychain.save(tokens.accessToken, .accessToken)
             try keychain.save(tokens.refreshToken, .refreshToken)
             return tokens
@@ -40,11 +43,14 @@ extension AuthService: DependencyKey {
         refresh: {
             @Dependency(\.baseAPIClient) var apiClient
             @Dependency(\.keychain) var keychain
-            guard let refreshToken = try keychain.load(.refreshToken) else {
+            guard let current = try keychain.load(.accessToken) else {
                 throw AuthError.notAuthenticated
             }
-            let request = try APIRequest.post("/oauth/refresh", json: RefreshBody(refreshToken: refreshToken))
-            let tokens = try await apiClient.send(request, decoding: AuthTokens.self)
+            // /api/refresh 接受 Bearer(免 CSRF),凭当前 token 重签。
+            var request = APIRequest(method: .post, path: "/api/refresh")
+            request.headers["Authorization"] = "Bearer \(current)"
+            let data = try await apiClient.sendUnwrapping(request, as: TokenData.self)
+            let tokens = AuthTokens(accessToken: data.token, refreshToken: data.token)
             try keychain.save(tokens.accessToken, .accessToken)
             try keychain.save(tokens.refreshToken, .refreshToken)
             return tokens

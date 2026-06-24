@@ -6,4 +6,5 @@ enum APIError: Error, Equatable, Sendable {
     case unauthorized
     case http(status: Int, body: Data?)
     case decoding(message: String)
+    case server(message: String) // {success:false} 业务失败,携服务端 message
 }

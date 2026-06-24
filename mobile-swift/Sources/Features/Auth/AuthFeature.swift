@@ -73,8 +73,18 @@ struct AuthFeature {
 }
 
 private func loginErrorMessage(_ error: Error) -> String {
-    if let apiError = error as? APIError, case .unauthorized = apiError {
-        return "用户名或密码错误"
+    if let apiError = error as? APIError {
+        switch apiError {
+        case .unauthorized:
+            return "用户名或密码错误"
+        case let .http(status, _) where status == 400:
+            // 服务端对用户不存在/密码错误统一返回 400
+            return "用户名或密码错误"
+        case let .server(message):
+            return message
+        default:
+            break
+        }
     }
     return "登录失败,请稍后重试"
 }
