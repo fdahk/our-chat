@@ -46,7 +46,7 @@ private struct MessageDTO: Decodable {
 
     func toModel() -> ChatMessage {
         ChatMessage(
-            id: id,
+            serverId: id,
             conversationId: conversationId,
             senderId: senderId,
             seq: seq,
@@ -212,8 +212,8 @@ enum ConversationSamples {
 // SwiftUI 预览用消息样本。
 enum MessageSamples {
     static let all: [ChatMessage] = [
-        ChatMessage(id: 1, conversationId: "single_1_2", senderId: 2, seq: 1, content: "在吗?", type: "text", timestamp: nil, clientMsgId: nil),
-        ChatMessage(id: 2, conversationId: "single_1_2", senderId: 1, seq: 2, content: "在的", type: "text", timestamp: nil, clientMsgId: nil),
-        ChatMessage(id: 3, conversationId: "single_1_2", senderId: 2, seq: 3, content: "OK", type: "text", timestamp: nil, clientMsgId: nil),
+        ChatMessage(serverId: 1, conversationId: "single_1_2", senderId: 2, seq: 1, content: "在吗?", type: "text", timestamp: nil, clientMsgId: nil),
+        ChatMessage(serverId: 2, conversationId: "single_1_2", senderId: 1, seq: 2, content: "在的", type: "text", timestamp: nil, clientMsgId: nil),
+        ChatMessage(serverId: 3, conversationId: "single_1_2", senderId: 2, seq: 3, content: "OK", type: "text", timestamp: nil, clientMsgId: nil),
     ]
 }

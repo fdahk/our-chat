@@ -47,6 +47,7 @@ let project = Project(
                 .external(name: "Kingfisher"),
                 .external(name: "GRDB"),
                 .external(name: "SwiftProtobuf"),
+                .external(name: "SocketIO"),
             ],
             settings: .settings(
                 base: [

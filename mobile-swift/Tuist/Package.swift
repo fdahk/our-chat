@@ -14,6 +14,7 @@ import PackageDescription
             "SnapshotTesting": .framework,
             "Mockable": .framework,
             "SwiftProtobuf": .framework,
+            "SocketIO": .framework,
         ]
     )
 #endif
@@ -48,6 +49,10 @@ let package = Package(
         .package(
             url: "https://github.com/apple/swift-protobuf",
             from: "1.28.0"
+        ),
+        .package(
+            url: "https://github.com/socketio/socket.io-client-swift",
+            from: "16.1.0"
         ),
     ]
 )

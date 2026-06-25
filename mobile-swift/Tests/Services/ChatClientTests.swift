@@ -67,7 +67,7 @@ struct ChatClientTests {
         } operation: {
             let messages = try await ChatClient.liveValue.messages("single_1_2")
             #expect(messages.count == 1)
-            #expect(messages.first?.id == 1)
+            #expect(messages.first?.serverId == 1)
             #expect(messages.first?.senderId == 2)
             #expect(messages.first?.content == "hi")
             #expect(messages.first?.type == "text")

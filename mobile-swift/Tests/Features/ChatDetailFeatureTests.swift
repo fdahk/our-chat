@@ -1,14 +1,15 @@
 import ComposableArchitecture
+import Foundation
 import Testing
 @testable import OurChat
 
 @MainActor
 struct ChatDetailFeatureTests {
     @Test
-    func onAppearLoadsHistoryAndCurrentUser() async {
+    func onAppearLoadsHistoryAndSubscribes() async {
         let history = [
-            ChatMessage(id: 1, conversationId: "single_1_2", senderId: 2, seq: 1, content: "hi", type: "text", timestamp: nil, clientMsgId: nil),
-            ChatMessage(id: 2, conversationId: "single_1_2", senderId: 1, seq: 2, content: "yo", type: "text", timestamp: nil, clientMsgId: nil),
+            ChatMessage(serverId: 1, conversationId: "single_1_2", senderId: 2, seq: 1, content: "hi", type: "text", timestamp: nil, clientMsgId: nil),
+            ChatMessage(serverId: 2, conversationId: "single_1_2", senderId: 1, seq: 2, content: "yo", type: "text", timestamp: nil, clientMsgId: nil),
         ]
         let store = TestStore(
             initialState: ChatDetailFeature.State(conversationId: "single_1_2", title: "段宇皓")
@@ -17,6 +18,8 @@ struct ChatDetailFeatureTests {
         } withDependencies: {
             $0.chatClient.messages = { _ in history }
             $0.sessionClient.currentUserId = { 1 }
+            $0.socketClient.connect = {}
+            $0.socketClient.incomingMessages = { .finished }
         }
         await store.send(.onAppear) {
             $0.currentUserId = 1
@@ -26,5 +29,98 @@ struct ChatDetailFeatureTests {
             $0.isLoading = false
             $0.messages = history
         }
+    }
+
+    @Test
+    func sendInsertsOptimisticMessageAndEmits() async {
+        let (sentStream, sentContinuation) = AsyncStream<OutgoingMessage>.makeStream()
+        let store = TestStore(
+            initialState: ChatDetailFeature.State(conversationId: "single_1_2", title: "段宇皓")
+        ) {
+            ChatDetailFeature()
+        } withDependencies: {
+            $0.chatClient.messages = { _ in [] }
+            $0.sessionClient.currentUserId = { 1 }
+            $0.socketClient.connect = {}
+            $0.socketClient.incomingMessages = { .finished }
+            $0.socketClient.send = { sentContinuation.yield($0); sentContinuation.finish() }
+            $0.uuid = .incrementing
+            $0.date = .constant(Date(timeIntervalSince1970: 0))
+        }
+        await store.send(.onAppear) {
+            $0.currentUserId = 1
+            $0.isLoading = true
+        }
+        await store.receive(\.messagesResponse) {
+            $0.isLoading = false
+        }
+        await store.send(.binding(.set(\.draft, "你好"))) {
+            $0.draft = "你好"
+        }
+        let optimistic = ChatMessage(
+            serverId: 0, conversationId: "single_1_2", senderId: 1, seq: nil,
+            content: "你好", type: "text",
+            timestamp: Date(timeIntervalSince1970: 0),
+            clientMsgId: "00000000-0000-0000-0000-000000000000"
+        )
+        await store.send(.sendButtonTapped) {
+            $0.messages = [optimistic]
+            $0.draft = ""
+        }
+        var sent: OutgoingMessage?
+        for await message in sentStream { sent = message; break }
+        #expect(sent == OutgoingMessage(
+            conversationId: "single_1_2",
+            clientMsgId: "00000000-0000-0000-0000-000000000000",
+            content: "你好"
+        ))
+    }
+
+    @Test
+    func serverEchoReplacesOptimisticByClientMsgId() async {
+        let store = TestStore(
+            initialState: ChatDetailFeature.State(conversationId: "single_1_2", title: "段宇皓")
+        ) {
+            ChatDetailFeature()
+        } withDependencies: {
+            $0.socketClient.send = { _ in }
+            $0.uuid = .incrementing
+            $0.date = .constant(Date(timeIntervalSince1970: 0))
+        }
+        await store.send(.binding(.set(\.draft, "hi"))) {
+            $0.draft = "hi"
+        }
+        let optimistic = ChatMessage(
+            serverId: 0, conversationId: "single_1_2", senderId: 0, seq: nil,
+            content: "hi", type: "text",
+            timestamp: Date(timeIntervalSince1970: 0),
+            clientMsgId: "00000000-0000-0000-0000-000000000000"
+        )
+        await store.send(.sendButtonTapped) {
+            $0.messages = [optimistic]
+            $0.draft = ""
+        }
+        let echo = ChatMessage(
+            serverId: 42, conversationId: "single_1_2", senderId: 0, seq: 5,
+            content: "hi", type: "text", timestamp: nil,
+            clientMsgId: "00000000-0000-0000-0000-000000000000"
+        )
+        await store.send(.messageReceived(echo)) {
+            $0.messages = [echo]
+        }
+    }
+
+    @Test
+    func ignoresMessageFromOtherConversation() async {
+        let store = TestStore(
+            initialState: ChatDetailFeature.State(conversationId: "single_1_2", title: "段宇皓")
+        ) {
+            ChatDetailFeature()
+        }
+        let other = ChatMessage(
+            serverId: 7, conversationId: "single_3_4", senderId: 3, seq: 1,
+            content: "外会话", type: "text", timestamp: nil, clientMsgId: nil
+        )
+        await store.send(.messageReceived(other))
     }
 }
