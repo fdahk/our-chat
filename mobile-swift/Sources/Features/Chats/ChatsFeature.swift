@@ -9,12 +9,16 @@ struct ChatsFeature {
         var otherDeviceCount = 0
         var isLoading = false
         var searchPresented = false
+        // 导航栈:点会话推入聊天详情页。
+        var path = StackState<ChatDetailFeature.State>()
     }
 
     enum Action: BindableAction {
         case binding(BindingAction<State>)
         case onAppear
         case conversationsResponse([Conversation], deviceCount: Int)
+        case conversationTapped(Conversation)
+        case path(StackActionOf<ChatDetailFeature>)
     }
 
     @Dependency(\.chatClient) var chatClient
@@ -41,9 +45,18 @@ struct ChatsFeature {
                 state.otherDeviceCount = deviceCount
                 return .none
 
-            case .binding:
+            case let .conversationTapped(conversation):
+                state.path.append(
+                    ChatDetailFeature.State(conversationId: conversation.id, title: conversation.title)
+                )
+                return .none
+
+            case .binding, .path:
                 return .none
             }
+        }
+        .forEach(\.path, action: \.path) {
+            ChatDetailFeature()
         }
     }
 }

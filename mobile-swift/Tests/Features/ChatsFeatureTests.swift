@@ -22,4 +22,15 @@ struct ChatsFeatureTests {
             $0.otherDeviceCount = 0
         }
     }
+
+    @Test
+    func conversationTappedPushesDetail() async {
+        let conversation = Conversation(id: "single_1_2", title: "段宇皓", preview: "OK", timeText: "昨天")
+        let store = TestStore(initialState: ChatsFeature.State()) {
+            ChatsFeature()
+        }
+        await store.send(.conversationTapped(conversation)) {
+            $0.path.append(ChatDetailFeature.State(conversationId: "single_1_2", title: "段宇皓"))
+        }
+    }
 }
