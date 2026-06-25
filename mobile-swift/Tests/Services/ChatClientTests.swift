@@ -58,4 +58,19 @@ struct ChatClientTests {
             #expect(result.first?.unreadCount == 1)
         }
     }
+
+    @Test
+    func messagesDecodesHistory() async throws {
+        let json = #"{"success":true,"data":[{"id":1,"conversationId":"single_1_2","senderId":2,"seq":5,"content":"hi","type":"text","clientMsgId":"c1"}]}"#
+        try await withDependencies {
+            $0.apiClient.perform = { _ in Data(json.utf8) }
+        } operation: {
+            let messages = try await ChatClient.liveValue.messages("single_1_2")
+            #expect(messages.count == 1)
+            #expect(messages.first?.id == 1)
+            #expect(messages.first?.senderId == 2)
+            #expect(messages.first?.content == "hi")
+            #expect(messages.first?.type == "text")
+        }
+    }
 }

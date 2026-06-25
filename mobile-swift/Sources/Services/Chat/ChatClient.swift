@@ -8,6 +8,7 @@ import Foundation
 struct ChatClient: Sendable {
     var conversations: @Sendable () async throws -> [Conversation]
     var otherDeviceCount: @Sendable () async throws -> Int = { 0 }
+    var messages: @Sendable (_ conversationId: String) async throws -> [ChatMessage]
 }
 
 // GET /user/userConversations?userId= 的行(prisma camelCase)
@@ -30,6 +31,31 @@ private struct LastMsgDTO: Decodable {
     let content: String?
     let type: String?
     let timestamp: String?
+}
+
+// GET /user/messages 的消息行(prisma camelCase)。
+private struct MessageDTO: Decodable {
+    let id: Int
+    let conversationId: String
+    let senderId: Int
+    let seq: Int?
+    let content: String?
+    let type: String?
+    let timestamp: String?
+    let clientMsgId: String?
+
+    func toModel() -> ChatMessage {
+        ChatMessage(
+            id: id,
+            conversationId: conversationId,
+            senderId: senderId,
+            seq: seq,
+            content: content ?? "",
+            type: type ?? "text",
+            timestamp: ConversationAssembler.parseISO(timestamp),
+            clientMsgId: clientMsgId
+        )
+    }
 }
 
 extension ChatClient: DependencyKey {
@@ -73,12 +99,21 @@ extension ChatClient: DependencyKey {
                 myUserId: userId
             )
         },
-        otherDeviceCount: { 0 } // 暂无对应 REST 来源,隐藏"已登录N台设备"条
+        otherDeviceCount: { 0 }, // 暂无对应 REST 来源,隐藏"已登录N台设备"条
+        messages: { conversationId in
+            @Dependency(\.apiClient) var apiClient
+            let dtos = try await apiClient.sendUnwrapping(
+                APIRequest.get("/user/messages", query: [URLQueryItem(name: "conversationId", value: conversationId)]),
+                as: [MessageDTO].self
+            )
+            return dtos.map { $0.toModel() }
+        }
     )
 
     static let previewValue = ChatClient(
         conversations: { ConversationSamples.all },
-        otherDeviceCount: { 2 }
+        otherDeviceCount: { 2 },
+        messages: { _ in MessageSamples.all }
     )
 }
 
@@ -171,5 +206,14 @@ enum ConversationSamples {
         Conversation(id: "single_1_2", title: "段宇皓", preview: "OK", timeText: "昨天"),
         Conversation(id: "ft", title: "文件传输助手", preview: "[文件]", timeText: "昨天", systemTile: .fileTransfer),
         Conversation(id: "g2", title: "线性代数软件工程1-4班", preview: "谢谢", timeText: "6月18日", isMuted: true, isGroup: true),
+    ]
+}
+
+// SwiftUI 预览用消息样本。
+enum MessageSamples {
+    static let all: [ChatMessage] = [
+        ChatMessage(id: 1, conversationId: "single_1_2", senderId: 2, seq: 1, content: "在吗?", type: "text", timestamp: nil, clientMsgId: nil),
+        ChatMessage(id: 2, conversationId: "single_1_2", senderId: 1, seq: 2, content: "在的", type: "text", timestamp: nil, clientMsgId: nil),
+        ChatMessage(id: 3, conversationId: "single_1_2", senderId: 2, seq: 3, content: "OK", type: "text", timestamp: nil, clientMsgId: nil),
     ]
 }
