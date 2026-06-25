@@ -33,4 +33,18 @@ struct ChatsFeatureTests {
             $0.path.append(ChatDetailFeature.State(conversationId: "single_1_2", title: "段宇皓"))
         }
     }
+
+    @Test
+    func searchButtonPresentsAndCloseDismisses() async {
+        let store = TestStore(initialState: ChatsFeature.State()) {
+            ChatsFeature()
+        }
+        await store.send(.searchButtonTapped) {
+            $0.search = SearchFeature.State()
+        }
+        await store.send(.search(.presented(.closeTapped)))
+        await store.receive(\.search) {
+            $0.search = nil
+        }
+    }
 }

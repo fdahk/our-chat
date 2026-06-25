@@ -3,11 +3,23 @@ import Foundation
 
 @Reducer
 struct MainFeature {
-    @ObservableState
-    struct State: Equatable {}
+    enum Tab: Equatable {
+        case chats, contacts, discover, me
+    }
 
-    enum Action: Equatable {
-        case logoutButtonTapped
+    @ObservableState
+    struct State: Equatable {
+        var selectedTab: Tab = .chats
+        var chats = ChatsFeature.State()
+        var contacts = ContactsFeature.State()
+        var me = MeFeature.State()
+    }
+
+    enum Action: BindableAction {
+        case binding(BindingAction<State>)
+        case chats(ChatsFeature.Action)
+        case contacts(ContactsFeature.Action)
+        case me(MeFeature.Action)
         case delegate(Delegate)
 
         enum Delegate: Equatable {
@@ -18,15 +30,20 @@ struct MainFeature {
     @Dependency(\.authService) var authService
 
     var body: some ReducerOf<Self> {
+        BindingReducer()
+        Scope(state: \.chats, action: \.chats) { ChatsFeature() }
+        Scope(state: \.contacts, action: \.contacts) { ContactsFeature() }
+        Scope(state: \.me, action: \.me) { MeFeature() }
         Reduce { _, action in
             switch action {
-            case .logoutButtonTapped:
+            case .me(.delegate(.logout)):
+                // 退出登录:清本地凭据后上抛 loggedOut,由 RootFeature 切回登录页。
                 return .run { send in
                     try? await authService.logout()
                     await send(.delegate(.loggedOut))
                 }
 
-            case .delegate:
+            case .binding, .chats, .contacts, .me, .delegate:
                 return .none
             }
         }

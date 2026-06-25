@@ -8,7 +8,8 @@ struct ChatsFeature {
         var conversations: [Conversation] = []
         var otherDeviceCount = 0
         var isLoading = false
-        var searchPresented = false
+        // 搜索页(全屏覆盖呈现)。
+        @Presents var search: SearchFeature.State?
         // 导航栈:点会话推入聊天详情页。
         var path = StackState<ChatDetailFeature.State>()
     }
@@ -18,6 +19,8 @@ struct ChatsFeature {
         case onAppear
         case conversationsResponse([Conversation], deviceCount: Int)
         case conversationTapped(Conversation)
+        case searchButtonTapped
+        case search(PresentationAction<SearchFeature.Action>)
         case path(StackActionOf<ChatDetailFeature>)
     }
 
@@ -51,9 +54,20 @@ struct ChatsFeature {
                 )
                 return .none
 
-            case .binding, .path:
+            case .searchButtonTapped:
+                state.search = SearchFeature.State()
+                return .none
+
+            case .search(.presented(.delegate(.close))):
+                state.search = nil
+                return .none
+
+            case .binding, .path, .search:
                 return .none
             }
+        }
+        .ifLet(\.$search, action: \.search) {
+            SearchFeature()
         }
         .forEach(\.path, action: \.path) {
             ChatDetailFeature()

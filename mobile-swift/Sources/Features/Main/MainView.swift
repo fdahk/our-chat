@@ -1,30 +1,53 @@
 import ComposableArchitecture
 import SwiftUI
+import UIKit
 
 struct MainView: View {
-    let store: StoreOf<MainFeature>
+    @Bindable var store: StoreOf<MainFeature>
+
+    init(store: StoreOf<MainFeature>) {
+        self.store = store
+        Self.configureTabBarAppearance()
+    }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 16) {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 56))
-                    .foregroundStyle(.green)
-                Text("已登录")
-                    .font(.title2.weight(.semibold))
-                Text("聊天功能开发中")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            .navigationTitle("OurChat")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("退出登录") {
-                        store.send(.logoutButtonTapped)
-                    }
-                }
-            }
+        TabView(selection: $store.selectedTab) {
+            ChatsView(store: store.scope(state: \.chats, action: \.chats))
+                .tag(MainFeature.Tab.chats)
+                .tabItem { Label("微信", systemImage: "message.fill") }
+
+            ContactsView(store: store.scope(state: \.contacts, action: \.contacts))
+                .tag(MainFeature.Tab.contacts)
+                .tabItem { Label("通讯录", systemImage: "person.2.fill") }
+
+            DiscoverView()
+                .tag(MainFeature.Tab.discover)
+                .tabItem { Label("发现", systemImage: "safari.fill") }
+
+            MeView(store: store.scope(state: \.me, action: \.me))
+                .tag(MainFeature.Tab.me)
+                .tabItem { Label("我", systemImage: "person.fill") }
         }
+        .tint(WeChatColor.brand)
+        .preferredColorScheme(.dark)
+    }
+
+    // 暗色标签栏:不透明深色底 + 未选灰、选中微信绿。用 UITabBarAppearance 全局配置。
+    private static func configureTabBarAppearance() {
+        let appearance = UITabBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = UIColor(WeChatColor.navBar)
+
+        let normal = UIColor(WeChatColor.textSecondary)
+        let selected = UIColor(WeChatColor.brand)
+        for layout in [appearance.stackedLayoutAppearance, appearance.inlineLayoutAppearance, appearance.compactInlineLayoutAppearance] {
+            layout.normal.iconColor = normal
+            layout.normal.titleTextAttributes = [.foregroundColor: normal]
+            layout.selected.iconColor = selected
+            layout.selected.titleTextAttributes = [.foregroundColor: selected]
+        }
+        UITabBar.appearance().standardAppearance = appearance
+        UITabBar.appearance().scrollEdgeAppearance = appearance
     }
 }
 
