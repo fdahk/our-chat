@@ -19,6 +19,8 @@ struct SocketClient: Sendable {
     var connect: @Sendable () -> Void
     var disconnect: @Sendable () -> Void
     var send: @Sendable (_ message: OutgoingMessage) -> Void
+    // 已读上报:单调推进该会话本端 lastReadSeq,服务端据此清未读并同步其它端。
+    var reportRead: @Sendable (_ conversationId: String, _ uptoSeq: Int) -> Void
     var incomingMessages: @Sendable () -> AsyncStream<ChatMessage> = { .finished }
 }
 
@@ -33,6 +35,9 @@ extension SocketClient: DependencyKey {
             },
             disconnect: { Task { await connection.disconnect() } },
             send: { message in Task { await connection.send(message) } },
+            reportRead: { conversationId, uptoSeq in
+                Task { await connection.reportRead(conversationId: conversationId, uptoSeq: uptoSeq) }
+            },
             incomingMessages: {
                 let (stream, continuation) = AsyncStream<ChatMessage>.makeStream()
                 Task { await connection.subscribe(continuation) }
@@ -45,6 +50,7 @@ extension SocketClient: DependencyKey {
         connect: {},
         disconnect: {},
         send: { _ in },
+        reportRead: { _, _ in },
         incomingMessages: { .finished }
     )
 }
@@ -95,6 +101,13 @@ private actor SocketConnection {
             "conversationId": message.conversationId,
             "content": message.content,
             "type": message.type,
+        ])
+    }
+
+    func reportRead(conversationId: String, uptoSeq: Int) {
+        socket?.emit("read.report", [
+            "conversationId": conversationId,
+            "uptoSeq": uptoSeq,
         ])
     }
 

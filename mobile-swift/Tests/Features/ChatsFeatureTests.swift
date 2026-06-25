@@ -47,4 +47,20 @@ struct ChatsFeatureTests {
             $0.search = nil
         }
     }
+
+    @Test
+    func detailDidReadClearsUnreadBadge() async {
+        var conversation = Conversation(id: "single_1_2", title: "段宇皓", preview: "hi", timeText: "昨天")
+        conversation.unreadCount = 5
+        let store = TestStore(initialState: ChatsFeature.State(conversations: [conversation])) {
+            ChatsFeature()
+        }
+        await store.send(.conversationTapped(conversation)) {
+            $0.path.append(ChatDetailFeature.State(conversationId: "single_1_2", title: "段宇皓"))
+        }
+        await store.send(.path(.element(id: 0, action: .delegate(.didRead(conversationId: "single_1_2", uptoSeq: 7))))) {
+            $0.conversations[0].unreadCount = 0
+            $0.conversations[0].hasRedDot = false
+        }
+    }
 }

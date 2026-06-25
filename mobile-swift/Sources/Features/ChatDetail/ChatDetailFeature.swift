@@ -21,6 +21,12 @@ struct ChatDetailFeature {
         case messagesResponse([ChatMessage])
         case sendButtonTapped
         case messageReceived(ChatMessage)
+        case delegate(Delegate)
+
+        enum Delegate: Equatable {
+            // 本会话已读至 uptoSeq:父 reducer 据此清列表未读角标。
+            case didRead(conversationId: String, uptoSeq: Int)
+        }
     }
 
     @Dependency(\.chatClient) var chatClient
@@ -58,7 +64,7 @@ struct ChatDetailFeature {
             case let .messagesResponse(messages):
                 state.isLoading = false
                 state.messages = messages
-                return .none
+                return markRead(conversationId: state.conversationId, messages: messages)
 
             case .sendButtonTapped:
                 let content = state.draft.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -85,12 +91,23 @@ struct ChatDetailFeature {
             case let .messageReceived(message):
                 guard message.conversationId == state.conversationId else { return .none }
                 mergeMessage(into: &state.messages, message)
-                return .none
+                // 对方发来的消息:页面在前台即视为已读,上报并清角标。自己的回显不触发。
+                guard message.senderId != state.currentUserId else { return .none }
+                return markRead(conversationId: state.conversationId, messages: state.messages)
 
-            case .binding:
+            case .binding, .delegate:
                 return .none
             }
         }
+    }
+
+    // 取已加载消息的最大 seq 作为已读位点:socket 上报 + 通知父清未读。无 seq(纯乐观)则不发。
+    private func markRead(conversationId: String, messages: [ChatMessage]) -> Effect<Action> {
+        guard let uptoSeq = messages.compactMap(\.seq).max(), uptoSeq > 0 else { return .none }
+        return .merge(
+            .run { _ in socketClient.reportRead(conversationId, uptoSeq) },
+            .send(.delegate(.didRead(conversationId: conversationId, uptoSeq: uptoSeq)))
+        )
     }
 }
 

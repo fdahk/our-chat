@@ -19,6 +19,7 @@ struct ChatDetailFeatureTests {
             $0.chatClient.messages = { _ in history }
             $0.sessionClient.currentUserId = { 1 }
             $0.socketClient.connect = {}
+            $0.socketClient.reportRead = { _, _ in }
             $0.socketClient.incomingMessages = { .finished }
         }
         await store.send(.onAppear) {
@@ -29,6 +30,31 @@ struct ChatDetailFeatureTests {
             $0.isLoading = false
             $0.messages = history
         }
+        // 历史含 seq,打开即已读 → 上报并发 didRead 委托。
+        await store.receive(\.delegate)
+    }
+
+    @Test
+    func messagesResponseReportsReadUpToMaxSeq() async {
+        let (readStream, readContinuation) = AsyncStream<Int>.makeStream()
+        let history = [
+            ChatMessage(serverId: 1, conversationId: "single_1_2", senderId: 2, seq: 3, content: "a", type: "text", timestamp: nil, clientMsgId: nil),
+            ChatMessage(serverId: 2, conversationId: "single_1_2", senderId: 2, seq: 7, content: "b", type: "text", timestamp: nil, clientMsgId: nil),
+        ]
+        let store = TestStore(
+            initialState: ChatDetailFeature.State(conversationId: "single_1_2", title: "x")
+        ) {
+            ChatDetailFeature()
+        } withDependencies: {
+            $0.socketClient.reportRead = { _, seq in readContinuation.yield(seq); readContinuation.finish() }
+        }
+        await store.send(.messagesResponse(history)) {
+            $0.messages = history
+        }
+        await store.receive(\.delegate)
+        var reported: Int?
+        for await seq in readStream { reported = seq; break }
+        #expect(reported == 7)
     }
 
     @Test

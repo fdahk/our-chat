@@ -62,6 +62,14 @@ struct ChatsFeature {
                 state.search = nil
                 return .none
 
+            case let .path(.element(id: _, action: .delegate(.didRead(conversationId, _)))):
+                // 打开会话即清该会话未读角标/红点(服务端已读上报由详情页负责)。
+                if let index = state.conversations.firstIndex(where: { $0.id == conversationId }) {
+                    state.conversations[index].unreadCount = 0
+                    state.conversations[index].hasRedDot = false
+                }
+                return .none
+
             case .binding, .path, .search:
                 return .none
             }
