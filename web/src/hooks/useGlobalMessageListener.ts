@@ -90,16 +90,17 @@ export default function useGlobalMessageListener() {
               }
               // 如果好友也不存在，把好友也添加下
               if(!globalFriendInfoListRef.current[Number(otherUserId)]) {
-                dispatch(addGlobalFriend({friend_id: Number(otherUserId), remark: null}));
-                dispatch(addGlobalFriendInfo({friend_id: Number(otherUserId), friendInfo: otherUser}));
+                dispatch(addGlobalFriend({friendId: Number(otherUserId), remark: null}));
+                dispatch(addGlobalFriendInfo({friendId: Number(otherUserId), friendInfo: otherUser}));
               }
               dispatch(addConversation({
                 id: msg.conversationId,
-                conv_type: 'single', // 单聊
+                convType: 'single', // 单聊
                 title: otherUser.username,
-                avatar: otherUser.avatar, 
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
+                avatar: otherUser.avatar,
+                nextSeq: 0,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
               }));
             }
             dispatch(addLastMessage({ conversationId: msg.conversationId, message: msg }));

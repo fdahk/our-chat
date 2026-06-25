@@ -8,7 +8,7 @@
 
 .head {
   padding: $space-4;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -18,7 +18,7 @@
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
-  color: $legacy-text;
+  color: var(--text-1);
 }
 .actions {
   display: inline-flex;
@@ -30,7 +30,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #999;
+  color: var(--text-3);
   font-size: 0.875rem;
 }
 
@@ -50,8 +50,8 @@
   align-items: center;
   gap: $space-3;
   padding: $space-3;
-  background: $legacy-btn;
-  border: 1px solid rgba(0, 0, 0, 0.04);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: $radius-md;
   transition: border-color $dur-base $ease-out;
 
@@ -68,19 +68,19 @@
 .itemName {
   font-size: 0.875rem;
   font-weight: 500;
-  color: $legacy-text;
+  color: var(--text-1);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .itemMeta {
   font-size: 0.75rem;
-  color: #888;
+  color: var(--text-2);
   display: inline-flex;
   gap: $space-2;
   align-items: center;
 }
-.metaSep { color: #ccc; }
+.metaSep { color: var(--text-3); }
 .itemErr {
   font-size: 0.75rem;
   color: $color-danger;
@@ -113,7 +113,7 @@
   width: 1.5rem;
   height: 1.5rem;
   cursor: pointer;
-  color: #999;
+  color: var(--text-3);
   display: inline-flex;
   align-items: center;
   justify-content: center;

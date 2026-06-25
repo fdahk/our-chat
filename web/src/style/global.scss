@@ -19,29 +19,54 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  color: $legacy-text;
-  background-color: rgba(245, 235, 235, 0.67);
-
-  // ── 主题色(主 app)──
+  // ── 强调 / 状态色(主题无关)──
   --color-primary:        #{$brand-wechat};
   --color-primary-hover:  #{$brand-wechat-hover};
   --color-primary-soft:   #{$brand-wechat-soft};
-
-  // ── 语义状态色 ──
   --color-success: #{$color-success};
   --color-warning: #{$color-warning};
   --color-danger:  #{$color-danger};
   --color-info:    #{$color-info};
+  --accent:        #{$brand-wechat};
+  --accent-hover:  #{$brand-wechat-hover};
+  --accent-soft:   #{$brand-wechat-soft};
 
-  // ── 主 app 遗留色,保持向后兼容(原 index.css 已沿用全 app)──
-  --primary-color:           #{$brand-wechat};
-  --background-color:        #{$legacy-bg};
-  --background-color-hover:  #{$legacy-bg-hover};
-  --button-color:            #{$legacy-btn};
-  --button-color-hover:      #{$legacy-btn-hover};
-  --icon-color:              #{$legacy-icon};
-  --text-color:              #{$legacy-text};
-  --warning-color:           #{$legacy-warning};
+  // ── 语义主题 token(浅色,默认)。色值对齐官方 WeUI(Tencent,MIT)。深色见 :root[data-theme='dark'] ──
+  --rail-bg:           #e6e6e6;
+  --rail-icon:         rgba(0, 0, 0, 0.5);
+  --rail-icon-hover:   rgba(0, 0, 0, 0.9);
+  --sidebar-bg:        #f7f7f7;
+  --sidebar-hover:     #ececec;
+  --sidebar-active:    #d9d9d9;
+  --main-bg:           #f5f5f5;
+  --surface:           #ffffff;
+  --surface-2:         #f0f0f0;
+  --bubble-self:       #95ec69;
+  --bubble-self-text:  rgba(0, 0, 0, 0.9);
+  --bubble-other:      #ffffff;
+  --bubble-other-text: rgba(0, 0, 0, 0.9);
+  --text-1:            rgba(0, 0, 0, 0.9);
+  --text-2:            rgba(0, 0, 0, 0.55);
+  --text-3:            rgba(0, 0, 0, 0.3);
+  --border:            rgba(0, 0, 0, 0.1);
+  --divider:           rgba(0, 0, 0, 0.07);
+  --hover:             rgba(0, 0, 0, 0.05);
+  --popover-bg:        #ffffff;
+  --popover-shadow:    0 8px 30px rgba(0, 0, 0, 0.16);
+  --input-bg:          #ffffff;
+
+  // ── 遗留变量重映射到 token(向后兼容,随主题切换)──
+  --primary-color:          var(--accent);
+  --background-color:       var(--rail-bg);
+  --background-color-hover: var(--hover);
+  --button-color:           var(--surface-2);
+  --button-color-hover:     var(--sidebar-hover);
+  --icon-color:             var(--text-2);
+  --text-color:             var(--text-1);
+  --warning-color:          var(--color-danger);
+
+  color: var(--text-1);
+  background-color: var(--main-bg);
 
   // ── antd 覆盖(去掉 input 默认边框,让我们自定义)──
   --antd-input-border-color:        transparent;
@@ -68,6 +93,35 @@
 }
 // ╰───────────────────────────────────────────────────────────────────────────╯
 
+// ╭─ 深色主题(全 app:html[data-theme='dark'])──────────────────────────────╮
+// 只重定义基础 token;遗留变量在 :root 里以 var() 引用这些 token,自动随之切换。
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --rail-bg:           #2c2c2c;
+  --rail-icon:         hsla(0, 0%, 100%, 0.5);
+  --rail-icon-hover:   hsla(0, 0%, 100%, 0.9);
+  --sidebar-bg:        #1e1e1e;
+  --sidebar-hover:     #292929;
+  --sidebar-active:    #313131;
+  --main-bg:           #191919;
+  --surface:           #2c2c2c;
+  --surface-2:         #202020;
+  --bubble-self:       #3eb575;
+  --bubble-self-text:  rgba(0, 0, 0, 0.85);
+  --bubble-other:      #2c2c2c;
+  --bubble-other-text: hsla(0, 0%, 100%, 0.8);
+  --text-1:            hsla(0, 0%, 100%, 0.8);
+  --text-2:            hsla(0, 0%, 100%, 0.5);
+  --text-3:            hsla(0, 0%, 100%, 0.3);
+  --border:            hsla(0, 0%, 100%, 0.1);
+  --divider:           hsla(0, 0%, 100%, 0.07);
+  --hover:             hsla(0, 0%, 100%, 0.06);
+  --popover-bg:        #2c2c2c;
+  --popover-shadow:    0 8px 30px rgba(0, 0, 0, 0.55);
+  --input-bg:          #2c2c2c;
+}
+// ╰───────────────────────────────────────────────────────────────────────────╯
+
 // ╭─ 深色面板局部作用域 ── 加 class `.theme-dark` 让子树切到深色 ─────────────╮
 .theme-dark {
   --ui-accent:          #{$brand-indigo};
@@ -91,6 +145,8 @@
   padding: 0;
   box-sizing: border-box;
 }
+// 撑满视口:#root(App.css 已设 100%)依赖 html/body 有确定高度,否则全屏布局塌成内容高
+html, body { height: 100%; }
 p { margin-bottom: 0; }
 a { text-decoration: none; }
 ul, ol { list-style: none; }

@@ -7,11 +7,13 @@ import { useState, useRef, useEffect } from 'react';
 import SettingView from '@/views/settingView';
 import type { RootState } from '@/store/rootStore';
 import useGlobalMessageListener from '@/hooks/useGlobalMessageListener';
-import VoiceCallModal from '@/globalComponents/voiceCallModal';
+import CallModal from '@/globalComponents/callModal';
 import { buildServerUrl } from '@/utils/runtime';
 import { defaultAvatar } from '@/assets/images';
 import { post } from '@/utils/http';
 import { useLang } from '@/i18n';
+import ProfileCard from '@/globalComponents/profileCard';
+import PopoverMenu from '@/globalComponents/popoverMenu';
 
 function Layout() {
     const dispatch = useDispatch();
@@ -43,6 +45,9 @@ function Layout() {
     const menuRef = useRef<HTMLDivElement>(null);
     // 设置中心
     const [settingVisible, setSettingVisible] = useState(false);
+    // 个人信息浮层(点头像弹出)
+    const [profileVisible, setProfileVisible] = useState(false);
+    const profileRef = useRef<HTMLDivElement>(null);
     // 点击外部关闭
     useEffect(() => {
         if (!menuVisible) return;
@@ -56,6 +61,18 @@ function Layout() {
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, [menuVisible]);
+
+    // 点击外部关闭个人信息浮层
+    useEffect(() => {
+        if (!profileVisible) return;
+        const handleClickOutside = (event: MouseEvent) => {
+            if (profileRef.current && !profileRef.current.contains(event.target as Node)) setProfileVisible(false);
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [profileVisible]);
 
     // 点击退出登录
     const handleLogout = async () => {
@@ -81,6 +98,10 @@ function Layout() {
     const handleMenu = () => {
         setMenuVisible(!menuVisible);
     };
+    // 点击头像 → 弹出个人信息浮层
+    const handleProfile = () => {
+        setProfileVisible(!profileVisible);
+    };
     // 菜单选项
     const menuItems = [
         {
@@ -101,9 +122,23 @@ function Layout() {
             {/* 左导航栏 */}
             <div className={layoutStyle.left_nav}>
                 {/* 头像 */}
-                <div className={layoutStyle.left_nav_item_avatar}>
+                <div className={layoutStyle.left_nav_item_avatar} onClick={handleProfile}>
                         <img src={user.avatar ? buildServerUrl(user.avatar) : defaultAvatar} alt="" />
                 </div>
+                {/* 个人信息浮层:自己的资料卡(只读;设置/退出走左下角菜单) */}
+                {profileVisible && (
+                    <div className={layoutStyle.profile_anchor} ref={profileRef}>
+                        <ProfileCard
+                            avatar={user.avatar ? buildServerUrl(user.avatar) : ''}
+                            name={user.nickname || user.username}
+                            rows={[
+                                { label: t('profile.wxid'), value: String(user.id) },
+                                ...(user.email ? [{ label: t('profile.email'), value: user.email }] : []),
+                            ]}
+                            actions={[]}
+                        />
+                    </div>
+                )}
                 {/* 选项 */}
                 {
                     itemList.map(item => {
@@ -126,21 +161,10 @@ function Layout() {
                 </div>
                 {/* 菜单栏 */}
                 {menuVisible && (
-                    <div
-                        className={layoutStyle.menu_center}
-                        ref={menuRef}
-                    >
-                        {menuItems.map(item => {
-                            return (
-                                <div className={layoutStyle.menu_center_item_box} key={item.key} onClick={item.onClick}>
-                                    <div className={layoutStyle.menu_center_item}>
-                                        {item.label}
-                                    </div>
-                                </div>
-                            )
-                        })}
+                    <div className={layoutStyle.menu_anchor} ref={menuRef}>
+                        <PopoverMenu items={menuItems} />
                     </div>
-                )}   
+                )}
             </div>
 
 
@@ -152,7 +176,7 @@ function Layout() {
             )}
             
             {/* 语音通话弹窗 */}
-            <VoiceCallModal />
+            <CallModal />
         </div>
     )
 }

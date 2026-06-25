@@ -171,8 +171,8 @@ export class WebRTCManager {
         // 将原生候选转换为ICECandidate对象，方便后续处理
         const candidate: ICECandidate = {
           candidate: event.candidate.candidate, // 候选
-          sdpMLineIndex: event.candidate.sdpMLineIndex, // 候选所在的SDP轨道索引
-          sdpMid: event.candidate.sdpMid, // 候选所在的SDP轨道ID
+          sdpMlineIndex: event.candidate.sdpMLineIndex ?? undefined, // 候选所在的SDP轨道索引
+          sdpMid: event.candidate.sdpMid ?? undefined, // 候选所在的SDP轨道ID
         };
         this.onICECandidate?.(candidate);// 将候选通过信令服务器发送给对端
       }
@@ -295,9 +295,9 @@ export class WebRTCManager {
    * 2. 浏览器会显示权限请求弹窗
    * 3. 配置了回声消除/降噪等音频处理参数
    */
-  async getUserMedia(): Promise<MediaStream> {
+  async getUserMedia(withVideo = false): Promise<MediaStream> {
     try {
-      console.log('请求麦克风权限');
+      console.log(withVideo ? '请求麦克风+摄像头权限' : '请求麦克风权限');
 
       const constraints: MediaStreamConstraints = {
         audio: {
@@ -306,7 +306,10 @@ export class WebRTCManager {
           autoGainControl: true,    // 启用自动增益控制
           sampleRate: 44100,        // 设置采样率(CD音质)
         },
-        video: false,               // 不请求视频
+        // 视频通话才请求摄像头;前置摄像头、720p 目标分辨率(由浏览器按能力协商)
+        video: withVideo
+          ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }
+          : false,
       };
 
       const modernGetUserMedia = navigator.mediaDevices?.getUserMedia?.bind(navigator.mediaDevices);
@@ -618,7 +621,7 @@ export class WebRTCManager {
       // 将候选转换为RTCIceCandidate对象
       const rtcCandidate = new RTCIceCandidate({
         candidate: candidate.candidate,
-        sdpMLineIndex: candidate.sdpMLineIndex,
+        sdpMLineIndex: candidate.sdpMlineIndex,
         sdpMid: candidate.sdpMid,
       });
       

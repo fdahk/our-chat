@@ -11,6 +11,16 @@ import { persistMessage, getConversationMembers, markMentions } from '../service
 import { isConversationMember, advanceLastRead } from '../services/read.js';
 import { register, refresh, remove, filterOnline, REPLICA_ID } from '../realtime/presence.js';
 import { redis } from '../database/redis.js';
+import {
+  tryCreateSession,
+  markAccepted,
+  markRejoined,
+  markReconnecting,
+  clearSession,
+  getUserCall,
+  getSession,
+  GRACE_MS,
+} from '../services/callSession.js';
 
 // 握手验签后把用户身份挂到 socket 上，房间号即用户 id。
 declare module 'socket.io' {
@@ -29,6 +39,10 @@ interface TokenPayload {
 // socket.io 的 Room 类型标注为 string，但本项目历史上一直用数字房间号（join 与 emit 两侧一致）。
 // 为保持运行时行为完全不变，这里仅做类型层面的桥接，不改动实际传入的数值。
 const room = (id: number): string => id as unknown as string;
+
+// 设备级房间:用于把通话信令(accept/rejoin)精确投递到「拥有这通话的那台设备/标签页」,
+// 而非用户的所有在线连接。deviceId 由客户端在握手自报(每标签页一个稳定 id)。
+const deviceRoom = (deviceId: string): string => `device:${deviceId}`;
 
 // 从消息 mentions(客户端上报的被 @ userId 列表)解析出「确实是本会话成员」的 bigint 集合。
 // 客户端可能传非法/越权 id,只保留与会话成员的交集,杜绝跨会话伪造 @提醒。
@@ -110,6 +124,8 @@ export const initSocket = (server: HttpServer): Server => {
       socket.handshake.query?.deviceId) as string | undefined;
     socket.deviceId =
       typeof handshakeDeviceId === 'string' && handshakeDeviceId ? handshakeDeviceId : socket.id;
+    // 加入设备级房间:通话信令按设备精确投递(属主路由)的目标。
+    socket.join(deviceRoom(socket.deviceId));
     void register(socket.userId as number, {
       deviceId: socket.deviceId,
       replica: REPLICA_ID,
@@ -261,108 +277,138 @@ export const initSocket = (server: HttpServer): Server => {
     socket.on('sendFriendReq', async (friendReq) => {
       try {
         console.log('转发好友请求:', friendReq);
-        io.to(friendReq.user_id).emit('receiveFriendReq', friendReq);
+        io.to(friendReq.userId).emit('receiveFriendReq', friendReq);
       } catch (error) {
         console.error('转发好友请求失败:', error);
       }
     });
 
-    // ====== 语音通话信令处理 ======
+    // ====== 语音通话信令(服务端权威会话:忙线裁决 / 设备属主路由 / grace 重连) ======
 
-    // 通话发起 (包含offer)
-    socket.on('call:start', (event) => {
+    // 通话发起(含 offer)。先做忙线裁决:被叫已在另一通通话则回 call:busy、不振铃;
+    // 否则登记会话并把振铃投给被叫的所有在线设备/标签页。
+    socket.on('call:start', async (event) => {
       try {
-        console.log('收到通话发起请求:', {
+        const callerId = socket.userId as number;
+        const calleeId = Number(event.to.id);
+        const ok = await tryCreateSession({
           callId: event.callId,
-          from: event.from.username,
-          to: event.to.username,
-          offerSdpLength: event.offer?.sdp?.length,
+          callerId,
+          calleeId,
+          callType: String(event.callType ?? 'voice'),
+          callerDevice: socket.deviceId as string,
         });
-
-        // 转发给目标用户
-        io.to(event.to.id).emit('call:start', event);
-        console.log('通话邀请已转发给目标用户');
+        if (!ok) {
+          socket.emit('call:busy', { callId: event.callId }); // 仅回主叫本设备,不打扰被叫
+          return;
+        }
+        io.to(room(calleeId)).emit('call:start', event);
       } catch (error) {
         console.error('转发通话邀请失败:', error);
       }
     });
 
-    // 通话接受 (包含answer)
-    socket.on('call:accept', (event) => {
+    // 通话接受(含 answer)。绑定接听设备 → connected;answer 回投给 offer 方;
+    // 并通知同一被叫用户的其它设备/标签页「已在别处接听」,停止振铃。
+    socket.on('call:accept', async (event) => {
       try {
-        console.log('收到通话接受，转发给发起方:', {
-          callId: event.callId,
-          to: event.to,
-          answerSdpLength: event.answer?.sdp?.length,
-        });
-
-        // 转发给发起方 (event.to就是发起方ID)
-        io.to(event.to).emit('call:accept', event);
-        console.log('通话接受已转发给发起方');
+        await markAccepted(event.callId, socket.deviceId as string);
+        io.to(room(Number(event.to))).emit('call:accept', event);
+        socket
+          .to(room(socket.userId as number))
+          .emit('call:handled', { callId: event.callId, status: 'accepted' });
       } catch (error) {
         console.error('转发通话接受失败:', error);
       }
     });
 
-    // 通话拒绝
-    socket.on('call:reject', (event) => {
+    // 通话拒绝:清会话 → 通知主叫;并让被叫其它设备停止振铃。
+    socket.on('call:reject', async (event) => {
       try {
-        console.log('收到通话拒绝:', event.callId);
-
-        // 从callId解析发起方ID
-        const callIdParts = event.callId.split('_');
-        if (callIdParts.length >= 3) {
-          const callerId = parseInt(callIdParts[1]);
-          io.to(room(callerId)).emit('call:reject', event);
-          console.log('通话拒绝已转发给发起方:', callerId);
-        }
+        const s = await clearSession(event.callId);
+        const callerId = s ? s.callerId : parseInt(event.callId.split('_')[1]);
+        if (Number.isFinite(callerId)) io.to(room(callerId)).emit('call:reject', event);
+        socket
+          .to(room(socket.userId as number))
+          .emit('call:handled', { callId: event.callId, status: 'rejected' });
       } catch (error) {
         console.error('转发通话拒绝失败:', error);
       }
     });
 
-    // 通话结束
-    socket.on('call:end', (event) => {
+    // 通话结束:清会话 → 广播给双方所有设备。
+    socket.on('call:end', async (event) => {
       try {
-        console.log('收到通话结束信号:', event.callId);
-
-        // 广播给双方 (从callId解析用户ID)
+        await clearSession(event.callId);
         const [, user1, user2] = event.callId.split('_');
         io.to(room(parseInt(user1))).emit('call:end', event);
         io.to(room(parseInt(user2))).emit('call:end', event);
-        console.log('通话结束信号已广播给双方');
       } catch (error) {
         console.error('转发通话结束失败:', error);
       }
     });
 
-    // ICE候选交换
+    // 刷新/断连后重新入会:校验会话仍在 → 更新该侧属主设备并恢复 connected →
+    // 把新 offer 投给对端「属主设备」重协商;会话已不存在则让重连方干净收场。
+    socket.on('call:rejoin', async (event) => {
+      try {
+        const s = await getSession(event.callId);
+        if (!s) {
+          socket.emit('call:end', { callId: event.callId });
+          return;
+        }
+        const side = (socket.userId as number) === s.callerId ? 'caller' : 'callee';
+        const updated = await markRejoined(event.callId, side, socket.deviceId as string);
+        const peerDevice = side === 'caller' ? updated?.calleeDevice : updated?.callerDevice;
+        const peerId = side === 'caller' ? s.calleeId : s.callerId;
+        if (peerDevice) io.to(deviceRoom(peerDevice)).emit('call:rejoin', event);
+        else io.to(room(peerId)).emit('call:rejoin', event);
+      } catch (error) {
+        console.error('转发重新入会失败:', error);
+      }
+    });
+
+    // ICE候选交换:只转发给对方(socket.to 排除发送方自己),双方房间各发一次。
     socket.on('call:ice', (event) => {
       try {
-        console.log('收到ICE候选转发请求:', event.callId);
-
-        // 从callId解析双方用户ID
         const [, user1, user2] = event.callId.split('_');
-        const userId1 = parseInt(user1);
-        const userId2 = parseInt(user2);
-
-        // 标准做法：只转发给对方，不要发给发送方自己
-        // 使用socket.to()排除发送方，避免重复处理
-        socket.to(room(userId1)).emit('call:ice', event);
-        socket.to(room(userId2)).emit('call:ice', event);
-
-        console.log(`ICE候选已转发给对方用户 (排除发送方)`);
+        socket.to(room(parseInt(user1))).emit('call:ice', event);
+        socket.to(room(parseInt(user2))).emit('call:ice', event);
       } catch (error) {
         console.error('转发ICE候选失败:', error);
       }
     });
 
-    // 断开连接:优雅断开即时从 presence 摘除该设备(非优雅断开靠 TTL 过期兜底)。
+    // 断开连接:① presence 摘除该设备;② 若该设备是某通通话的属主,进入 grace 重连窗:
+    //   通知对端「对方重连中」,GRACE_MS 内等 call:rejoin;超时仍未恢复则结束并广播 call:end。
     socket.on('disconnect', () => {
-      console.log('用户断开连接:', socket.id);
       void remove(socket.userId as number, socket.deviceId as string).catch((err) =>
         console.error('presence 摘除失败:', err)
       );
+
+      const userId = socket.userId as number;
+      const deviceId = socket.deviceId as string;
+      void (async () => {
+        const callId = await getUserCall(userId);
+        if (!callId) return;
+        const res = await markReconnecting(callId, deviceId);
+        if (!res) return; // 非属主设备(如另开的空闲标签页)掉线,忽略
+        const { session, epoch } = res;
+        const peerId = userId === session.callerId ? session.calleeId : session.callerId;
+        io.to(room(peerId)).emit('call:peer-reconnecting', { callId });
+        // grace 到点:重读 Redis,仍处 reconnecting 且 epoch 未变(无人 rejoin)→ 结束。
+        // epoch 校验跨副本生效:别处副本的 rejoin 会自增 epoch,使此定时器失效。
+        setTimeout(() => {
+          void (async () => {
+            const cur = await getSession(callId);
+            if (cur && cur.status === 'reconnecting' && cur.graceEpoch === epoch) {
+              await clearSession(callId);
+              io.to(room(cur.callerId)).emit('call:end', { callId });
+              io.to(room(cur.calleeId)).emit('call:end', { callId });
+            }
+          })().catch((err) => console.error('grace 结束处理失败:', err));
+        }, GRACE_MS);
+      })().catch((err) => console.error('通话 grace 处理失败:', err));
     });
   });
 

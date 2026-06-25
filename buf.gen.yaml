@@ -1,0 +1,31 @@
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/our-chat/gateway/internal/contracts/gen
+plugins:
+  - remote: buf.build/community/stephenh-ts-proto
+    out: server/src/contracts/gen
+    opt:
+      - onlyTypes=true
+      - forceLong=number
+      - useDate=string
+      - useOptionals=messages
+      - esModuleInterop=true
+  - remote: buf.build/community/stephenh-ts-proto
+    out: web/src/contracts/gen
+    opt:
+      - onlyTypes=true
+      - forceLong=number
+      - useDate=string
+      - useOptionals=messages
+      - esModuleInterop=true
+  - remote: buf.build/protocolbuffers/go
+    out: gateway/internal/contracts/gen
+    opt:
+      - paths=source_relative
+  - remote: buf.build/apple/swift
+    out: mobile-swift/Sources/Contracts/Gen
+    opt:
+      - Visibility=Public

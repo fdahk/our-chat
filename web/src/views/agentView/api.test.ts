@@ -3,6 +3,8 @@
 //   2. token 管理 — setToken/getToken 持久化
 //   3. request 401 处理 — 自动清 token 并抛 'unauthorized'
 //   4. streamChat — 事件流映射(token / done / error)+ 用真实服务端 SSE 帧格式
+//   5. streamRun — EventSource 包装:event 行→type,data 是整条 run_event 行
+//      (业务字段在 data.payload 下,consumer 必须读 .payload —— 这是 SSE 修复的回归点)
 //
 // 设计原则:vi.stubGlobal('fetch', mock) 隔离网络,localStorage 走 happy-dom 真实实现。
 // **所有 mock 数据均从 __fixtures__/agentServer.ts 派生**,任何契约漂移由 TS 类型层捕获。
@@ -19,9 +21,15 @@ import {
   readSSE,
   setToken,
   streamChat,
+  streamRun,
   type SSEFrame,
 } from './api';
-import { chatStreamFramesFixture, conversationFixture } from './__fixtures__/agentServer';
+import type { RunEvent } from './type';
+import {
+  chatStreamFramesFixture,
+  conversationFixture,
+  runEventFixtures,
+} from './__fixtures__/agentServer';
 
 // ── 工具:把字符串拼成单/多 chunk ReadableStream ───────────────────
 function streamFromChunks(chunks: string[]): ReadableStream<Uint8Array> {
@@ -256,5 +264,83 @@ describe('streamChat()', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 500 })));
     const iter = streamChat(1, 'q');
     await expect(iter.next()).rejects.toThrow(/chat stream 500/);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// 5. streamRun（EventSource）
+// ═══════════════════════════════════════════════════════════════════
+// streamRun 用 EventSource(非 fetch),happy-dom 不一定实现,显式桩掉以可控地推帧。
+class FakeEventSource {
+  static last: FakeEventSource | null = null;
+  url: string;
+  closed = false;
+  onerror: ((e: Event) => void) | null = null;
+  private listeners: Record<string, Array<(e: MessageEvent) => void>> = {};
+  constructor(url: string) {
+    this.url = url;
+    FakeEventSource.last = this;
+  }
+  addEventListener(type: string, cb: (e: MessageEvent) => void): void {
+    (this.listeners[type] ??= []).push(cb);
+  }
+  close(): void {
+    this.closed = true;
+  }
+  // 测试辅助:模拟服务端推一帧(type=event 行,data=data: 行原文)
+  push(type: string, data: string, lastEventId = ''): void {
+    const e = { data, lastEventId } as MessageEvent;
+    (this.listeners[type] ?? []).forEach((cb) => cb(e));
+  }
+}
+
+describe('streamRun()', () => {
+  it('event 行映射为 type;data 是整条 run_event 行(答案在 data.payload.content)', () => {
+    vi.stubGlobal('EventSource', FakeEventSource as unknown as typeof EventSource);
+    const got: RunEvent[] = [];
+    const close = streamRun('run-1', (e) => got.push(e));
+
+    const es = FakeEventSource.last!;
+    // 真实 wire:data: 行是整条 run_event 行的 JSON,payload 嵌在其下
+    es.push('final_answer', JSON.stringify(runEventFixtures.finalAnswer.data), '4');
+
+    expect(got).toHaveLength(1);
+    expect(got[0].type).toBe('final_answer');
+    expect(got[0].id).toBe('4');
+    // 回归点:答案在 data.payload.content,不是 data.content
+    expect((got[0].data?.payload as { content: string }).content).toBe('done summary');
+
+    close();
+    expect(es.closed).toBe(true);
+  });
+
+  it('tool_called / tool_result 帧:payload 下含 name / args / result', () => {
+    vi.stubGlobal('EventSource', FakeEventSource as unknown as typeof EventSource);
+    const got: RunEvent[] = [];
+    streamRun('run-2', (e) => got.push(e));
+    const es = FakeEventSource.last!;
+
+    es.push('tool_called', JSON.stringify(runEventFixtures.toolCalled.data), '2');
+    es.push('tool_result', JSON.stringify(runEventFixtures.toolResult.data), '3');
+
+    expect(got.map((e) => e.type)).toEqual(['tool_called', 'tool_result']);
+    expect((got[0].data?.payload as { name: string }).name).toBe('retrieve_knowledge');
+    expect((got[1].data?.payload as { result: string }).result).toBe('hits: 3 chunks');
+  });
+
+  it('坏 JSON 帧被跳过,不抛', () => {
+    vi.stubGlobal('EventSource', FakeEventSource as unknown as typeof EventSource);
+    const got: RunEvent[] = [];
+    streamRun('run-3', (e) => got.push(e));
+    expect(() => FakeEventSource.last!.push('tool_called', 'not-json')).not.toThrow();
+    expect(got).toHaveLength(0);
+  });
+
+  it('带 token 时把 access_token 拼进 stream URL', () => {
+    setToken('TT');
+    vi.stubGlobal('EventSource', FakeEventSource as unknown as typeof EventSource);
+    streamRun('run-9', () => {});
+    expect(FakeEventSource.last!.url).toContain(`${BASE}/runs/run-9/stream`);
+    expect(FakeEventSource.last!.url).toContain('access_token=TT');
   });
 });

@@ -181,6 +181,12 @@ const en: LocaleSchema = {
       zh: '中文',
       en: 'English',
     },
+    theme: {
+      title: 'Theme',
+      light: 'Light',
+      dark: 'Dark',
+      system: 'System',
+    },
   },
 
   layout: {
@@ -188,6 +194,14 @@ const en: LocaleSchema = {
       setting: 'Settings',
       logout: 'Sign out',
     },
+  },
+
+  profile: {
+    wxid: 'WeChat ID',
+    email: 'Email',
+    sendMsg: 'Message',
+    voiceCall: 'Voice call',
+    videoCall: 'Video call',
   },
 
   agent: {
@@ -229,6 +243,10 @@ const en: LocaleSchema = {
       hint: 'Cmd / Ctrl + Enter to submit',
       empty: 'Submit a task and watch the agent reason through tool calls',
       submitFail: 'Task submit failed',
+      thinking: 'Thinking…',
+      thinkProcess: 'Reasoning',
+      steps: '{{count}} steps',
+      failed: 'Task failed',
     },
   },
 };

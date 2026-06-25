@@ -11,10 +11,13 @@ import { defaultAvatar } from '@/assets/images';
 import type { RootState } from '@/store/rootStore';
 import { useLang } from '@/i18n';
 import { useToast } from '@/globalComponents/toast';
+import { useTheme, type ThemeMode } from '@/style/theme';
 
 function SettingView({ onClose }: { onClose: () => void }) {
     const { t, lang, setLang } = useLang();
+    const { mode, setMode } = useTheme();
     const toast = useToast();
+    const themeOptions: ThemeMode[] = ['light', 'dark', 'system'];
     const [loading, setLoading] = useState(false);
     const dispatch = useDispatch();
     const inputRef = useRef<HTMLInputElement>(null);
@@ -117,6 +120,24 @@ function SettingView({ onClose }: { onClose: () => void }) {
                                 >
                                     {t('settings.language.en')}
                                 </button>
+                            </div>
+                        </div>
+
+                        <div className={settingStyle.row}>
+                            <div className={settingStyle.rowKey}>{t('settings.theme.title')}</div>
+                            <div className={settingStyle.langSwitch} role="tablist">
+                                {themeOptions.map((m) => (
+                                    <button
+                                        key={m}
+                                        type="button"
+                                        role="tab"
+                                        aria-selected={mode === m}
+                                        className={mode === m ? settingStyle.langOn : settingStyle.langOff}
+                                        onClick={() => setMode(m)}
+                                    >
+                                        {t(`settings.theme.${m}`)}
+                                    </button>
+                                ))}
                             </div>
                         </div>
                     </div>

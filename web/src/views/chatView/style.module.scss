@@ -2,21 +2,31 @@
     flex: 1;
     height: 100%;
     display: flex;
-    background-color: white;
+    background-color: var(--main-bg);
+}
+
+.no_chat {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-3);
+    font-size: 0.875rem;
+}
+
+.friend_card {
+    position: fixed;
+    z-index: 1100;
 }
 
 // 左侧
 .chat_view_left {
-    width: 200px;
+    width: 260px;
     height: 100%;
-    background-color: white;
+    background-color: var(--sidebar-bg);
     display: flex;
     flex-direction: column;
-    border-right: 1px solid rgba(0, 0, 0, 0.2);
-    .chat_view_left_header {
-        height: 50px;
-        display: flex;
-    }
+    border-right: 1px solid var(--border);
     .chat_view_left_body {
         display: flex;
         flex-direction: column;
@@ -29,46 +39,89 @@
     position: relative;
     flex: 1;
     height: 100%;
-    background-color: white;
+    background-color: var(--main-bg);
     display: flex;
     flex-direction: column;
     .chat_header {
-        height: 30px;
-        text-align: center;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+        height: 55px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        padding: 0 20px;
+        font-size: 1.0625rem;
+        font-weight: 500;
+        color: var(--text-1);
+        border-bottom: 1px solid var(--border);
     }
     // 消息列表
     .chat_body {
         flex: 1;
         min-height: 0; // 让内容可以收缩,防止容器撑开
-        padding: 0 10px;
+        padding: 16px 20px;
         overflow-y: auto;
         scrollbar-width: none; // 隐藏滚动条
     }
     .message_list {
-        height: 100%;
-        // overflow-y: auto;
-        // scrollbar-width: none; // 隐藏滚动条
-        li {
-            border-bottom: none; //去掉组件默认的分割线
+        :global(.ant-list-item) {
+            border-bottom: none;
+            padding: 0;
+            display: block;
         }
-        .self_msg {
-            display: flex;
-            justify-content: flex-end;
+        // 时间分隔(居中灰字)
+        .time_sep {
+            text-align: center;
+            color: var(--text-3);
+            font-size: 0.75rem;
+            margin: 14px 0 10px;
         }
-        .other_msg {
+        .self_msg, .other_msg {
             display: flex;
-            justify-content: flex-start;
-        }
-        .message_content {
-            display: flex;
-            max-width: 50%;
             align-items: flex-start;
-            word-break: break-all;
-            background-color: var(--primary-color); 
-            color: white;
-            border-radius: 5px;
-            padding: 5px 10px;
+            gap: 10px;
+            padding: 6px 0;
+        }
+        .self_msg { flex-direction: row-reverse; }
+        .other_msg { flex-direction: row; }
+        .msg_avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 4px;
+            object-fit: cover;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+        // 气泡(带指向头像的小尾巴)
+        .bubble {
+            position: relative;
+            max-width: 60%;
+            padding: 9px 13px;
+            border-radius: 6px;
+            font-size: 0.9375rem;
+            line-height: 1.5;
+            word-break: break-word;
+            white-space: pre-wrap;
+            &::after {
+                content: '';
+                position: absolute;
+                top: 12px;
+                border: 6px solid transparent;
+            }
+        }
+        .bubbleSelf {
+            background: var(--bubble-self);
+            color: var(--bubble-self-text);
+            &::after {
+                right: -10px;
+                border-left-color: var(--bubble-self);
+            }
+        }
+        .bubbleOther {
+            background: var(--bubble-other);
+            color: var(--bubble-other-text);
+            &::after {
+                left: -10px;
+                border-right-color: var(--bubble-other);
+            }
         }
     }
     // 输入框
@@ -76,9 +129,9 @@
         display: flex;
         align-items: center;
         flex-direction: column;
-        border-top: 1px solid rgba(0, 0, 0, 0.1);
+        border-top: 1px solid var(--border);
         .input_area_header {
-            background-color: white;
+            background-color: var(--surface);
             display: flex;
             justify-content: space-between;
             height: 30px;
@@ -95,7 +148,7 @@
             .input_area_icon {
                 cursor: pointer;
                 font-size: 22px;
-                color: rgba(0, 0, 0, 0.5);
+                color: var(--text-2);
             }
         }
         .input_area_body {
@@ -120,7 +173,7 @@
             }
         }
         .input_area_footer {
-            background-color: white;
+            background-color: var(--surface);
             height: 50px;
             width: 100%;
             padding: 10px 20px;
@@ -142,7 +195,7 @@
     transform: translate(-50%, -50%);
     width: 270px;
     height: 340px;
-    background-color: white;
+    background-color: var(--surface);
     box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.2);
     .icon_close {
         z-index: 1000;

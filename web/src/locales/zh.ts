@@ -192,6 +192,12 @@ const zh = {
       zh: '中文',
       en: 'English',
     },
+    theme: {
+      title: '主题',
+      light: '浅色',
+      dark: '深色',
+      system: '跟随系统',
+    },
   },
 
   layout: {
@@ -199,6 +205,14 @@ const zh = {
       setting: '设置',
       logout: '退出登录',
     },
+  },
+
+  profile: {
+    wxid: '微信号',
+    email: '邮箱',
+    sendMsg: '发消息',
+    voiceCall: '语音聊天',
+    videoCall: '视频聊天',
   },
 
   agent: {
@@ -236,10 +250,14 @@ const zh = {
     },
     tasks: {
       placeholder: '描述一个任务,例如:总结我最新上传的文档,提取核心观点',
-      submit: '提交任务',
+      submit: '提交',
       hint: 'Cmd / Ctrl + Enter 提交',
       empty: '提交一个任务,看看 agent 怎么调用工具完成它',
       submitFail: '任务提交失败',
+      thinking: '思考中…',
+      thinkProcess: '思考过程',
+      steps: '{{count}} 步',
+      failed: '任务执行失败',
     },
   },
 };

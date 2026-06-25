@@ -6,7 +6,7 @@
 //   - 收到 done 事件 → 固化 messageId + citations,允许下一轮发送
 //   - 收到 error 事件 → 移除 placeholder,toast 报错
 import { useCallback, useEffect, useRef, useState } from 'react';
-import Button from '@/globalComponents/button';
+import ChatComposer from '@/globalComponents/chatComposer';
 import { useToast } from '@/globalComponents/toast';
 import { useLang } from '@/i18n';
 import {
@@ -27,7 +27,6 @@ function ConversationsTab() {
   const [convs, setConvs] = useState<AgentConversation[]>([]);
   const [activeId, setActiveId] = useState<number | null>(null);
   const [messages, setMessages] = useState<DraftMessage[]>([]);
-  const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -81,10 +80,9 @@ function ConversationsTab() {
     }
   };
 
-  const send = async () => {
-    if (activeId == null || !input.trim() || sending) return;
-    const q = input.trim();
-    setInput('');
+  const send = async (text: string) => {
+    const q = text.trim();
+    if (activeId == null || !q || sending) return;
     setSending(true);
 
     const ts = new Date().toISOString();
@@ -93,6 +91,7 @@ function ConversationsTab() {
       conversationId: activeId,
       role: 'user',
       content: q,
+      citations: [],
       createdAt: ts,
     };
     const placeholder: DraftMessage = {
@@ -136,10 +135,6 @@ function ConversationsTab() {
       setSending(false);
       abortRef.current = null;
     }
-  };
-
-  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); }
   };
 
   return (
@@ -186,20 +181,11 @@ function ConversationsTab() {
                 )}
                 {messages.map((m) => <MsgBubble key={m.id} msg={m} />)}
               </div>
-              <div className={styles.composer}>
-                <textarea
-                  className={styles.input}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={onKeyDown}
-                  rows={2}
-                  placeholder={t('agent.chat.placeholder')}
-                  disabled={sending}
-                />
-                <Button variant="primary" size="md" onClick={() => void send()} loading={sending}>
-                  {t('chat.send')}
-                </Button>
-              </div>
+              <ChatComposer
+                onSend={(text) => void send(text)}
+                placeholder={t('agent.chat.placeholder')}
+                sending={sending}
+              />
             </>
           )
         }

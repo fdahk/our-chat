@@ -8,10 +8,10 @@ import Button from '@/globalComponents/button';
 import { useToast } from '@/globalComponents/toast';
 import { useLang } from '@/i18n';
 import { deleteDocument, listDocuments, uploadDocument } from '../../api';
-import type { AgentDocument, DocStatus } from '../../type';
+import type { AgentDocument } from '../../type';
 import styles from './style.module.scss';
 
-const TERMINAL: DocStatus[] = ['ready', 'failed'];
+const TERMINAL: string[] = ['ready', 'failed'];
 
 function DocumentsTab() {
   const { t } = useLang();
@@ -128,7 +128,7 @@ function DocumentsTab() {
   );
 }
 
-function StatusBadge({ status }: { status: DocStatus }) {
+function StatusBadge({ status }: { status: string }) {
   const tone = status === 'ready' ? 'ok' : status === 'failed' ? 'err' : 'pending';
   return <span className={`${styles.badge} ${styles[`badge-${tone}` as const]}`}>{status}</span>;
 }

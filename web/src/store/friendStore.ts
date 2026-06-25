@@ -1,14 +1,8 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import type { FriendRequest } from '../contracts/gen/ourchat/friend/v1/friend';
 
-export interface FriendReq {
-    id: number;
-    user_id: number;
-    friend_id: number;
-    remark: string | null;
-    status: string;
-    created_at: string;
-    updated_at: string;
-}
+// username/avatar:请求方多半还不是好友,本地 friendInfo 取不到,卡片渲染要回退到这里
+export type FriendReq = FriendRequest;
 interface FriendReqList {
     // key是好友id，value是好友请求
     [key: number]: FriendReq;
@@ -25,10 +19,10 @@ const friendReqSlice = createSlice({
         },
         addFriendReq: (state, action: PayloadAction<FriendReq>) => {
             console.log('添加好友请求', action.payload);
-            state[action.payload.friend_id] = action.payload;
+            state[action.payload.friendId] = action.payload;
         },
-        setFriendReqStatus: (state, action: PayloadAction<{friend_id: number, status: string}>) => {
-            state[action.payload.friend_id].status = action.payload.status;
+        setFriendReqStatus: (state, action: PayloadAction<{friendId: number, status: string}>) => {
+            state[action.payload.friendId].status = action.payload.status;
         }
     },
 });

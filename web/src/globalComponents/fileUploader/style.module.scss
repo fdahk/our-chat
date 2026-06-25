@@ -2,7 +2,7 @@
     .ant-upload-drag {
       border: 2px dashed #d9d9d9;
       border-radius: 6px;
-      background: #fafafa;
+      background: var(--surface-2);
       transition: border-color 0.3s;
       
       &:hover {
@@ -33,7 +33,7 @@
           }
           
           .file-size {
-            color: #666;
+            color: var(--text-2);
             font-size: 12px;
           }
         }
