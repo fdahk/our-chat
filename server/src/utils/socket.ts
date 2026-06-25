@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import { createAdapter } from '@socket.io/redis-adapter';
 import type { Prisma } from '../generated/prisma/index.js';
 import { config } from '../config/config.js';
-import { TOKEN_COOKIE } from './authCookies.js';
+import { extractHandshakeToken } from './socketAuth.js';
 import { sendMessageInput, readReportInput } from '../contracts/message.js';
 import { persistMessage, getConversationMembers, markMentions } from '../services/message.js';
 import { isConversationMember, advanceLastRead } from '../services/read.js';
@@ -57,19 +57,6 @@ const parseMentionIds = (raw: unknown, participants: bigint[]): bigint[] => {
   return out;
 };
 
-// 从握手请求的 Cookie 头里取出指定 cookie 的值
-const parseCookie = (header: string | undefined, name: string): string | null => {
-  if (!header) return null;
-  for (const part of header.split(';')) {
-    const idx = part.indexOf('=');
-    if (idx === -1) continue;
-    if (part.slice(0, idx).trim() === name) {
-      return decodeURIComponent(part.slice(idx + 1).trim());
-    }
-  }
-  return null;
-};
-
 const allowedOrigins = (
   process.env.CLIENT_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173'
 )
@@ -97,11 +84,11 @@ export const initSocket = (server: HttpServer): Server => {
   // pub/sub 各用一条独立连接(订阅态连接不能再发普通命令),与 presence 的命令连接隔离。
   io.adapter(createAdapter(redis.duplicate(), redis.duplicate()));
 
-  // 握手鉴权：从 cookie 解析并验签 JWT，身份由服务端派生，绝不信任客户端自报的 userId。
-  // 校验不过直接拒绝连接，杜绝匿名 socket 加入任意房间收发他人消息。
+  // 握手鉴权:cookie(Web)或 handshake.auth.token(原生端)取 JWT 验签,身份由服务端派生,绝不信任客户端自报的 userId。
+  // 校验不过直接拒绝连接,杜绝匿名 socket 加入任意房间收发他人消息。
   io.use((socket, next) => {
     try {
-      const token = parseCookie(socket.handshake.headers.cookie, TOKEN_COOKIE);
+      const token = extractHandshakeToken(socket.handshake);
       if (!token) return next(new Error('未认证：缺少登录凭据'));
       const decoded = jwt.verify(token, config.jwtSecret) as TokenPayload;
       socket.userId = decoded.id;
