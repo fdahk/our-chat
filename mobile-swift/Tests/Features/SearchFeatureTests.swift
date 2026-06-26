@@ -73,4 +73,27 @@ struct SearchFeatureTests {
         await store.send(.closeTapped)
         await store.receive(\.delegate)
     }
+
+    @Test
+    func addButtonSendsRequestAndMarksSent() async {
+        let result = SearchResult(userId: 1024, username: "duanyuhao", avatarURL: nil, isFriend: false)
+        let store = TestStore(initialState: SearchFeature.State(result: result)) {
+            SearchFeature()
+        } withDependencies: {
+            $0.friendRequestClient.send = { _ in }
+        }
+        await store.send(.addButtonTapped)
+        await store.receive(\.addCompleted) {
+            $0.requestSent = true
+        }
+    }
+
+    @Test
+    func addButtonNoOpWhenAlreadyFriend() async {
+        let result = SearchResult(userId: 1024, username: "duanyuhao", avatarURL: nil, isFriend: true)
+        let store = TestStore(initialState: SearchFeature.State(result: result)) {
+            SearchFeature()
+        }
+        await store.send(.addButtonTapped)
+    }
 }

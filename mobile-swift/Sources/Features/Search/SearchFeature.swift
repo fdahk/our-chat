@@ -10,11 +10,14 @@ struct SearchFeature {
         var result: SearchResult?
         var isSearching = false
         var notFound = false
+        var requestSent = false // 已对当前结果发起好友请求
     }
 
     enum Action: BindableAction {
         case binding(BindingAction<State>)
         case searchResponse(SearchResult?)
+        case addButtonTapped
+        case addCompleted
         case closeTapped
         case delegate(Delegate)
 
@@ -24,6 +27,7 @@ struct SearchFeature {
     }
 
     @Dependency(\.searchClient) var searchClient
+    @Dependency(\.friendRequestClient) var friendRequestClient
     @Dependency(\.continuousClock) var clock
 
     private enum CancelID { case search }
@@ -55,6 +59,20 @@ struct SearchFeature {
                 state.isSearching = false
                 state.result = result
                 state.notFound = result == nil
+                state.requestSent = false // 新结果重置申请态
+                return .none
+
+            case .addButtonTapped:
+                guard let result = state.result, !result.isFriend, !state.requestSent else { return .none }
+                return .run { send in
+                    try await friendRequestClient.send(result.userId)
+                    await send(.addCompleted)
+                } catch: { _, _ in
+                    // 发起失败保持可重试,不改 requestSent。
+                }
+
+            case .addCompleted:
+                state.requestSent = true
                 return .none
 
             case .closeTapped:

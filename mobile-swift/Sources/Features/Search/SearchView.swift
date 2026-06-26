@@ -47,8 +47,10 @@ struct SearchView: View {
                 .tint(WeChatColor.textSecondary)
                 .padding(.top, 32)
         } else if let result = store.result {
-            ResultRow(result: result)
-                .padding(.top, 8)
+            ResultRow(result: result, requestSent: store.requestSent) {
+                store.send(.addButtonTapped)
+            }
+            .padding(.top, 8)
         } else if store.notFound {
             Text("未找到相关用户")
                 .font(.system(size: 14))
@@ -60,6 +62,8 @@ struct SearchView: View {
 
 private struct ResultRow: View {
     let result: SearchResult
+    let requestSent: Bool
+    let onAdd: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -73,19 +77,33 @@ private struct ResultRow: View {
                     .foregroundStyle(WeChatColor.textSecondary)
             }
             Spacer()
-            Text(result.isFriend ? "已是好友" : "添加")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(result.isFriend ? WeChatColor.textSecondary : .white)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 7)
-                .background(
-                    result.isFriend ? Color.clear : WeChatColor.brand,
-                    in: RoundedRectangle(cornerRadius: 6, style: .continuous)
-                )
+            trailing
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(WeChatColor.background)
+    }
+
+    @ViewBuilder private var trailing: some View {
+        if result.isFriend {
+            label("已是好友", filled: false)
+        } else if requestSent {
+            label("已申请", filled: false)
+        } else {
+            Button(action: onAdd) { label("添加", filled: true) }
+        }
+    }
+
+    private func label(_ text: String, filled: Bool) -> some View {
+        Text(text)
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(filled ? .white : WeChatColor.textSecondary)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 7)
+            .background(
+                filled ? WeChatColor.brand : Color.clear,
+                in: RoundedRectangle(cornerRadius: 6, style: .continuous)
+            )
     }
 }
 

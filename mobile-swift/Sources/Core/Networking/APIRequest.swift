@@ -47,4 +47,17 @@ extension APIRequest {
             body: try encoder.encode(body)
         )
     }
+
+    static func put(
+        _ path: String,
+        json body: some Encodable,
+        encoder: JSONEncoder = JSONEncoder()
+    ) throws -> APIRequest {
+        APIRequest(
+            method: .put,
+            path: path,
+            headers: ["Content-Type": "application/json"],
+            body: try encoder.encode(body)
+        )
+    }
 }
