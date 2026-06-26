@@ -1,8 +1,11 @@
 import ComposableArchitecture
+import Kingfisher
+import PhotosUI
 import SwiftUI
 
 struct ChatDetailView: View {
     @Bindable var store: StoreOf<ChatDetailFeature>
+    @State private var photoItem: PhotosPickerItem?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -39,6 +42,20 @@ struct ChatDetailView: View {
 
     private var inputBar: some View {
         HStack(spacing: 10) {
+            PhotosPicker(selection: $photoItem, matching: .images) {
+                Image(systemName: "photo.on.rectangle")
+                    .font(.system(size: 22))
+                    .foregroundStyle(WeChatColor.textSecondary)
+            }
+            .onChange(of: photoItem) { _, newItem in
+                guard let newItem else { return }
+                Task {
+                    if let data = try? await newItem.loadTransferable(type: Data.self) {
+                        store.send(.imageSelected(data))
+                    }
+                    photoItem = nil
+                }
+            }
             TextField("", text: $store.draft)
                 .textFieldStyle(.plain)
                 .padding(.horizontal, 12)
@@ -71,6 +88,19 @@ private struct MessageBubble: View {
     var body: some View {
         HStack {
             if isMine { Spacer(minLength: 48) }
+            bubble
+            if !isMine { Spacer(minLength: 48) }
+        }
+    }
+
+    @ViewBuilder private var bubble: some View {
+        if message.type == "image", let url = URL(string: message.content) {
+            KFImage(url)
+                .resizable()
+                .scaledToFill()
+                .frame(maxWidth: 180, maxHeight: 240)
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        } else {
             Text(message.content)
                 .font(.system(size: 16))
                 .foregroundStyle(isMine ? Color(hex: 0x111111) : WeChatColor.textPrimary)
@@ -80,7 +110,6 @@ private struct MessageBubble: View {
                     isMine ? WeChatColor.brand : WeChatColor.elevated,
                     in: RoundedRectangle(cornerRadius: 6, style: .continuous)
                 )
-            if !isMine { Spacer(minLength: 48) }
         }
     }
 }

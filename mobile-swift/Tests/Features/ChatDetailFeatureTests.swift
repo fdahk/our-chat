@@ -149,4 +149,34 @@ struct ChatDetailFeatureTests {
         )
         await store.send(.messageReceived(other))
     }
+
+    @Test
+    func imageSelectedUploadsThenSendsImageMessage() async {
+        let (sentStream, sentContinuation) = AsyncStream<OutgoingMessage>.makeStream()
+        let store = TestStore(
+            initialState: ChatDetailFeature.State(conversationId: "single_1_2", title: "段宇皓")
+        ) {
+            ChatDetailFeature()
+        } withDependencies: {
+            $0.uploadClient.uploadImage = { _, _ in URL(string: "https://cdn/x/a.jpg")! }
+            $0.socketClient.send = { sentContinuation.yield($0); sentContinuation.finish() }
+            $0.uuid = .incrementing
+            $0.date = .constant(Date(timeIntervalSince1970: 0))
+        }
+        await store.send(.imageSelected(Data([0x1])))
+        await store.receive(\.imageReady) {
+            $0.messages = [
+                ChatMessage(
+                    serverId: 0, conversationId: "single_1_2", senderId: 0, seq: nil,
+                    content: "https://cdn/x/a.jpg", type: "image",
+                    timestamp: Date(timeIntervalSince1970: 0),
+                    clientMsgId: "00000000-0000-0000-0000-000000000000"
+                )
+            ]
+        }
+        var sent: OutgoingMessage?
+        for await message in sentStream { sent = message; break }
+        #expect(sent?.type == "image")
+        #expect(sent?.content == "https://cdn/x/a.jpg")
+    }
 }

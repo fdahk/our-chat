@@ -20,6 +20,8 @@ struct ChatDetailFeature {
         case onAppear
         case messagesResponse([ChatMessage])
         case sendButtonTapped
+        case imageSelected(Data)
+        case imageReady(url: String, clientMsgId: String)
         case messageReceived(ChatMessage)
         case delegate(Delegate)
 
@@ -32,6 +34,7 @@ struct ChatDetailFeature {
     @Dependency(\.chatClient) var chatClient
     @Dependency(\.sessionClient) var sessionClient
     @Dependency(\.socketClient) var socketClient
+    @Dependency(\.uploadClient) var uploadClient
     @Dependency(\.uuid) var uuid
     @Dependency(\.date) var date
 
@@ -86,6 +89,36 @@ struct ChatDetailFeature {
                 )
                 mergeMessage(into: &state.messages, optimistic)
                 state.draft = ""
+                return .run { _ in socketClient.send(outgoing) }
+
+            case let .imageSelected(data):
+                // 先上传拿到 URL,再当作一条 image 消息发送(乐观插入在拿到 URL 后)。
+                let clientMsgId = uuid().uuidString
+                return .run { send in
+                    let url = try await uploadClient.uploadImage(data, "image.jpg")
+                    await send(.imageReady(url: url.absoluteString, clientMsgId: clientMsgId))
+                } catch: { _, _ in
+                    // 上传失败静默,用户可重选。
+                }
+
+            case let .imageReady(url, clientMsgId):
+                let outgoing = OutgoingMessage(
+                    conversationId: state.conversationId,
+                    clientMsgId: clientMsgId,
+                    content: url,
+                    type: "image"
+                )
+                let optimistic = ChatMessage(
+                    serverId: 0,
+                    conversationId: state.conversationId,
+                    senderId: state.currentUserId,
+                    seq: nil,
+                    content: url,
+                    type: "image",
+                    timestamp: date.now,
+                    clientMsgId: clientMsgId
+                )
+                mergeMessage(into: &state.messages, optimistic)
                 return .run { _ in socketClient.send(outgoing) }
 
             case let .messageReceived(message):
