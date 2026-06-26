@@ -22,12 +22,20 @@ struct ContactsView: View {
                 List {
                     Section {
                         ForEach(Array(specials.enumerated()), id: \.element.id) { index, entry in
-                            SpecialRow(entry: entry)
-                                .id(index == 0 ? "__top__" : entry.id.uuidString)
-                                .listRowInsets(rowInsets)
-                                .listRowBackground(WeChatColor.background)
-                                .listRowSeparatorTint(WeChatColor.separator)
-                                .alignmentGuide(.listRowSeparatorLeading) { _ in 52 }
+                            Group {
+                                if index == 0 {
+                                    // 第一项「新的朋友」可点进收发请求页。
+                                    Button { store.send(.newFriendsTapped) } label: { SpecialRow(entry: entry) }
+                                        .buttonStyle(.plain)
+                                } else {
+                                    SpecialRow(entry: entry)
+                                }
+                            }
+                            .id(index == 0 ? "__top__" : entry.id.uuidString)
+                            .listRowInsets(rowInsets)
+                            .listRowBackground(WeChatColor.background)
+                            .listRowSeparatorTint(WeChatColor.separator)
+                            .alignmentGuide(.listRowSeparatorLeading) { _ in 52 }
                         }
                     }
 
@@ -83,6 +91,9 @@ struct ContactsView: View {
                 }
             }
             .task { store.send(.onAppear) }
+            .navigationDestination(item: $store.scope(state: \.newFriends, action: \.newFriends)) { newFriendsStore in
+                NewFriendsView(store: newFriendsStore)
+            }
         }
     }
 

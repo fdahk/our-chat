@@ -7,11 +7,15 @@ struct ContactsFeature {
     struct State: Equatable {
         var contacts: [Contact] = []
         var isLoading = false
+        // 「新的朋友」页(导航推入)。
+        @Presents var newFriends: NewFriendsFeature.State?
     }
 
     enum Action {
         case onAppear
         case contactsResponse([Contact])
+        case newFriendsTapped
+        case newFriends(PresentationAction<NewFriendsFeature.Action>)
     }
 
     @Dependency(\.contactsClient) var contactsClient
@@ -33,7 +37,17 @@ struct ContactsFeature {
                 state.isLoading = false
                 state.contacts = contacts
                 return .none
+
+            case .newFriendsTapped:
+                state.newFriends = NewFriendsFeature.State()
+                return .none
+
+            case .newFriends:
+                return .none
             }
+        }
+        .ifLet(\.$newFriends, action: \.newFriends) {
+            NewFriendsFeature()
         }
     }
 }

@@ -32,4 +32,14 @@ struct ContactsFeatureTests {
         // 已有数据 → onAppear 不再重复拉取(无后续 action)。
         await store.send(.onAppear)
     }
+
+    @Test
+    func newFriendsTappedPresentsPage() async {
+        let store = TestStore(initialState: ContactsFeature.State()) {
+            ContactsFeature()
+        }
+        await store.send(.newFriendsTapped) {
+            $0.newFriends = NewFriendsFeature.State()
+        }
+    }
 }
