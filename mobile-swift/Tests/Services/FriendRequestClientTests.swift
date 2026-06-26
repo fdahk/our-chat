@@ -40,7 +40,7 @@ struct FriendRequestClientTests {
         } operation: {
             try await FriendRequestClient.liveValue.send(2)
             #expect(captured.value?.method == .put)
-            #expect(captured.value?.path == "/addFriend")
+            #expect(captured.value?.path == "/user/addFriend")
         }
     }
 

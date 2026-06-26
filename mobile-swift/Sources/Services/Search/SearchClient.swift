@@ -37,7 +37,7 @@ extension SearchClient: DependencyKey {
             @Dependency(\.sessionClient) var session
             guard let userId = session.currentUserId() else { throw AuthError.notAuthenticated }
             let envelope = try await apiClient.send(
-                APIRequest.get("/searchUser", query: [
+                APIRequest.get("/user/searchUser", query: [
                     URLQueryItem(name: "keyword", value: keyword),
                     URLQueryItem(name: "userId", value: String(userId)),
                 ]),

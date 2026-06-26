@@ -42,7 +42,7 @@ extension FriendRequestClient: DependencyKey {
             @Dependency(\.apiClient) var apiClient
             @Dependency(\.sessionClient) var session
             guard let userId = session.currentUserId() else { throw AuthError.notAuthenticated }
-            let request = try APIRequest.put("/addFriend", json: ["userId": userId, "friendId": friendId])
+            let request = try APIRequest.put("/user/addFriend", json: ["userId": userId, "friendId": friendId])
             try await ensureSuccess(apiClient, request)
         },
         list: {
@@ -50,7 +50,7 @@ extension FriendRequestClient: DependencyKey {
             @Dependency(\.sessionClient) var session
             guard let userId = session.currentUserId() else { throw AuthError.notAuthenticated }
             let rows = try await apiClient.sendUnwrapping(
-                APIRequest.get("/getFriendReqs", query: [URLQueryItem(name: "userId", value: String(userId))]),
+                APIRequest.get("/user/getFriendReqs", query: [URLQueryItem(name: "userId", value: String(userId))]),
                 as: [String: FriendReqDTO].self
             )
             return rows.values
@@ -68,7 +68,7 @@ extension FriendRequestClient: DependencyKey {
             @Dependency(\.apiClient) var apiClient
             @Dependency(\.sessionClient) var session
             guard let userId = session.currentUserId() else { throw AuthError.notAuthenticated }
-            let request = try APIRequest.put("/replyFriendReq", json: [
+            let request = try APIRequest.put("/user/replyFriendReq", json: [
                 "userId": String(userId),
                 "friendId": String(friendId),
                 "status": accepted ? "accepted" : "blocked",
