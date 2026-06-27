@@ -2,10 +2,12 @@ import ComposableArchitecture
 import Kingfisher
 import PhotosUI
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ChatDetailView: View {
     @Bindable var store: StoreOf<ChatDetailFeature>
     @State private var photoItem: PhotosPickerItem?
+    @State private var fileImporterPresented = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -56,6 +58,19 @@ struct ChatDetailView: View {
                     photoItem = nil
                 }
             }
+            Button { fileImporterPresented = true } label: {
+                Image(systemName: "doc")
+                    .font(.system(size: 21))
+                    .foregroundStyle(WeChatColor.textSecondary)
+            }
+            .fileImporter(isPresented: $fileImporterPresented, allowedContentTypes: [.item]) { result in
+                guard case let .success(fileURL) = result else { return }
+                let accessed = fileURL.startAccessingSecurityScopedResource()
+                defer { if accessed { fileURL.stopAccessingSecurityScopedResource() } }
+                guard let data = try? Data(contentsOf: fileURL) else { return }
+                let mimeType = UTType(filenameExtension: fileURL.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
+                store.send(.fileSelected(data: data, filename: fileURL.lastPathComponent, mimeType: mimeType))
+            }
             TextField("", text: $store.draft)
                 .textFieldStyle(.plain)
                 .padding(.horizontal, 12)
@@ -100,6 +115,8 @@ private struct MessageBubble: View {
                 .scaledToFill()
                 .frame(maxWidth: 180, maxHeight: 240)
                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        } else if message.type == "file", let info = message.fileInfo {
+            FileCard(info: info)
         } else {
             Text(message.content)
                 .font(.system(size: 16))
@@ -111,6 +128,35 @@ private struct MessageBubble: View {
                     in: RoundedRectangle(cornerRadius: 6, style: .continuous)
                 )
         }
+    }
+}
+
+// 文件卡片:图标 + 文件名 + 大小,微信风格白底卡。
+private struct FileCard: View {
+    let info: MessageFileInfo
+
+    var body: some View {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(info.fileName)
+                    .font(.system(size: 15))
+                    .foregroundStyle(WeChatColor.textPrimary)
+                    .lineLimit(2)
+                Text(byteSize(info.fileSize))
+                    .font(.system(size: 12))
+                    .foregroundStyle(WeChatColor.textSecondary)
+            }
+            .frame(maxWidth: 160, alignment: .leading)
+            Image(systemName: "doc.fill")
+                .font(.system(size: 32))
+                .foregroundStyle(WeChatColor.brand)
+        }
+        .padding(12)
+        .background(WeChatColor.elevated, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+    }
+
+    private func byteSize(_ bytes: Int) -> String {
+        ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)
     }
 }
 

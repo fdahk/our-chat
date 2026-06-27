@@ -25,6 +25,23 @@ struct UploadClientTests {
             #expect(body.contains("filename=\"image.jpg\""))
         }
     }
+
+    @Test
+    func uploadFileUsesGivenNameAndMime() async throws {
+        let captured = LockIsolatedRequest()
+        try await withDependencies {
+            $0.apiClient.perform = { request in
+                captured.set(request)
+                return Data(#"{"success":true,"data":{"url":"https://cdn/x/report.pdf"}}"#.utf8)
+            }
+        } operation: {
+            let url = try await UploadClient.liveValue.uploadFile(Data([0x1]), "report.pdf", "application/pdf")
+            #expect(url == URL(string: "https://cdn/x/report.pdf"))
+            let body = String(decoding: captured.value?.body ?? Data(), as: UTF8.self)
+            #expect(body.contains("filename=\"report.pdf\""))
+            #expect(body.contains("Content-Type: application/pdf"))
+        }
+    }
 }
 
 private final class LockIsolatedRequest: @unchecked Sendable {

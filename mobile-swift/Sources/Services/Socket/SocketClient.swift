@@ -9,6 +9,7 @@ struct OutgoingMessage: Equatable, Sendable {
     var clientMsgId: String
     var content: String
     var type: String = "text"
+    var fileInfo: MessageFileInfo? = nil
 }
 
 // 实时通道:一条共享 socket.io 长连接,收发聊天消息。
@@ -96,12 +97,20 @@ private actor SocketConnection {
     }
 
     func send(_ message: OutgoingMessage) {
-        socket?.emit("message.send", [
+        var payload: [String: Any] = [
             "clientMsgId": message.clientMsgId,
             "conversationId": message.conversationId,
             "content": message.content,
             "type": message.type,
-        ])
+        ]
+        if let file = message.fileInfo {
+            payload["fileInfo"] = [
+                "fileName": file.fileName,
+                "fileSize": file.fileSize,
+                "fileUrl": file.fileUrl,
+            ]
+        }
+        socket?.emit("message.send", payload)
     }
 
     func reportRead(conversationId: String, uptoSeq: Int) {
@@ -141,7 +150,17 @@ enum SocketMessageParser {
             content: dict["content"] as? String ?? "",
             type: dict["type"] as? String ?? "text",
             timestamp: ConversationAssembler.parseISO(dict["timestamp"] as? String),
-            clientMsgId: dict["clientMsgId"] as? String
+            clientMsgId: dict["clientMsgId"] as? String,
+            fileInfo: parseFileInfo(dict["fileInfo"])
+        )
+    }
+
+    static func parseFileInfo(_ any: Any?) -> MessageFileInfo? {
+        guard let dict = any as? [String: Any], let fileName = dict["fileName"] as? String else { return nil }
+        return MessageFileInfo(
+            fileName: fileName,
+            fileSize: intValue(dict["fileSize"]) ?? 0,
+            fileUrl: dict["fileUrl"] as? String ?? ""
         )
     }
 

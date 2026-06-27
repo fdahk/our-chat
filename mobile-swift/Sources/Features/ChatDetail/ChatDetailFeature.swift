@@ -22,6 +22,8 @@ struct ChatDetailFeature {
         case sendButtonTapped
         case imageSelected(Data)
         case imageReady(url: String, clientMsgId: String)
+        case fileSelected(data: Data, filename: String, mimeType: String)
+        case fileReady(url: String, fileName: String, fileSize: Int, clientMsgId: String)
         case messageReceived(ChatMessage)
         case delegate(Delegate)
 
@@ -117,6 +119,39 @@ struct ChatDetailFeature {
                     type: "image",
                     timestamp: date.now,
                     clientMsgId: clientMsgId
+                )
+                mergeMessage(into: &state.messages, optimistic)
+                return .run { _ in socketClient.send(outgoing) }
+
+            case let .fileSelected(data, filename, mimeType):
+                let clientMsgId = uuid().uuidString
+                let size = data.count
+                return .run { send in
+                    let url = try await uploadClient.uploadFile(data, filename, mimeType)
+                    await send(.fileReady(url: url.absoluteString, fileName: filename, fileSize: size, clientMsgId: clientMsgId))
+                } catch: { _, _ in
+                    // 上传失败静默,用户可重选。
+                }
+
+            case let .fileReady(url, fileName, fileSize, clientMsgId):
+                let fileInfo = MessageFileInfo(fileName: fileName, fileSize: fileSize, fileUrl: url)
+                let outgoing = OutgoingMessage(
+                    conversationId: state.conversationId,
+                    clientMsgId: clientMsgId,
+                    content: "[文件]",
+                    type: "file",
+                    fileInfo: fileInfo
+                )
+                let optimistic = ChatMessage(
+                    serverId: 0,
+                    conversationId: state.conversationId,
+                    senderId: state.currentUserId,
+                    seq: nil,
+                    content: "[文件]",
+                    type: "file",
+                    timestamp: date.now,
+                    clientMsgId: clientMsgId,
+                    fileInfo: fileInfo
                 )
                 mergeMessage(into: &state.messages, optimistic)
                 return .run { _ in socketClient.send(outgoing) }

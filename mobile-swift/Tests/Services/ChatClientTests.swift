@@ -73,4 +73,19 @@ struct ChatClientTests {
             #expect(messages.first?.type == "text")
         }
     }
+
+    @Test
+    func messagesDecodesFileInfoWithStringSize() async throws {
+        // fileSize 以字符串下发(int64 线上常为 string)也要能解。
+        let json = #"{"success":true,"data":[{"id":5,"conversationId":"single_1_2","senderId":2,"type":"file","content":"[文件]","fileInfo":{"fileName":"a.pdf","fileSize":"4096","fileUrl":"https://cdn/a.pdf"}}]}"#
+        try await withDependencies {
+            $0.apiClient.perform = { _ in Data(json.utf8) }
+        } operation: {
+            let messages = try await ChatClient.liveValue.messages("single_1_2")
+            #expect(messages.first?.type == "file")
+            #expect(messages.first?.fileInfo?.fileName == "a.pdf")
+            #expect(messages.first?.fileInfo?.fileSize == 4096)
+            #expect(messages.first?.fileInfo?.fileUrl == "https://cdn/a.pdf")
+        }
+    }
 }

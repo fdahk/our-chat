@@ -26,6 +26,27 @@ struct SocketMessageParserTests {
     }
 
     @Test
+    func parsesFileMessageWithFileInfo() {
+        let raw: [String: Any] = [
+            "id": 9,
+            "conversationId": "single_1_2",
+            "senderId": 2,
+            "type": "file",
+            "content": "[文件]",
+            "fileInfo": [
+                "fileName": "report.pdf",
+                "fileSize": NSNumber(value: 2048),
+                "fileUrl": "https://cdn/x/report.pdf",
+            ],
+        ]
+        let message = SocketMessageParser.parse(raw)
+        #expect(message?.type == "file")
+        #expect(message?.fileInfo?.fileName == "report.pdf")
+        #expect(message?.fileInfo?.fileSize == 2048)
+        #expect(message?.fileInfo?.fileUrl == "https://cdn/x/report.pdf")
+    }
+
+    @Test
     func returnsNilWhenConversationIdMissing() {
         #expect(SocketMessageParser.parse(["id": 1] as [String: Any]) == nil)
     }

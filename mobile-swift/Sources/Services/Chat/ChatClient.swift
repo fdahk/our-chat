@@ -43,6 +43,7 @@ private struct MessageDTO: Decodable {
     let type: String?
     let timestamp: String?
     let clientMsgId: String?
+    let fileInfo: FileInfoDTO?
 
     func toModel() -> ChatMessage {
         ChatMessage(
@@ -53,8 +54,36 @@ private struct MessageDTO: Decodable {
             content: content ?? "",
             type: type ?? "text",
             timestamp: ConversationAssembler.parseISO(timestamp),
-            clientMsgId: clientMsgId
+            clientMsgId: clientMsgId,
+            fileInfo: fileInfo?.toModel()
         )
+    }
+}
+
+// 落库的 fileInfo(camelCase)。fileSize 可能是数字或字符串(int64 线上常为 string),做兼容。
+private struct FileInfoDTO: Decodable {
+    let fileName: String?
+    let fileUrl: String?
+    let fileSize: Int?
+
+    enum CodingKeys: String, CodingKey { case fileName, fileUrl, fileSize }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        fileName = try container.decodeIfPresent(String.self, forKey: .fileName)
+        fileUrl = try container.decodeIfPresent(String.self, forKey: .fileUrl)
+        if let n = try? container.decode(Int.self, forKey: .fileSize) {
+            fileSize = n
+        } else if let s = try? container.decode(String.self, forKey: .fileSize) {
+            fileSize = Int(s)
+        } else {
+            fileSize = nil
+        }
+    }
+
+    func toModel() -> MessageFileInfo? {
+        guard let fileName else { return nil }
+        return MessageFileInfo(fileName: fileName, fileSize: fileSize ?? 0, fileUrl: fileUrl ?? "")
     }
 }
 

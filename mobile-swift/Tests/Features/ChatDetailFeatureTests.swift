@@ -179,4 +179,36 @@ struct ChatDetailFeatureTests {
         #expect(sent?.type == "image")
         #expect(sent?.content == "https://cdn/x/a.jpg")
     }
+
+    @Test
+    func fileSelectedUploadsThenSendsFileMessage() async {
+        let (sentStream, sentContinuation) = AsyncStream<OutgoingMessage>.makeStream()
+        let store = TestStore(
+            initialState: ChatDetailFeature.State(conversationId: "single_1_2", title: "段宇皓")
+        ) {
+            ChatDetailFeature()
+        } withDependencies: {
+            $0.uploadClient.uploadFile = { _, _, _ in URL(string: "https://cdn/x/report.pdf")! }
+            $0.socketClient.send = { sentContinuation.yield($0); sentContinuation.finish() }
+            $0.uuid = .incrementing
+            $0.date = .constant(Date(timeIntervalSince1970: 0))
+        }
+        await store.send(.fileSelected(data: Data([0x1, 0x2, 0x3]), filename: "report.pdf", mimeType: "application/pdf"))
+        await store.receive(\.fileReady) {
+            $0.messages = [
+                ChatMessage(
+                    serverId: 0, conversationId: "single_1_2", senderId: 0, seq: nil,
+                    content: "[文件]", type: "file",
+                    timestamp: Date(timeIntervalSince1970: 0),
+                    clientMsgId: "00000000-0000-0000-0000-000000000000",
+                    fileInfo: MessageFileInfo(fileName: "report.pdf", fileSize: 3, fileUrl: "https://cdn/x/report.pdf")
+                )
+            ]
+        }
+        var sent: OutgoingMessage?
+        for await message in sentStream { sent = message; break }
+        #expect(sent?.type == "file")
+        #expect(sent?.fileInfo?.fileName == "report.pdf")
+        #expect(sent?.fileInfo?.fileSize == 3)
+    }
 }
