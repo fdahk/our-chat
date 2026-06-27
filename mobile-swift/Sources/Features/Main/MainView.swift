@@ -29,7 +29,6 @@ struct MainView: View {
                 .tabItem { Label("我", systemImage: "person.fill") }
         }
         .tint(WeChatColor.brand)
-        .preferredColorScheme(.dark)
     }
 
     // 暗色标签栏:不透明深色底 + 未选灰、选中微信绿。用 UITabBarAppearance 全局配置。

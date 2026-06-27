@@ -95,6 +95,7 @@ private struct ProfileHeader: View {
 
 private struct SettingsView: View {
     let onLogout: () -> Void
+    @AppStorage("appearanceMode") private var appearance: AppearanceMode = .system
 
     var body: some View {
         ScrollView {
@@ -105,6 +106,8 @@ private struct SettingsView: View {
                     SettingsItem(icon: "lock.fill", iconColor: Color(hex: 0x3B7BF0), title: "隐私"),
                     SettingsItem(icon: "gearshape.2.fill", iconColor: WeChatColor.textSecondary, title: "通用"),
                 ])
+
+                appearanceCard
 
                 Button(action: onLogout) {
                     Text("退出登录")
@@ -124,6 +127,25 @@ private struct SettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(WeChatColor.navBar, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
+    }
+
+    // 外观切换:跟随系统 / 浅色 / 深色,写入 @AppStorage 后根视图即时应用。
+    private var appearanceCard: some View {
+        VStack(alignment: .leading, spacing: WeChatSpacing.s) {
+            Text("外观")
+                .font(WeChatFont.footnote)
+                .foregroundStyle(WeChatColor.textSecondary)
+            Picker("外观", selection: $appearance) {
+                ForEach(AppearanceMode.allCases, id: \.self) { mode in
+                    Text(mode.label).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
+        .padding(WeChatSpacing.m)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(WeChatColor.elevated)
+        .clipShape(RoundedRectangle(cornerRadius: WeChatRadius.l, style: .continuous))
     }
 }
 
