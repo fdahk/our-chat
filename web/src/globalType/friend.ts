@@ -1,6 +1,6 @@
-import type { FriendInfo } from '../contracts/gen/ourchat/friend/v1/friend';
+import type { FriendInfo } from '../contracts/openapi';
 
-export type { Friend, FriendInfo } from '../contracts/gen/ourchat/friend/v1/friend';
+export type { Friend, FriendInfo } from '../contracts/openapi';
 
 export interface FriendList {
     // key: 好友ID  value: remark

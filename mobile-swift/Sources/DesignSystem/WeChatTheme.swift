@@ -1,0 +1,75 @@
+import SwiftUI
+import UIKit
+
+// 微信主题色板。每个语义令牌给「浅色 / 深色」两套值,用 UIColor(dynamicProvider:) 实现,
+// 随当前外观(系统或 App 内手动设定)自动解析——所有 `WeChatColor.x` 调用点无需改动。
+enum WeChatColor {
+    static let brand = color(light: 0x07C160, dark: 0x07C160) // 微信品牌绿,明暗一致
+    static let background = color(light: 0xEDEDED, dark: 0x111111) // 页面底色
+    static let elevated = color(light: 0xFFFFFF, dark: 0x1E1E1E) // 分组/卡片/输入框底
+    static let navBar = color(light: 0xF7F7F7, dark: 0x1A1A1A) // 导航栏/标签栏底
+    static let separator = color(light: 0xE3E3E3, dark: 0x2A2A2A) // 分隔线
+    static let textPrimary = color(light: 0x191919, dark: 0xEDEDED) // 主文本
+    static let textSecondary = color(light: 0x888888, dark: 0x7F7F7F) // 次要文本
+    static let textTertiary = color(light: 0xB2B2B2, dark: 0x5A5A5A) // 占位/弱提示
+    static let badge = color(light: 0xFA5151, dark: 0xFA5151) // 未读红点,明暗一致
+    static let avatarPlaceholder = color(light: 0xD8D8D8, dark: 0x2C2C2C) // 头像占位底
+
+    private static func color(light: UInt32, dark: UInt32) -> Color {
+        Color(uiColor: weChatDynamicUIColor(light: light, dark: dark))
+    }
+}
+
+// 按当前 userInterfaceStyle 在浅/深之间解析的动态 UIColor。抽成自由函数便于单测(可对指定 trait 解析)。
+func weChatDynamicUIColor(light: UInt32, dark: UInt32) -> UIColor {
+    UIColor { traits in
+        UIColor(hex: traits.userInterfaceStyle == .dark ? dark : light)
+    }
+}
+
+// 字号令牌:统一排版,避免散落的 .font(.system(size:))。字号不随明暗变。
+enum WeChatFont {
+    static let title = Font.system(size: 22, weight: .semibold) // 页面大标题(如「我」页昵称)
+    static let navTitle = Font.system(size: 17, weight: .semibold) // 导航栏标题
+    static let body = Font.system(size: 16) // 正文/消息
+    static let subheadline = Font.system(size: 15) // 列表主标题
+    static let callout = Font.system(size: 14) // 次级标题/按钮
+    static let footnote = Font.system(size: 13) // 预览/说明
+    static let caption = Font.system(size: 12) // 时间/角标
+    static let caption2 = Font.system(size: 11) // 最弱提示
+}
+
+// 间距令牌(pt)。
+enum WeChatSpacing {
+    static let xs: CGFloat = 4
+    static let s: CGFloat = 8
+    static let m: CGFloat = 12
+    static let l: CGFloat = 16
+    static let xl: CGFloat = 24
+}
+
+// 圆角令牌(pt)。
+enum WeChatRadius {
+    static let s: CGFloat = 6
+    static let m: CGFloat = 8
+    static let l: CGFloat = 10
+}
+
+extension Color {
+    // 16 进制构造,便于直接用设计稿色值(0xRRGGBB)。
+    init(hex: UInt32, alpha: Double = 1) {
+        let r = Double((hex >> 16) & 0xFF) / 255
+        let g = Double((hex >> 8) & 0xFF) / 255
+        let b = Double(hex & 0xFF) / 255
+        self.init(.sRGB, red: r, green: g, blue: b, opacity: alpha)
+    }
+}
+
+extension UIColor {
+    convenience init(hex: UInt32, alpha: CGFloat = 1) {
+        let r = CGFloat((hex >> 16) & 0xFF) / 255
+        let g = CGFloat((hex >> 8) & 0xFF) / 255
+        let b = CGFloat(hex & 0xFF) / 255
+        self.init(red: r, green: g, blue: b, alpha: alpha)
+    }
+}

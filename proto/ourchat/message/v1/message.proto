@@ -3,36 +3,15 @@ syntax = "proto3";
 package ourchat.message.v1;
 
 import "google/protobuf/struct.proto";
-import "google/protobuf/timestamp.proto";
 
-// 文件消息附带的文件信息。
+// REST 实体(Message/User/Conversation/Friend)已迁至 OpenAPI 单一契约(openapi/openapi.yaml);
+// 本文件仅保留 OpenAPI 描述不了的实时 WS 事件类型。FileInfo 被 SendMessageInput 复用,故保留于此。
 message FileInfo {
   string file_name = 1;
   int64 file_size = 2; // 字节;int64 在 JSON 中为 string
   string file_url = 3;
   string file_type = 4;
   string file_md5 = 5;
-}
-
-// 一条消息:下行 receiveMessage 与落库 DTO 的线上形状。
-message Message {
-  int64 id = 1; // serverMsgId;JSON string
-  string client_msg_id = 2; // 客户端幂等键
-  string conversation_id = 3; // 会话 id,可能带 group_ 前缀,非纯数字
-  int64 sender_id = 4; // 发送者 user id;JSON string
-  int64 seq = 5; // 会话内单调序号;JSON string
-  string content = 6;
-  string type = 7; // text | image | file | video | audio | system
-  string status = 8; // sending | sent | delivered | read | failed
-  repeated int64 mentions = 9; // 被 @ 的 user id 列表
-  bool is_edited = 10;
-  bool is_deleted = 11;
-  google.protobuf.Struct extra = 12;
-  FileInfo file_info = 13;
-  google.protobuf.Timestamp timestamp = 14;
-  google.protobuf.Timestamp created_at = 15;
-  google.protobuf.Timestamp updated_at = 16;
-  repeated google.protobuf.Struct edit_history = 17;
 }
 
 // 上行发消息入参(socket 事件 message.send)。

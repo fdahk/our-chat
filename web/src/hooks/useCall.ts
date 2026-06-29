@@ -158,8 +158,8 @@ export const useCall = () => {
           localUser: {
             id: currentUser.id,
             username: currentUser.username,
-            nickname: currentUser.nickname,
-            avatar: currentUser.avatar,
+            nickname: currentUser.nickname ?? '',
+            avatar: currentUser.avatar ?? '',
           },
           remoteUser: event.from,
           offer: toRtcSdp(event.offer), // 保存offer
@@ -418,8 +418,8 @@ export const useCall = () => {
         localUser: {
           id: currentUser.id,
           username: currentUser.username,
-          nickname: currentUser.nickname,
-          avatar: currentUser.avatar,
+          nickname: currentUser.nickname ?? '',
+          avatar: currentUser.avatar ?? '',
         },
         remoteUser: targetUser,
         callType,
@@ -456,8 +456,8 @@ export const useCall = () => {
         from: {
           id: currentUser.id,
           username: currentUser.username,
-          nickname: currentUser.nickname,
-          avatar: currentUser.avatar,
+          nickname: currentUser.nickname ?? '',
+          avatar: currentUser.avatar ?? '',
         },
         to: targetUser,
         offer, // SDP 对象
@@ -491,8 +491,8 @@ export const useCall = () => {
         from: {
           id: currentUser.id,
           username: currentUser.username,
-          nickname: currentUser.nickname,
-          avatar: currentUser.avatar,
+          nickname: currentUser.nickname ?? '',
+          avatar: currentUser.avatar ?? '',
         },
         to: persisted.peer,
         offer,
@@ -645,8 +645,8 @@ export const useCall = () => {
     const localUser = {
       id: currentUser.id,
       username: currentUser.username,
-      nickname: currentUser.nickname,
-      avatar: currentUser.avatar,
+      nickname: currentUser.nickname ?? '',
+      avatar: currentUser.avatar ?? '',
     };
     const restoreStatus =
       persisted.status === 'ringing' ? 'ringing' : persisted.status === 'calling' ? 'calling' : 'reconnecting';

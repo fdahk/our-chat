@@ -13,7 +13,9 @@ import PackageDescription
             "GRDB": .framework,
             "SnapshotTesting": .framework,
             "Mockable": .framework,
-            "SwiftProtobuf": .framework,
+            "OpenAPIRuntime": .framework,
+            "HTTPTypes": .framework,
+            "SocketIO": .framework,
         ]
     )
 #endif
@@ -46,8 +48,12 @@ let package = Package(
             from: "7.0.0"
         ),
         .package(
-            url: "https://github.com/apple/swift-protobuf",
-            from: "1.28.0"
+            url: "https://github.com/apple/swift-openapi-runtime",
+            from: "1.0.0"
+        ),
+        .package(
+            url: "https://github.com/socketio/socket.io-client-swift",
+            from: "16.1.0"
         ),
     ]
 )
