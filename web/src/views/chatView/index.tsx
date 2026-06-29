@@ -238,7 +238,7 @@ function ChatView() {
     const renderMessageContent = (msg: Message, isSelf: boolean) => {
         // 文件消息
         if (msg.type === 'file' && msg.fileInfo) {
-            const { fileName, fileSize, fileUrl, fileType } = msg.fileInfo;
+            const { fileName = '', fileSize = 0, fileUrl = '', fileType = '' } = msg.fileInfo;
             
             // 格式化文件大小
             const formatFileSize = (bytes: number) => {
@@ -344,7 +344,7 @@ function ChatView() {
                                 key={item.id}
                                 id={item.id}
                                 avatar={globalFriendInfoList[parseConversationId(item.id)]?.avatar
-                                    ? buildServerUrl(globalFriendInfoList[parseConversationId(item.id)]?.avatar)
+                                    ? buildServerUrl(globalFriendInfoList[parseConversationId(item.id)]?.avatar ?? '')
                                     : defaultAvatar}
                                 title={friendDisplayName(parseConversationId(item.id))}
                                 content={lastMessages[item.id]?.content || ''}
@@ -428,7 +428,7 @@ function ChatView() {
                     ref={friendCardRef}
                 >
                     <ProfileCard
-                        avatar={globalFriendInfoList[friendCard.friendId]?.avatar ? buildServerUrl(globalFriendInfoList[friendCard.friendId].avatar) : ''}
+                        avatar={globalFriendInfoList[friendCard.friendId]?.avatar ? buildServerUrl(globalFriendInfoList[friendCard.friendId].avatar ?? '') : ''}
                         name={globalFriendInfoList[friendCard.friendId]?.username || ''}
                         rows={[{ label: t('profile.wxid'), value: String(friendCard.friendId) }]}
                         actions={[

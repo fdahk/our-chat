@@ -8,7 +8,10 @@
 
 export const protobufPackage = "ourchat.message.v1";
 
-/** 文件消息附带的文件信息。 */
+/**
+ * REST 实体(Message/User/Conversation/Friend)已迁至 OpenAPI 单一契约(openapi/openapi.yaml);
+ * 本文件仅保留 OpenAPI 描述不了的实时 WS 事件类型。FileInfo 被 SendMessageInput 复用,故保留于此。
+ */
 export interface FileInfo {
   fileName: string;
   /** 字节;int64 在 JSON 中为 string */
@@ -16,35 +19,6 @@ export interface FileInfo {
   fileUrl: string;
   fileType: string;
   fileMd5: string;
-}
-
-/** 一条消息:下行 receiveMessage 与落库 DTO 的线上形状。 */
-export interface Message {
-  /** serverMsgId;JSON string */
-  id: number;
-  /** 客户端幂等键 */
-  clientMsgId: string;
-  /** 会话 id,可能带 group_ 前缀,非纯数字 */
-  conversationId: string;
-  /** 发送者 user id;JSON string */
-  senderId: number;
-  /** 会话内单调序号;JSON string */
-  seq: number;
-  content: string;
-  /** text | image | file | video | audio | system */
-  type: string;
-  /** sending | sent | delivered | read | failed */
-  status: string;
-  /** 被 @ 的 user id 列表 */
-  mentions: number[];
-  isEdited: boolean;
-  isDeleted: boolean;
-  extra?: { [key: string]: any } | undefined;
-  fileInfo?: FileInfo | undefined;
-  timestamp?: string | undefined;
-  createdAt?: string | undefined;
-  updatedAt?: string | undefined;
-  editHistory: { [key: string]: any }[];
 }
 
 /**

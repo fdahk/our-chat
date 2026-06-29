@@ -9,14 +9,6 @@ struct MeClient: Sendable {
     var profile: @Sendable () async throws -> MeProfile
 }
 
-// GET /user/profile 回的当前用户(authenticateToken 选出的字段,camelCase)。
-private struct ProfileDTO: Decodable {
-    let id: Int
-    let username: String
-    let nickname: String?
-    let avatar: String?
-}
-
 extension MeClient: DependencyKey {
     static let liveValue = MeClient(
         profile: {
@@ -26,7 +18,7 @@ extension MeClient: DependencyKey {
             let client = apiClient
             let contacts = contactsClient
 
-            async let profileTask = client.sendUnwrapping(APIRequest.get("/user/profile"), as: ProfileDTO.self)
+            async let profileTask = client.sendUnwrapping(APIRequest.get("/user/profile"), as: APIUser.self)
             async let friendsTask = contacts.contacts()
             let (dto, friends) = try await (profileTask, friendsTask)
 
