@@ -8,18 +8,6 @@ struct ContactsClient: Sendable {
     var contacts: @Sendable () async throws -> [Contact]
 }
 
-// GET /user/getFriendList/:id 的 data:friendId 为 id→备注(可空),friendInfo 为 id→资料。
-private struct FriendListData: Decodable {
-    let friendId: [String: String?]
-    let friendInfo: [String: FriendInfoDTO]
-}
-
-private struct FriendInfoDTO: Decodable {
-    let username: String
-    let avatar: String?
-    let gender: String?
-}
-
 extension ContactsClient: DependencyKey {
     static let liveValue = ContactsClient(
         contacts: {
@@ -28,9 +16,10 @@ extension ContactsClient: DependencyKey {
             guard let userId = session.currentUserId() else { throw AuthError.notAuthenticated }
             let data = try await apiClient.sendUnwrapping(
                 APIRequest.get("/user/getFriendList/\(userId)"),
-                as: FriendListData.self
+                as: APIFriendList.self
             )
-            return data.toContacts()
+            // data 为两张 id 映射:friendId(id→备注,可空)、friendInfo(id→资料)。
+            return toContacts(remarks: data.friendId.additionalProperties, infos: data.friendInfo.additionalProperties)
         }
     )
 
@@ -44,21 +33,20 @@ extension DependencyValues {
     }
 }
 
-private extension FriendListData {
-    func toContacts() -> [Contact] {
-        friendInfo.map { id, info in
-            let rawRemark = friendId[id] ?? nil // 外层 optional 是 dict 命中,内层是"备注可空"
-            let remark = (rawRemark?.isEmpty ?? true) ? nil : rawRemark
-            let name = remark ?? info.username
-            return Contact(
-                id: id,
-                name: name,
-                avatarURL: info.avatar.flatMap(URL.init(string:)),
-                sectionKey: ContactSectioning.key(for: name)
-            )
-        }
-        .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+// remarks: id→备注(可空);infos: id→资料。备注优先于昵称作展示名。
+private func toContacts(remarks: [String: String?], infos: [String: APIFriendInfo]) -> [Contact] {
+    infos.map { id, info in
+        let rawRemark = remarks[id] ?? nil // 外层 optional 是 dict 命中,内层是"备注可空"
+        let remark = (rawRemark?.isEmpty ?? true) ? nil : rawRemark
+        let name = remark ?? info.username
+        return Contact(
+            id: id,
+            name: name,
+            avatarURL: info.avatar.flatMap(URL.init(string:)),
+            sectionKey: ContactSectioning.key(for: name)
+        )
     }
+    .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
 }
 
 // 拼音首字母分组:用 iOS 自带 CFStringTransform 把中文转拉丁(拼音)取首字母;非字母归 "#"。

@@ -61,7 +61,7 @@ private struct DeviceBanner: View {
         HStack(spacing: 12) {
             IconTile(systemName: "laptopcomputer", color: Color(hex: 0x3A3A3A), size: 40, cornerRadius: 5)
             Text("已登录\(count)台其他设备")
-                .font(.system(size: 15))
+                .font(WeChatFont.subheadline)
                 .foregroundStyle(WeChatColor.textSecondary)
             Spacer()
         }
@@ -79,18 +79,18 @@ private struct ConversationRow: View {
                 .overlay(alignment: .topTrailing) { unreadBadge }
             VStack(alignment: .leading, spacing: 4) {
                 Text(conversation.title)
-                    .font(.system(size: 16))
+                    .font(WeChatFont.body)
                     .foregroundStyle(WeChatColor.textPrimary)
                     .lineLimit(1)
                 Text(conversation.preview)
-                    .font(.system(size: 13))
+                    .font(WeChatFont.footnote)
                     .foregroundStyle(WeChatColor.textSecondary)
                     .lineLimit(1)
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 6) {
                 Text(conversation.timeText)
-                    .font(.system(size: 12))
+                    .font(WeChatFont.caption)
                     .foregroundStyle(WeChatColor.textTertiary)
                 if conversation.isMuted {
                     Image(systemName: "bell.slash.fill")
@@ -114,7 +114,7 @@ private struct ConversationRow: View {
     @ViewBuilder private var unreadBadge: some View {
         if conversation.unreadCount > 0 {
             Text("\(min(conversation.unreadCount, 99))")
-                .font(.system(size: 11, weight: .medium))
+                .font(WeChatFont.caption2Medium)
                 .foregroundStyle(.white)
                 .padding(.horizontal, 5)
                 .frame(minWidth: 18, minHeight: 18)

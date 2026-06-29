@@ -58,7 +58,14 @@ function DirectoryView() {
             } else {
                 // 用户存在且不是好友
                 setShowAddFriendModal(true);
-                setFriendInfo(searchResult.friendInfo);
+                if (searchResult.friendInfo) {
+                    setFriendInfo({
+                        id: searchResult.friendInfo.id,
+                        username: searchResult.friendInfo.username,
+                        avatar: searchResult.friendInfo.avatar ?? '',
+                        gender: searchResult.friendInfo.gender ?? '',
+                    });
+                }
             }
         } else {
             // 用户不存在
@@ -230,7 +237,7 @@ function DirectoryView() {
                 {activeFriend && (
                     <FriendModal
                         avatar={globalFriendInfoList[activeFriend?.friendId as number]?.avatar
-                            ? buildServerUrl(globalFriendInfoList[activeFriend?.friendId as number].avatar) 
+                            ? buildServerUrl(globalFriendInfoList[activeFriend?.friendId as number].avatar ?? '')
                             : defaultAvatar}
                         username={globalFriendInfoList[activeFriend?.friendId as number]?.username}
                         wxid={activeFriend?.friendId.toString() as string}

@@ -81,7 +81,7 @@ struct ChatDetailView: View {
                 .onSubmit { store.send(.sendButtonTapped) }
             Button { store.send(.sendButtonTapped) } label: {
                 Text("发送")
-                    .font(.system(size: 15, weight: .medium))
+                    .font(WeChatFont.subheadlineMedium)
                     .foregroundStyle(.white)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
@@ -119,7 +119,7 @@ private struct MessageBubble: View {
             FileCard(info: info)
         } else {
             Text(message.content)
-                .font(.system(size: 16))
+                .font(WeChatFont.body)
                 .foregroundStyle(isMine ? Color(hex: 0x111111) : WeChatColor.textPrimary)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 9)
@@ -139,11 +139,11 @@ private struct FileCard: View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(info.fileName)
-                    .font(.system(size: 15))
+                    .font(WeChatFont.subheadline)
                     .foregroundStyle(WeChatColor.textPrimary)
                     .lineLimit(2)
                 Text(byteSize(info.fileSize))
-                    .font(.system(size: 12))
+                    .font(WeChatFont.caption)
                     .foregroundStyle(WeChatColor.textSecondary)
             }
             .frame(maxWidth: 160, alignment: .leading)

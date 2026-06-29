@@ -27,16 +27,19 @@ func weChatDynamicUIColor(light: UInt32, dark: UInt32) -> UIColor {
     }
 }
 
-// 字号令牌:统一排版,避免散落的 .font(.system(size:))。字号不随明暗变。
+// 文本字号令牌:统一文字排版,覆盖项目实际用到的每个(字号, 字重),避免散落的 .font(.system(size:))。
+// 仅用于 Text;字号不随明暗变。SF Symbol 图标点大小是局部视觉常量,不进此令牌(避免给一次性数值起名)。
 enum WeChatFont {
     static let title = Font.system(size: 22, weight: .semibold) // 页面大标题(如「我」页昵称)
-    static let navTitle = Font.system(size: 17, weight: .semibold) // 导航栏标题
     static let body = Font.system(size: 16) // 正文/消息
     static let subheadline = Font.system(size: 15) // 列表主标题
-    static let callout = Font.system(size: 14) // 次级标题/按钮
+    static let subheadlineMedium = Font.system(size: 15, weight: .medium)
+    static let callout = Font.system(size: 14) // 次级标题/按钮文字
+    static let calloutMedium = Font.system(size: 14, weight: .medium)
     static let footnote = Font.system(size: 13) // 预览/说明
-    static let caption = Font.system(size: 12) // 时间/角标
-    static let caption2 = Font.system(size: 11) // 最弱提示
+    static let caption = Font.system(size: 12) // 时间/小字
+    static let caption2Medium = Font.system(size: 11, weight: .medium) // 未读角标
+    static let microMedium = Font.system(size: 10, weight: .medium) // 索引条
 }
 
 // 间距令牌(pt)。

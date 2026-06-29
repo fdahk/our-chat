@@ -118,7 +118,7 @@ private struct SpecialRow: View {
         HStack(spacing: 12) {
             IconTile(systemName: entry.icon, color: entry.color, size: 40, cornerRadius: 6)
             Text(entry.title)
-                .font(.system(size: 16))
+                .font(WeChatFont.body)
                 .foregroundStyle(WeChatColor.textPrimary)
             Spacer()
         }
@@ -133,7 +133,7 @@ private struct ContactRow: View {
         HStack(spacing: 12) {
             Avatar(url: contact.avatarURL, size: 40)
             Text(contact.name)
-                .font(.system(size: 16))
+                .font(WeChatFont.body)
                 .foregroundStyle(WeChatColor.textPrimary)
                 .lineLimit(1)
             Spacer()
@@ -147,7 +147,7 @@ private struct SectionHeader: View {
 
     var body: some View {
         Text(title)
-            .font(.system(size: 13))
+            .font(WeChatFont.footnote)
             .foregroundStyle(WeChatColor.textSecondary)
             .textCase(nil)
             .padding(.vertical, 2)
@@ -162,7 +162,7 @@ private struct IndexBar: View {
         VStack(spacing: 1) {
             ForEach(titles, id: \.self) { title in
                 Text(title)
-                    .font(.system(size: 10, weight: .medium))
+                    .font(WeChatFont.microMedium)
                     .foregroundStyle(WeChatColor.textSecondary)
                     .frame(width: 18, height: 13)
                     .contentShape(Rectangle())

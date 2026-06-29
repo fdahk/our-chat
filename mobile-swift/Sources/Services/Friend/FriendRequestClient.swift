@@ -27,15 +27,6 @@ struct FriendRequestClient: Sendable {
     var reply: @Sendable (_ friendId: Int, _ accepted: Bool) async throws -> Void
 }
 
-// GET /getFriendReqs 的每行(prisma 行 + 注入的对方 username/avatar)。
-private struct FriendReqDTO: Decodable {
-    let friendId: Int
-    let status: String
-    let username: String?
-    let avatar: String?
-    let updatedAt: String?
-}
-
 extension FriendRequestClient: DependencyKey {
     static let liveValue = FriendRequestClient(
         send: { friendId in
@@ -51,13 +42,13 @@ extension FriendRequestClient: DependencyKey {
             guard let userId = session.currentUserId() else { throw AuthError.notAuthenticated }
             let rows = try await apiClient.sendUnwrapping(
                 APIRequest.get("/user/getFriendReqs", query: [URLQueryItem(name: "userId", value: String(userId))]),
-                as: [String: FriendReqDTO].self
+                as: [String: APIFriendRequest].self
             )
             return rows.values
-                .sorted { ($0.updatedAt ?? "") > ($1.updatedAt ?? "") }
+                .sorted { ($0.updatedAt ?? .distantPast) > ($1.updatedAt ?? .distantPast) }
                 .map {
                     FriendRequest(
-                        peerId: $0.friendId,
+                        peerId: Int($0.friendId),
                         username: $0.username ?? String($0.friendId),
                         avatarURL: $0.avatar.flatMap(URL.init(string:)),
                         status: FriendRequestStatus(rawValue: $0.status) ?? .pending

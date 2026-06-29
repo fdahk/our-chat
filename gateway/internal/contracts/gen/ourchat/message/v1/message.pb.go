@@ -10,7 +10,6 @@ import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	structpb "google.golang.org/protobuf/types/known/structpb"
-	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -23,7 +22,8 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// 文件消息附带的文件信息。
+// REST 实体(Message/User/Conversation/Friend)已迁至 OpenAPI 单一契约(openapi/openapi.yaml);
+// 本文件仅保留 OpenAPI 描述不了的实时 WS 事件类型。FileInfo 被 SendMessageInput 复用,故保留于此。
 type FileInfo struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	FileName      string                 `protobuf:"bytes,1,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`
@@ -100,179 +100,6 @@ func (x *FileInfo) GetFileMd5() string {
 	return ""
 }
 
-// 一条消息:下行 receiveMessage 与落库 DTO 的线上形状。
-type Message struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Id             int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`                                              // serverMsgId;JSON string
-	ClientMsgId    string                 `protobuf:"bytes,2,opt,name=client_msg_id,json=clientMsgId,proto3" json:"client_msg_id,omitempty"`        // 客户端幂等键
-	ConversationId string                 `protobuf:"bytes,3,opt,name=conversation_id,json=conversationId,proto3" json:"conversation_id,omitempty"` // 会话 id,可能带 group_ 前缀,非纯数字
-	SenderId       int64                  `protobuf:"varint,4,opt,name=sender_id,json=senderId,proto3" json:"sender_id,omitempty"`                  // 发送者 user id;JSON string
-	Seq            int64                  `protobuf:"varint,5,opt,name=seq,proto3" json:"seq,omitempty"`                                            // 会话内单调序号;JSON string
-	Content        string                 `protobuf:"bytes,6,opt,name=content,proto3" json:"content,omitempty"`
-	Type           string                 `protobuf:"bytes,7,opt,name=type,proto3" json:"type,omitempty"`                 // text | image | file | video | audio | system
-	Status         string                 `protobuf:"bytes,8,opt,name=status,proto3" json:"status,omitempty"`             // sending | sent | delivered | read | failed
-	Mentions       []int64                `protobuf:"varint,9,rep,packed,name=mentions,proto3" json:"mentions,omitempty"` // 被 @ 的 user id 列表
-	IsEdited       bool                   `protobuf:"varint,10,opt,name=is_edited,json=isEdited,proto3" json:"is_edited,omitempty"`
-	IsDeleted      bool                   `protobuf:"varint,11,opt,name=is_deleted,json=isDeleted,proto3" json:"is_deleted,omitempty"`
-	Extra          *structpb.Struct       `protobuf:"bytes,12,opt,name=extra,proto3" json:"extra,omitempty"`
-	FileInfo       *FileInfo              `protobuf:"bytes,13,opt,name=file_info,json=fileInfo,proto3" json:"file_info,omitempty"`
-	Timestamp      *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
-	CreatedAt      *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt      *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	EditHistory    []*structpb.Struct     `protobuf:"bytes,17,rep,name=edit_history,json=editHistory,proto3" json:"edit_history,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
-}
-
-func (x *Message) Reset() {
-	*x = Message{}
-	mi := &file_ourchat_message_v1_message_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Message) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Message) ProtoMessage() {}
-
-func (x *Message) ProtoReflect() protoreflect.Message {
-	mi := &file_ourchat_message_v1_message_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Message.ProtoReflect.Descriptor instead.
-func (*Message) Descriptor() ([]byte, []int) {
-	return file_ourchat_message_v1_message_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *Message) GetId() int64 {
-	if x != nil {
-		return x.Id
-	}
-	return 0
-}
-
-func (x *Message) GetClientMsgId() string {
-	if x != nil {
-		return x.ClientMsgId
-	}
-	return ""
-}
-
-func (x *Message) GetConversationId() string {
-	if x != nil {
-		return x.ConversationId
-	}
-	return ""
-}
-
-func (x *Message) GetSenderId() int64 {
-	if x != nil {
-		return x.SenderId
-	}
-	return 0
-}
-
-func (x *Message) GetSeq() int64 {
-	if x != nil {
-		return x.Seq
-	}
-	return 0
-}
-
-func (x *Message) GetContent() string {
-	if x != nil {
-		return x.Content
-	}
-	return ""
-}
-
-func (x *Message) GetType() string {
-	if x != nil {
-		return x.Type
-	}
-	return ""
-}
-
-func (x *Message) GetStatus() string {
-	if x != nil {
-		return x.Status
-	}
-	return ""
-}
-
-func (x *Message) GetMentions() []int64 {
-	if x != nil {
-		return x.Mentions
-	}
-	return nil
-}
-
-func (x *Message) GetIsEdited() bool {
-	if x != nil {
-		return x.IsEdited
-	}
-	return false
-}
-
-func (x *Message) GetIsDeleted() bool {
-	if x != nil {
-		return x.IsDeleted
-	}
-	return false
-}
-
-func (x *Message) GetExtra() *structpb.Struct {
-	if x != nil {
-		return x.Extra
-	}
-	return nil
-}
-
-func (x *Message) GetFileInfo() *FileInfo {
-	if x != nil {
-		return x.FileInfo
-	}
-	return nil
-}
-
-func (x *Message) GetTimestamp() *timestamppb.Timestamp {
-	if x != nil {
-		return x.Timestamp
-	}
-	return nil
-}
-
-func (x *Message) GetCreatedAt() *timestamppb.Timestamp {
-	if x != nil {
-		return x.CreatedAt
-	}
-	return nil
-}
-
-func (x *Message) GetUpdatedAt() *timestamppb.Timestamp {
-	if x != nil {
-		return x.UpdatedAt
-	}
-	return nil
-}
-
-func (x *Message) GetEditHistory() []*structpb.Struct {
-	if x != nil {
-		return x.EditHistory
-	}
-	return nil
-}
-
 // 上行发消息入参(socket 事件 message.send)。
 // sender_id 仅供前端回显参考,服务端以握手验签的 socket.userId 为准。
 type SendMessageInput struct {
@@ -291,7 +118,7 @@ type SendMessageInput struct {
 
 func (x *SendMessageInput) Reset() {
 	*x = SendMessageInput{}
-	mi := &file_ourchat_message_v1_message_proto_msgTypes[2]
+	mi := &file_ourchat_message_v1_message_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -303,7 +130,7 @@ func (x *SendMessageInput) String() string {
 func (*SendMessageInput) ProtoMessage() {}
 
 func (x *SendMessageInput) ProtoReflect() protoreflect.Message {
-	mi := &file_ourchat_message_v1_message_proto_msgTypes[2]
+	mi := &file_ourchat_message_v1_message_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -316,7 +143,7 @@ func (x *SendMessageInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendMessageInput.ProtoReflect.Descriptor instead.
 func (*SendMessageInput) Descriptor() ([]byte, []int) {
-	return file_ourchat_message_v1_message_proto_rawDescGZIP(), []int{2}
+	return file_ourchat_message_v1_message_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *SendMessageInput) GetClientMsgId() string {
@@ -387,7 +214,7 @@ type SendMessageAck struct {
 
 func (x *SendMessageAck) Reset() {
 	*x = SendMessageAck{}
-	mi := &file_ourchat_message_v1_message_proto_msgTypes[3]
+	mi := &file_ourchat_message_v1_message_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -399,7 +226,7 @@ func (x *SendMessageAck) String() string {
 func (*SendMessageAck) ProtoMessage() {}
 
 func (x *SendMessageAck) ProtoReflect() protoreflect.Message {
-	mi := &file_ourchat_message_v1_message_proto_msgTypes[3]
+	mi := &file_ourchat_message_v1_message_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -412,7 +239,7 @@ func (x *SendMessageAck) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendMessageAck.ProtoReflect.Descriptor instead.
 func (*SendMessageAck) Descriptor() ([]byte, []int) {
-	return file_ourchat_message_v1_message_proto_rawDescGZIP(), []int{3}
+	return file_ourchat_message_v1_message_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *SendMessageAck) GetClientMsgId() string {
@@ -440,35 +267,13 @@ var File_ourchat_message_v1_message_proto protoreflect.FileDescriptor
 
 const file_ourchat_message_v1_message_proto_rawDesc = "" +
 	"\n" +
-	" ourchat/message/v1/message.proto\x12\x12ourchat.message.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x97\x01\n" +
+	" ourchat/message/v1/message.proto\x12\x12ourchat.message.v1\x1a\x1cgoogle/protobuf/struct.proto\"\x97\x01\n" +
 	"\bFileInfo\x12\x1b\n" +
 	"\tfile_name\x18\x01 \x01(\tR\bfileName\x12\x1b\n" +
 	"\tfile_size\x18\x02 \x01(\x03R\bfileSize\x12\x19\n" +
 	"\bfile_url\x18\x03 \x01(\tR\afileUrl\x12\x1b\n" +
 	"\tfile_type\x18\x04 \x01(\tR\bfileType\x12\x19\n" +
-	"\bfile_md5\x18\x05 \x01(\tR\afileMd5\"\x89\x05\n" +
-	"\aMessage\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\x12\"\n" +
-	"\rclient_msg_id\x18\x02 \x01(\tR\vclientMsgId\x12'\n" +
-	"\x0fconversation_id\x18\x03 \x01(\tR\x0econversationId\x12\x1b\n" +
-	"\tsender_id\x18\x04 \x01(\x03R\bsenderId\x12\x10\n" +
-	"\x03seq\x18\x05 \x01(\x03R\x03seq\x12\x18\n" +
-	"\acontent\x18\x06 \x01(\tR\acontent\x12\x12\n" +
-	"\x04type\x18\a \x01(\tR\x04type\x12\x16\n" +
-	"\x06status\x18\b \x01(\tR\x06status\x12\x1a\n" +
-	"\bmentions\x18\t \x03(\x03R\bmentions\x12\x1b\n" +
-	"\tis_edited\x18\n" +
-	" \x01(\bR\bisEdited\x12\x1d\n" +
-	"\n" +
-	"is_deleted\x18\v \x01(\bR\tisDeleted\x12-\n" +
-	"\x05extra\x18\f \x01(\v2\x17.google.protobuf.StructR\x05extra\x129\n" +
-	"\tfile_info\x18\r \x01(\v2\x1c.ourchat.message.v1.FileInfoR\bfileInfo\x128\n" +
-	"\ttimestamp\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x129\n" +
-	"\n" +
-	"created_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
-	"\n" +
-	"updated_at\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12:\n" +
-	"\fedit_history\x18\x11 \x03(\v2\x17.google.protobuf.StructR\veditHistory\"\xc3\x02\n" +
+	"\bfile_md5\x18\x05 \x01(\tR\afileMd5\"\xc3\x02\n" +
 	"\x10SendMessageInput\x12\"\n" +
 	"\rclient_msg_id\x18\x01 \x01(\tR\vclientMsgId\x12'\n" +
 	"\x0fconversation_id\x18\x02 \x01(\tR\x0econversationId\x12 \n" +
@@ -498,29 +303,21 @@ func file_ourchat_message_v1_message_proto_rawDescGZIP() []byte {
 	return file_ourchat_message_v1_message_proto_rawDescData
 }
 
-var file_ourchat_message_v1_message_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_ourchat_message_v1_message_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_ourchat_message_v1_message_proto_goTypes = []any{
-	(*FileInfo)(nil),              // 0: ourchat.message.v1.FileInfo
-	(*Message)(nil),               // 1: ourchat.message.v1.Message
-	(*SendMessageInput)(nil),      // 2: ourchat.message.v1.SendMessageInput
-	(*SendMessageAck)(nil),        // 3: ourchat.message.v1.SendMessageAck
-	(*structpb.Struct)(nil),       // 4: google.protobuf.Struct
-	(*timestamppb.Timestamp)(nil), // 5: google.protobuf.Timestamp
+	(*FileInfo)(nil),         // 0: ourchat.message.v1.FileInfo
+	(*SendMessageInput)(nil), // 1: ourchat.message.v1.SendMessageInput
+	(*SendMessageAck)(nil),   // 2: ourchat.message.v1.SendMessageAck
+	(*structpb.Struct)(nil),  // 3: google.protobuf.Struct
 }
 var file_ourchat_message_v1_message_proto_depIdxs = []int32{
-	4, // 0: ourchat.message.v1.Message.extra:type_name -> google.protobuf.Struct
-	0, // 1: ourchat.message.v1.Message.file_info:type_name -> ourchat.message.v1.FileInfo
-	5, // 2: ourchat.message.v1.Message.timestamp:type_name -> google.protobuf.Timestamp
-	5, // 3: ourchat.message.v1.Message.created_at:type_name -> google.protobuf.Timestamp
-	5, // 4: ourchat.message.v1.Message.updated_at:type_name -> google.protobuf.Timestamp
-	4, // 5: ourchat.message.v1.Message.edit_history:type_name -> google.protobuf.Struct
-	4, // 6: ourchat.message.v1.SendMessageInput.extra:type_name -> google.protobuf.Struct
-	0, // 7: ourchat.message.v1.SendMessageInput.file_info:type_name -> ourchat.message.v1.FileInfo
-	8, // [8:8] is the sub-list for method output_type
-	8, // [8:8] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	3, // 0: ourchat.message.v1.SendMessageInput.extra:type_name -> google.protobuf.Struct
+	0, // 1: ourchat.message.v1.SendMessageInput.file_info:type_name -> ourchat.message.v1.FileInfo
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_ourchat_message_v1_message_proto_init() }
@@ -528,14 +325,14 @@ func file_ourchat_message_v1_message_proto_init() {
 	if File_ourchat_message_v1_message_proto != nil {
 		return
 	}
-	file_ourchat_message_v1_message_proto_msgTypes[2].OneofWrappers = []any{}
+	file_ourchat_message_v1_message_proto_msgTypes[1].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ourchat_message_v1_message_proto_rawDesc), len(file_ourchat_message_v1_message_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

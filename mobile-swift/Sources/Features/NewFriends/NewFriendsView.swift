@@ -35,7 +35,7 @@ private struct RequestRow: View {
         HStack(spacing: 12) {
             Avatar(url: request.avatarURL, size: 44)
             Text(request.username)
-                .font(.system(size: 16))
+                .font(WeChatFont.body)
                 .foregroundStyle(WeChatColor.textPrimary)
                 .lineLimit(1)
             Spacer()
@@ -49,7 +49,7 @@ private struct RequestRow: View {
         case .pending:
             Button(action: onAccept) {
                 Text("接受")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(WeChatFont.calloutMedium)
                     .foregroundStyle(.white)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 6)
@@ -67,7 +67,7 @@ private struct RequestRow: View {
 
     private func statusText(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 14))
+            .font(WeChatFont.callout)
             .foregroundStyle(WeChatColor.textSecondary)
     }
 }

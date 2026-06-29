@@ -46,11 +46,11 @@ private struct ProfileHeader: View {
             Avatar(url: profile.avatarURL, size: 64, cornerRadius: 8)
             VStack(alignment: .leading, spacing: 8) {
                 Text(profile.name)
-                    .font(.system(size: 22, weight: .semibold))
+                    .font(WeChatFont.title)
                     .foregroundStyle(WeChatColor.textPrimary)
                 HStack(spacing: 4) {
                     Text("微信号:\(profile.wxid)")
-                        .font(.system(size: 14))
+                        .font(WeChatFont.callout)
                         .foregroundStyle(WeChatColor.textSecondary)
                     Image(systemName: "chevron.right")
                         .font(.system(size: 11))
@@ -60,12 +60,12 @@ private struct ProfileHeader: View {
                     pill {
                         HStack(spacing: 3) {
                             Image(systemName: "plus").font(.system(size: 10))
-                            Text("状态").font(.system(size: 12))
+                            Text("状态").font(WeChatFont.caption)
                         }
                     }
                     pill {
                         HStack(spacing: 4) {
-                            Text("等\(profile.friendCount)个朋友").font(.system(size: 12))
+                            Text("等\(profile.friendCount)个朋友").font(WeChatFont.caption)
                             Circle().fill(WeChatColor.badge).frame(width: 6, height: 6)
                         }
                     }
@@ -111,7 +111,7 @@ private struct SettingsView: View {
 
                 Button(action: onLogout) {
                     Text("退出登录")
-                        .font(.system(size: 16))
+                        .font(WeChatFont.body)
                         .foregroundStyle(WeChatColor.badge)
                         .frame(maxWidth: .infinity)
                         .frame(height: 53)

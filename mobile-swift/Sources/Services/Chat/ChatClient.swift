@@ -11,80 +11,25 @@ struct ChatClient: Sendable {
     var messages: @Sendable (_ conversationId: String) async throws -> [ChatMessage]
 }
 
-// GET /user/userConversations?userId= 的行(prisma camelCase)
-private struct UserConvDTO: Decodable {
-    let conversationId: String
-    let unreadCount: Int?
-    let isMuted: Bool?
-    let lastActivity: String?
+// 线上类型来自 openapi.yaml 生成(APIUserConversation/APIConversation/APIMessagePreview/APIMessage)。
+// APIMessage → 领域 ChatMessage 的映射(int64→Int、_type→type、fileInfo 取非空)。
+private func toChatMessage(_ m: APIMessage) -> ChatMessage {
+    ChatMessage(
+        serverId: Int(m.id),
+        conversationId: m.conversationId,
+        senderId: Int(m.senderId),
+        seq: m.seq.map(Int.init),
+        content: m.content,
+        type: m._type,
+        timestamp: m.timestamp,
+        clientMsgId: m.clientMsgId,
+        fileInfo: m.fileInfo.flatMap(toMessageFileInfo)
+    )
 }
 
-// GET /user/conversations 的会话元信息(camelCase)。title/avatar 可能不存在(单聊由好友解析)。
-private struct ConvMetaDTO: Decodable {
-    let convType: String?
-    let title: String?
-    let avatar: String?
-}
-
-// GET /user/lastMessages 的末条消息。注:该接口走原生 SQL,字段是单字段名(content/type/timestamp),无 snake/camel 差异。
-private struct LastMsgDTO: Decodable {
-    let content: String?
-    let type: String?
-    let timestamp: String?
-}
-
-// GET /user/messages 的消息行(prisma camelCase)。
-private struct MessageDTO: Decodable {
-    let id: Int
-    let conversationId: String
-    let senderId: Int
-    let seq: Int?
-    let content: String?
-    let type: String?
-    let timestamp: String?
-    let clientMsgId: String?
-    let fileInfo: FileInfoDTO?
-
-    func toModel() -> ChatMessage {
-        ChatMessage(
-            serverId: id,
-            conversationId: conversationId,
-            senderId: senderId,
-            seq: seq,
-            content: content ?? "",
-            type: type ?? "text",
-            timestamp: ConversationAssembler.parseISO(timestamp),
-            clientMsgId: clientMsgId,
-            fileInfo: fileInfo?.toModel()
-        )
-    }
-}
-
-// 落库的 fileInfo(camelCase)。fileSize 可能是数字或字符串(int64 线上常为 string),做兼容。
-private struct FileInfoDTO: Decodable {
-    let fileName: String?
-    let fileUrl: String?
-    let fileSize: Int?
-
-    enum CodingKeys: String, CodingKey { case fileName, fileUrl, fileSize }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        fileName = try container.decodeIfPresent(String.self, forKey: .fileName)
-        fileUrl = try container.decodeIfPresent(String.self, forKey: .fileUrl)
-        if let n = try? container.decode(Int.self, forKey: .fileSize) {
-            fileSize = n
-        } else if let s = try? container.decode(String.self, forKey: .fileSize) {
-            fileSize = Int(s)
-        } else {
-            fileSize = nil
-        }
-    }
-
-    func toModel() -> MessageFileInfo? {
-        guard let fileName else { return nil }
-        return MessageFileInfo(fileName: fileName, fileSize: fileSize ?? 0, fileUrl: fileUrl ?? "")
-    }
+private func toMessageFileInfo(_ f: APIFileInfo) -> MessageFileInfo? {
+    guard let name = f.fileName else { return nil } // 非文件消息下发空对象 {},fileName 缺失即视为无文件
+    return MessageFileInfo(fileName: name, fileSize: Int(f.fileSize ?? 0), fileUrl: f.fileUrl ?? "")
 }
 
 extension ChatClient: DependencyKey {
@@ -100,7 +45,7 @@ extension ChatClient: DependencyKey {
 
             let userConvs = try await client.sendUnwrapping(
                 APIRequest.get("/user/userConversations", query: [URLQueryItem(name: "userId", value: String(userId))]),
-                as: [UserConvDTO].self
+                as: [APIUserConversation].self
             )
             let ids = userConvs.map(\.conversationId)
             guard !ids.isEmpty else { return [] }
@@ -108,11 +53,11 @@ extension ChatClient: DependencyKey {
 
             async let metasTask = client.sendUnwrapping(
                 APIRequest.get("/user/conversations", query: [URLQueryItem(name: "userConversationIds", value: idsParam)]),
-                as: [String: ConvMetaDTO].self
+                as: [String: APIConversation].self
             )
             async let lastsTask = client.sendUnwrapping(
                 APIRequest.get("/user/lastMessages", query: [URLQueryItem(name: "userConversationIds", value: idsParam)]),
-                as: [String: LastMsgDTO].self
+                as: [String: APIMessagePreview].self
             )
             async let friendsTask = contacts.contacts()
             let (metas, lasts, friends) = try await (metasTask, lastsTask, friendsTask)
@@ -123,7 +68,7 @@ extension ChatClient: DependencyKey {
                     .init(conversationId: $0.conversationId, unreadCount: $0.unreadCount ?? 0, isMuted: $0.isMuted ?? false, lastActivity: $0.lastActivity)
                 },
                 metas: metas.mapValues { .init(convType: $0.convType, title: $0.title, avatar: $0.avatar) },
-                lasts: lasts.mapValues { .init(content: $0.content, type: $0.type, timestamp: $0.timestamp) },
+                lasts: lasts.mapValues { .init(content: $0.content, type: $0._type, timestamp: $0.timestamp) },
                 friends: friendIndex,
                 myUserId: userId
             )
@@ -131,11 +76,11 @@ extension ChatClient: DependencyKey {
         otherDeviceCount: { 0 }, // 暂无对应 REST 来源,隐藏"已登录N台设备"条
         messages: { conversationId in
             @Dependency(\.apiClient) var apiClient
-            let dtos = try await apiClient.sendUnwrapping(
+            let messages = try await apiClient.sendUnwrapping(
                 APIRequest.get("/user/messages", query: [URLQueryItem(name: "conversationId", value: conversationId)]),
-                as: [MessageDTO].self
+                as: [APIMessage].self
             )
-            return dtos.map { $0.toModel() }
+            return messages.map(toChatMessage)
         }
     )
 
@@ -159,9 +104,9 @@ private func jsonArray(_ values: [String]) -> String {
 
 // 聚合逻辑抽成纯函数,便于单测(给定三接口数据 + 好友 → 期望会话行)。
 enum ConversationAssembler {
-    struct UserConv: Equatable { var conversationId: String; var unreadCount: Int; var isMuted: Bool; var lastActivity: String? }
+    struct UserConv: Equatable { var conversationId: String; var unreadCount: Int; var isMuted: Bool; var lastActivity: Date? }
     struct Meta: Equatable { var convType: String?; var title: String?; var avatar: String? }
-    struct Last: Equatable { var content: String?; var type: String?; var timestamp: String? }
+    struct Last: Equatable { var content: String?; var type: String?; var timestamp: Date? }
 
     static func assemble(
         userConvs: [UserConv],
@@ -180,7 +125,7 @@ enum ConversationAssembler {
                 conversationId: uc.conversationId, isGroup: isGroup, meta: meta, friends: friends, myUserId: myUserId
             )
             let preview = MessagePreview.text(content: last?.content ?? "", type: last?.type ?? "text")
-            let date = parseISO(last?.timestamp) ?? parseISO(uc.lastActivity)
+            let date = last?.timestamp ?? uc.lastActivity
             let timeText = date.map { RelativeTime.label(from: $0, now: now, calendar: calendar) } ?? ""
             return Conversation(
                 id: uc.conversationId,

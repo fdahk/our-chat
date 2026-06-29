@@ -25,7 +25,5 @@ plugins:
     out: gateway/internal/contracts/gen
     opt:
       - paths=source_relative
-  - remote: buf.build/apple/swift
-    out: mobile-swift/Sources/Contracts/Gen
-    opt:
-      - Visibility=Public
+  # mobile-swift 已改用 OpenAPI(openapi/openapi.yaml + swift-openapi-generator)生成惯用 Codable,
+  # 不再用 SwiftProtobuf(二进制类、命名分叉、对 JSON-REST 不友好),故移除 apple/swift 插件。

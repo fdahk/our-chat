@@ -11,7 +11,7 @@ extension APIClient {
     func send<Response: Decodable>(
         _ request: APIRequest,
         decoding _: Response.Type,
-        decoder: JSONDecoder = JSONDecoder()
+        decoder: JSONDecoder = .ourchatAPI
     ) async throws -> Response {
         let data = try await perform(request)
         do {

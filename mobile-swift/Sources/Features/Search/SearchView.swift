@@ -24,7 +24,7 @@ struct SearchView: View {
                     prompt: Text("微信号/手机号/用户名").foregroundStyle(WeChatColor.textTertiary)
                 )
                 .foregroundStyle(WeChatColor.textPrimary)
-                .font(.system(size: 15))
+                .font(WeChatFont.subheadline)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
             }
@@ -34,7 +34,7 @@ struct SearchView: View {
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             Button("取消") { store.send(.closeTapped) }
-                .font(.system(size: 15))
+                .font(WeChatFont.subheadline)
                 .foregroundStyle(WeChatColor.brand)
         }
         .padding(.horizontal, 12)
@@ -53,7 +53,7 @@ struct SearchView: View {
             .padding(.top, 8)
         } else if store.notFound {
             Text("未找到相关用户")
-                .font(.system(size: 14))
+                .font(WeChatFont.callout)
                 .foregroundStyle(WeChatColor.textSecondary)
                 .padding(.top, 32)
         }
@@ -70,10 +70,10 @@ private struct ResultRow: View {
             Avatar(url: result.avatarURL, size: 48)
             VStack(alignment: .leading, spacing: 4) {
                 Text(result.username)
-                    .font(.system(size: 16))
+                    .font(WeChatFont.body)
                     .foregroundStyle(WeChatColor.textPrimary)
                 Text("微信号:\(result.userId)")
-                    .font(.system(size: 13))
+                    .font(WeChatFont.footnote)
                     .foregroundStyle(WeChatColor.textSecondary)
             }
             Spacer()
@@ -96,7 +96,7 @@ private struct ResultRow: View {
 
     private func label(_ text: String, filled: Bool) -> some View {
         Text(text)
-            .font(.system(size: 14, weight: .medium))
+            .font(WeChatFont.calloutMedium)
             .foregroundStyle(filled ? .white : WeChatColor.textSecondary)
             .padding(.horizontal, 14)
             .padding(.vertical, 7)

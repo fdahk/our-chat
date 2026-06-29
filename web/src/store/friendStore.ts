@@ -1,5 +1,5 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { FriendRequest } from '../contracts/gen/ourchat/friend/v1/friend';
+import type { FriendRequest } from '../contracts/openapi';
 
 // username/avatar:请求方多半还不是好友,本地 friendInfo 取不到,卡片渲染要回退到这里
 export type FriendReq = FriendRequest;

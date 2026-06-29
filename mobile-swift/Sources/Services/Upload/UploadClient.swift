@@ -9,10 +9,6 @@ struct UploadClient: Sendable {
     var uploadFile: @Sendable (_ data: Data, _ filename: String, _ mimeType: String) async throws -> URL
 }
 
-private struct UploadData: Decodable {
-    let url: String
-}
-
 extension UploadClient: DependencyKey {
     static let liveValue = UploadClient(
         uploadImage: { data, filename in
@@ -39,7 +35,7 @@ private func upload(data: Data, filename: String, mimeType: String) async throws
         headers: ["Content-Type": "multipart/form-data; boundary=\(boundary)"],
         body: multipartBody(boundary: boundary, fieldName: "file", filename: filename, mimeType: mimeType, data: data)
     )
-    let result = try await apiClient.sendUnwrapping(request, as: UploadData.self)
+    let result = try await apiClient.sendUnwrapping(request, as: APIUploadResult.self)
     guard let url = URL(string: result.url) else { throw APIError.server(message: "无效的文件地址") }
     return url
 }

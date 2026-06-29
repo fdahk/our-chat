@@ -1,0 +1,568 @@
+openapi: 3.0.3
+info:
+  title: our-chat REST API
+  version: 0.1.0
+  description: >
+    our-chat 业务后端 REST 接口的单一契约源。四端(server/gateway/web/mobile-swift)由本文件生成类型。
+    实时 Socket.io 事件不在此文件范围(见 docs 实时通信契约边界),但事件 payload 复用此处的 components/schemas。
+servers:
+  - url: http://localhost:3007
+    description: 本地开发
+
+tags:
+  - name: auth
+  - name: user
+  - name: friend
+  - name: conversation
+  - name: message
+  - name: upload
+
+paths:
+  /api/login:
+    post:
+      tags: [auth]
+      operationId: login
+      summary: 账号密码登录,返回用户资料 + token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string }
+                password: { type: string }
+                remember: { type: boolean }
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  data: { $ref: '#/components/schemas/LoginData' }
+        '400':
+          $ref: '#/components/responses/Error'
+
+  /api/refresh:
+    post:
+      tags: [auth]
+      operationId: refresh
+      summary: 基于 Bearer 或 cookie 重签 token
+      responses:
+        '200':
+          description: 刷新成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  data:
+                    type: object
+                    properties:
+                      user: { $ref: '#/components/schemas/User' }
+                      token: { type: string }
+        '401':
+          $ref: '#/components/responses/Error'
+
+  /api/register:
+    post:
+      tags: [auth]
+      operationId: register
+      summary: 注册新用户
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, email, password]
+              properties:
+                username: { type: string }
+                email: { type: string }
+                password: { type: string }
+                phone: { type: string }
+                nickname: { type: string }
+                avatar: { type: string }
+                bio: { type: string }
+      responses:
+        '201':
+          description: 注册成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  data: { $ref: '#/components/schemas/User' }
+        '400':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+
+  /user/profile:
+    get:
+      tags: [user]
+      operationId: getProfile
+      summary: 当前登录用户资料
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: 用户资料
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success: { type: boolean }
+                  data: { $ref: '#/components/schemas/User' }
+        '401':
+          $ref: '#/components/responses/Error'
+
+  /user/searchUser:
+    get:
+      tags: [friend]
+      operationId: searchUser
+      summary: 按微信号/手机号/用户名精确查找用户
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: keyword, in: query, required: true, schema: { type: string } }
+        - { name: userId, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: 查询结果(success=false 表示未命中/已是好友,data 仍带)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  data: { $ref: '#/components/schemas/SearchUserResult' }
+
+  /user/getFriendList/{id}:
+    get:
+      tags: [friend]
+      operationId: getFriendList
+      summary: 好友列表(id→备注 + id→资料 两张映射)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: 好友列表
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success: { type: boolean }
+                  data: { $ref: '#/components/schemas/FriendList' }
+
+  /user/addFriend:
+    put:
+      tags: [friend]
+      operationId: addFriend
+      summary: 发起好友请求
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, friendId]
+              properties:
+                userId: { type: integer, format: int64 }
+                friendId: { type: integer, format: int64 }
+      responses:
+        '200':
+          description: 已发起
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkEnvelope' }
+
+  /user/getFriendReqs:
+    get:
+      tags: [friend]
+      operationId: getFriendReqs
+      summary: 我的好友关系/请求(按对方 id 映射)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: userId, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: 请求映射
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    additionalProperties: { $ref: '#/components/schemas/FriendRequest' }
+
+  /user/replyFriendReq:
+    put:
+      tags: [friend]
+      operationId: replyFriendReq
+      summary: 回复好友请求(accepted/blocked)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, friendId, status]
+              properties:
+                userId: { type: string }
+                friendId: { type: string }
+                status: { type: string, enum: [accepted, blocked] }
+      responses:
+        '200':
+          description: 已回复
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkEnvelope' }
+
+  /user/userConversations:
+    get:
+      tags: [conversation]
+      operationId: getUserConversations
+      summary: 我的会话视图列表
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: userId, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: 会话视图数组
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/UserConversation' }
+
+  /user/conversations:
+    get:
+      tags: [conversation]
+      operationId: getConversations
+      summary: 会话元信息(按会话 id 映射)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: userConversationIds, in: query, required: true, description: JSON 字符串数组, schema: { type: string } }
+      responses:
+        '200':
+          description: 会话映射
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    additionalProperties: { $ref: '#/components/schemas/Conversation' }
+
+  /user/lastMessages:
+    get:
+      tags: [conversation]
+      operationId: getLastMessages
+      summary: 每会话最后一条消息(按会话 id 映射)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: userConversationIds, in: query, required: true, description: JSON 字符串数组, schema: { type: string } }
+      responses:
+        '200':
+          description: 末条消息映射(该接口走原生 SQL,仅取预览所需字段)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    additionalProperties: { $ref: '#/components/schemas/MessagePreview' }
+
+  /user/messages:
+    get:
+      tags: [message]
+      operationId: getMessages
+      summary: 会话全部消息(时间升序)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: conversationId, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: 消息数组
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Message' }
+
+  /api/upload/single:
+    post:
+      tags: [upload]
+      operationId: uploadSingle
+      summary: 单文件上传(multipart),返回可访问 URL
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '200':
+          description: 上传结果
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success: { type: boolean }
+                  data: { $ref: '#/components/schemas/UploadResult' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    Error:
+      description: 错误信封
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  schemas:
+    OkEnvelope:
+      type: object
+      required: [success]
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+
+    ErrorEnvelope:
+      type: object
+      required: [success]
+      properties:
+        success: { type: boolean, enum: [false] }
+        message: { type: string }
+
+    User:
+      type: object
+      required: [id, username]
+      properties:
+        id: { type: integer, format: int64, description: 用户 id(即微信号) }
+        username: { type: string }
+        email: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        nickname: { type: string, nullable: true }
+        avatar: { type: string, nullable: true }
+        bio: { type: string, nullable: true }
+        gender: { type: string, nullable: true }
+        status: { type: string, nullable: true }
+        lastSeen: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time, nullable: true }
+        updatedAt: { type: string, format: date-time, nullable: true }
+
+    LoginData:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          required: [token]
+          properties:
+            token: { type: string }
+
+    AuthUser:
+      type: object
+      description: 登录态精简用户(profile / 鉴权状态用)。
+      required: [id, username]
+      properties:
+        id: { type: integer, format: int64 }
+        username: { type: string }
+        email: { type: string, nullable: true }
+        nickname: { type: string, nullable: true }
+        avatar: { type: string, nullable: true }
+        status: { type: string, nullable: true }
+
+    Friend:
+      type: object
+      description: 好友关系行(friendships 表)。
+      required: [friendId, status]
+      properties:
+        id: { type: integer, format: int64 }
+        userId: { type: integer, format: int64 }
+        friendId: { type: integer, format: int64 }
+        status: { type: string, description: 'sent | pending | accepted | blocked' }
+        remark: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time, nullable: true }
+        updatedAt: { type: string, format: date-time, nullable: true }
+
+    FileInfo:
+      type: object
+      description: 非文件消息时服务端下发空对象 {},故所有字段可选。
+      properties:
+        fileName: { type: string }
+        fileSize: { type: integer, format: int64 }
+        fileUrl: { type: string }
+        fileType: { type: string }
+        fileMd5: { type: string }
+
+    Message:
+      type: object
+      required: [id, conversationId, senderId, content, type]
+      properties:
+        id: { type: integer, format: int64 }
+        conversationId: { type: string }
+        senderId: { type: integer, format: int64 }
+        seq: { type: integer, format: int64, nullable: true }
+        clientMsgId: { type: string, nullable: true }
+        content: { type: string }
+        type: { type: string, description: 'text | image | file | video | audio | system' }
+        status: { type: string, nullable: true }
+        mentions:
+          type: array
+          items: { type: integer, format: int64 }
+        isEdited: { type: boolean }
+        isDeleted: { type: boolean }
+        extra: { type: object, additionalProperties: true, nullable: true }
+        editHistory:
+          type: array
+          items: { type: object, additionalProperties: true }
+        fileInfo: { $ref: '#/components/schemas/FileInfo' }
+        timestamp: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time, nullable: true }
+        updatedAt: { type: string, format: date-time, nullable: true }
+
+    MessagePreview:
+      type: object
+      description: lastMessages 的末条消息预览(原生 SQL,仅含预览字段)。
+      properties:
+        content: { type: string }
+        type: { type: string }
+        timestamp: { type: string, format: date-time }
+
+    UserConversation:
+      type: object
+      required: [conversationId]
+      properties:
+        id: { type: integer, format: int64 }
+        userId: { type: integer, format: int64 }
+        conversationId: { type: string }
+        unreadCount: { type: integer, nullable: true }
+        isMuted: { type: boolean, nullable: true }
+        isPinned: { type: boolean, nullable: true }
+        lastReadMessageId: { type: string, nullable: true }
+        lastSyncedSeq: { type: integer, format: int64 }
+        lastReadSeq: { type: integer, format: int64 }
+        mentionSeq: { type: integer, format: int64 }
+        isArchived: { type: boolean }
+        joinedAt: { type: string, format: date-time, nullable: true }
+        lastActivity: { type: string, format: date-time, nullable: true }
+
+    Conversation:
+      type: object
+      required: [id]
+      properties:
+        id: { type: string }
+        convType: { type: string, nullable: true }
+        title: { type: string, nullable: true }
+        avatar: { type: string, nullable: true }
+        nextSeq: { type: integer, format: int64 }
+        createdAt: { type: string, format: date-time, nullable: true }
+        updatedAt: { type: string, format: date-time, nullable: true }
+
+    FriendList:
+      type: object
+      required: [friendId, friendInfo]
+      properties:
+        friendId:
+          type: object
+          additionalProperties: { type: string, nullable: true }
+        friendInfo:
+          type: object
+          additionalProperties: { $ref: '#/components/schemas/FriendInfo' }
+
+    FriendInfo:
+      type: object
+      required: [username]
+      properties:
+        username: { type: string }
+        avatar: { type: string, nullable: true }
+        gender: { type: string, nullable: true }
+
+    SearchUserResult:
+      type: object
+      properties:
+        exist: { type: boolean }
+        isFriend: { type: boolean }
+        friendInfo: { $ref: '#/components/schemas/SearchedUser' }
+
+    SearchedUser:
+      type: object
+      required: [id, username]
+      properties:
+        id: { type: integer, format: int64 }
+        username: { type: string }
+        avatar: { type: string, nullable: true }
+        gender: { type: string, nullable: true }
+
+    FriendRequest:
+      type: object
+      required: [friendId, status]
+      properties:
+        id: { type: integer, format: int64 }
+        userId: { type: integer, format: int64 }
+        friendId: { type: integer, format: int64 }
+        status: { type: string, description: 'sent | pending | accepted | blocked' }
+        remark: { type: string, nullable: true }
+        username: { type: string, nullable: true }
+        avatar: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time, nullable: true }
+        updatedAt: { type: string, format: date-time, nullable: true }
+
+    UploadResult:
+      type: object
+      required: [url]
+      properties:
+        url: { type: string }
+        originalName: { type: string }
+        size: { type: integer, format: int64 }
+        md5: { type: string }
