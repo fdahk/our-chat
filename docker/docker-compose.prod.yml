@@ -116,11 +116,16 @@ services:
       - server
       - gateway
     ports:
-      - '${WEB_PORT:-8080}:80'
+      - '80:80'
+      - '443:443'
     # 边缘路由策略外置：改代理/限额无需重建前端镜像，只改挂载文件后 reload。
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf:ro
+      # TLS：certbot 证书目录整挂(live 下是软链,必须挂 /etc/letsencrypt 整体)只读给 nginx；
+      # certbot-www 是续期 HTTP-01 的 webroot(certbot 写挑战文件,nginx 在 80 端口读)。
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ./certbot-www:/var/www/certbot:ro
     # 加入 oc-shared，让 nginx 能同源反代到 agent-node-server:3101（/agent/）
     networks: [our-chat, oc-shared]
 

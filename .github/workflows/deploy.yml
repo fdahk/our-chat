@@ -153,7 +153,8 @@ jobs:
             set -euo pipefail
             umask 077
             cd "${DEPLOY_PATH}"
-            mkdir -p keys
+            # keys: OAuth 私钥; certbot-www: HTTPS 证书续期的 webroot 挑战目录
+            mkdir -p keys certbot-www
 
             # 跨项目共享网络（与 agent-server 互通）：compose 以 external 引用，必须先存在。
             # 幂等创建——无论 our-chat 还是 agent-server 谁先部署，都能把它建出来。
