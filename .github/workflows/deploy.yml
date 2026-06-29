@@ -60,8 +60,11 @@ jobs:
           tags: |
             ${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:${{ github.sha }}
             ${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:latest
-          cache-from: type=gha,scope=${{ matrix.name }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+          # 构建缓存存到 registry(而非 GHA 缓存——GHA 缓存 7 天不用就清,稀疏部署必失效,
+          # 导致依赖层被重建、digest 变化、服务器被迫重下几百 MB)。存进镜像仓库后长期有效:
+          # 依赖未变 → 复用缓存 → 依赖层 digest 稳定 → 服务器拉取时直接跳过、只下变化的代码层。
+          cache-from: type=registry,ref=${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:buildcache,mode=max
 
   # ── 2) 同步部署文件 + 在服务器生成 .env/私钥 + 拉取镜像滚动重启 ──
   deploy:
@@ -186,13 +189,23 @@ jobs:
             } > .env
             chmod 600 .env
 
-            # 应用镜像在 Docker Hub(public)，服务器经 daemon registry-mirrors 拉取(免登录)。
-            # up --pull missing：只拉本地缺失的镜像(新 sha)，已缓存的基础镜像不再碰镜像源，避免抖动卡死
-            # (server 启动自动跑 prisma migrate deploy)。
+            # 应用镜像走 registry(public)，服务器经 daemon registry-mirrors 拉取(免登录)。
             export SERVER_IMAGE="${IMAGE_PREFIX}-server:${GIT_SHA}"
             export GATEWAY_IMAGE="${IMAGE_PREFIX}-gateway:${GIT_SHA}"
             export WEB_IMAGE="${IMAGE_PREFIX}-web:${GIT_SHA}"
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans --pull missing
+            # —— 弱网容错:逐个应用镜像带重试拉取 ——
+            # docker pull 失败重试会「续传已下载的层」,弱网抖动/卡顿不会让整次部署一击毙命;
+            # 只拉应用镜像(每次变),基础镜像已缓存、交给随后的 up 命中本地、不再联网复检(那也走flaky源会卡)。
+            for svc in server gateway web; do
+              n=0
+              until docker compose -f docker-compose.prod.yml pull "$svc"; do
+                n=$((n+1))
+                [ "$n" -ge 8 ] && { echo "::error::[$svc] 镜像拉取重试 8 次仍失败,放弃本次部署"; exit 1; }
+                echo "[$svc] 第 $n 次拉取中断,15s 后重试(docker 续传已下层)…"; sleep 15
+              done
+            done
+            # 镜像就位 → 起容器(基础镜像命中本地缓存,不再联网);server 启动自动 prisma migrate deploy。
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
             docker image prune -f
 
             echo "✅ 部署完成：${GIT_SHA}"
