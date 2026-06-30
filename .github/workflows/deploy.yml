@@ -62,11 +62,11 @@ jobs:
           tags: |
             ${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:${{ github.sha }}
             ${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:latest
-          # 构建缓存存到 registry(而非 GHA 缓存——GHA 缓存 7 天不用就清,稀疏部署必失效,
-          # 导致依赖层被重建、digest 变化、服务器被迫重下几百 MB)。存进镜像仓库后长期有效:
-          # 依赖未变 → 复用缓存 → 依赖层 digest 稳定 → 服务器拉取时直接跳过、只下变化的代码层。
-          cache-from: type=registry,ref=${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:buildcache
-          cache-to: type=registry,ref=${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:buildcache,mode=max
+          # 构建缓存用 GHA(runner 内部,快)。不用 registry 缓存:runner 在海外、TCR 在国内,
+          # 把缓存(mode=max 含全部中间层)推 TCR 是海外→国内大上传,极慢且连接易断(实测 1h+ 失败)。
+          # GHA 7 天过期会让依赖层偶尔重建→服务器重下,但 TCR 同云拉取快,这点损耗可接受。
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
 
   # ── 2) 同步部署文件 + 在服务器生成 .env/私钥 + 拉取镜像滚动重启 ──
   deploy:
