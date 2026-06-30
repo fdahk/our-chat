@@ -101,58 +101,13 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
           envs: GIT_SHA,DEPLOY_PATH,POSTGRES_PASSWORD,JWT_SECRET,GATEWAY_INTERNAL_TOKEN,S3_ACCESS_KEY,S3_SECRET_KEY,OAUTH_PRIVATE_KEY_B64,WEB_PUBLIC_ORIGIN,OAUTH_ACTIVE_KID,S3_ENDPOINT,S3_REGION,S3_BUCKET,S3_PUBLIC_BASE_URL,POSTGRES_USER,POSTGRES_DB
-          # 冷启动首次本地 build(拉基础镜像 + pnpm install + 编译 3 个服务)偏慢,放宽到 40m;之后命中层缓存很快。
-          command_timeout: 40m
+          # ssh-action 内是轮询(每 10s tail 一次,顺便给 SSH 通道喂流量防弱网空闲被重置),
+          # 实际 build+up 由 ci-deploy.sh 用 setsid 脱离本会话后台跑(断连也跑完)。放宽到 35m 覆盖轮询上限。
+          command_timeout: 35m
           script_stop: true
+          # 全部服务器侧逻辑收敛进已 scp 的 docker/ci-deploy.sh(生成 .env/私钥 → 后台 build+up → 轮询结果),
+          # 这样 drone-ssh 的逐行包裹只作用于这一条调用,不会破坏脚本里的 heredoc/循环等复合结构。
           script: |
             set -euo pipefail
-            umask 077
-            # compose 在 docker/ 运行;构建上下文(../server 等)与 .env、keys、certbot-www 均在部署目录下。
             cd "${DEPLOY_PATH}/docker"
-            # keys: OAuth 私钥; certbot-www: HTTPS 证书续期的 webroot 挑战目录
-            mkdir -p keys certbot-www
-
-            # 跨项目共享网络（与 agent-server 互通）：compose 以 external 引用，必须先存在。
-            # 幂等创建——无论 our-chat 还是 agent-server 谁先部署，都能把它建出来。
-            docker network inspect oc-shared >/dev/null 2>&1 || docker network create oc-shared
-
-            # —— 写 OAuth 生产私钥（base64 secret 解码）——
-            printf '%s' "${OAUTH_PRIVATE_KEY_B64}" | base64 -d > keys/oauth-private-prod.pem
-            # 容器内 server 以非 root 用户(app)运行,uid 与宿主 ubuntu(1000)不同;私钥需对其可读,
-            # 否则启动读 key 报 EACCES。单租户服务器 + :ro 挂载,644 可接受。
-            chmod 644 keys/oauth-private-prod.pem
-
-            # —— 生成 .env（仅 ②③；①通用默认在 compose）。CLIENT_ORIGINS/OAUTH_* 由 WEB_PUBLIC_ORIGIN 派生，三处天然一致 ——
-            {
-              echo "POSTGRES_USER=${POSTGRES_USER:-postgres}"
-              echo "POSTGRES_DB=${POSTGRES_DB:-our_chat}"
-              echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
-              echo "JWT_SECRET=${JWT_SECRET}"
-              echo "GATEWAY_INTERNAL_TOKEN=${GATEWAY_INTERNAL_TOKEN}"
-              echo "OAUTH_ACTIVE_KID=${OAUTH_ACTIVE_KID}"
-              echo "CLIENT_ORIGINS=${WEB_PUBLIC_ORIGIN}"
-              echo "OAUTH_ISSUER_BASE_URL=${WEB_PUBLIC_ORIGIN}"
-              echo "OAUTH_WEB_REDIRECT_URI=${WEB_PUBLIC_ORIGIN}/oauth/callback"
-              echo "S3_ENDPOINT=${S3_ENDPOINT}"
-              echo "S3_REGION=${S3_REGION}"
-              echo "S3_BUCKET=${S3_BUCKET}"
-              echo "S3_PUBLIC_BASE_URL=${S3_PUBLIC_BASE_URL}"
-              echo "S3_ACCESS_KEY=${S3_ACCESS_KEY}"
-              echo "S3_SECRET_KEY=${S3_SECRET_KEY}"
-            } > .env
-            chmod 600 .env
-
-            # web 镜像在构建期需 WEB_PUBLIC_ORIGIN(compose build-arg 从 shell env 取);导出供 build 读取。
-            export WEB_PUBLIC_ORIGIN
-
-            # —— 本地构建镜像 ——
-            # 依赖源走国内(server/web 的 NPM_REGISTRY、gateway 的 GOPROXY_URL 已在 compose build-args 内置);
-            # 基础镜像(node/golang/nginx/alpine)走 daemon 配置的镜像加速;全程不跨墙传大层。
-            docker compose -f docker-compose.prod.yml build
-            # 起容器(基础镜像/已构建镜像均在本地);server 启动自动 prisma migrate deploy。
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
-            # 清理重建后产生的悬空镜像层,省磁盘。
-            docker image prune -f
-
-            echo "✅ 部署完成：${GIT_SHA}"
-            docker compose -f docker-compose.prod.yml ps
+            bash ci-deploy.sh
