@@ -1,4 +1,5 @@
-# our-chat 生产部署编排（只拉取镜像，不在服务器构建）。
+# our-chat 生产部署编排（镜像在服务器本地构建，不跨墙拉/推）。
+# 应用镜像(server/gateway/web)用 build: 就地构建；基础镜像(postgres/redis)仍走 daemon 镜像加速拉取。
 #
 # 配置分层（重要）：
 #   ① 通用、非机密、哪都一样 → 本文件 environment: 里用 ${VAR:-默认值}，无需任何 env 文件即可跑。
@@ -11,7 +12,7 @@
 #   S3_ENDPOINT/S3_REGION/S3_BUCKET/S3_PUBLIC_BASE_URL/S3_ACCESS_KEY/S3_SECRET_KEY
 # OAuth 私钥同样由 Action 写到 ./keys/oauth-private-prod.pem。
 #
-# 镜像 tag（SERVER_IMAGE 等）由 Action 以 shell env 注入（精确 commit sha）。
+# web 的 VITE_SERVER_ORIGIN/VITE_AGENT_API_BASE 由 WEB_PUBLIC_ORIGIN 派生(部署脚本 export 后注入 build)。
 name: our-chat
 
 services:
@@ -49,8 +50,12 @@ services:
     networks: [our-chat]
 
   server:
-    # tag 由 CI 注入（github.sha）；默认 latest 仅手动兜底。
-    image: ${SERVER_IMAGE:-our-chat.tencentcloudcr.com/skillhub/our-chat-server:latest}
+    # 服务器本地构建(镜像不跨墙)。compose 在 repo/docker/ 运行,故上下文 = ../server(git 拉取的源码)。
+    build:
+      context: ../server
+      args:
+        NPM_REGISTRY: https://registry.npmmirror.com
+    image: our-chat-server:local
     container_name: our-chat-server
     restart: unless-stopped
     depends_on:
@@ -88,7 +93,12 @@ services:
     networks: [our-chat, oc-shared]
 
   gateway:
-    image: ${GATEWAY_IMAGE:-our-chat.tencentcloudcr.com/skillhub/our-chat-gateway:latest}
+    # 服务器本地构建(镜像不跨墙)。compose 在 repo/docker/ 运行,故上下文 = ../gateway(git 拉取的源码)。
+    build:
+      context: ../gateway
+      args:
+        GOPROXY_URL: 'https://goproxy.cn,direct'
+    image: our-chat-gateway:local
     container_name: our-chat-gateway
     restart: unless-stopped
     depends_on:
@@ -109,7 +119,15 @@ services:
     networks: [our-chat]
 
   web:
-    image: ${WEB_IMAGE:-our-chat.tencentcloudcr.com/skillhub/our-chat-web:latest}
+    # 服务器本地构建(镜像不跨墙)。上下文 = ../web；VITE_* 在编译期内联进 bundle。
+    # VITE_SERVER_ORIGIN/VITE_AGENT_API_BASE 由 WEB_PUBLIC_ORIGIN 派生(部署脚本 export 后注入 build)。
+    build:
+      context: ../web
+      args:
+        NPM_REGISTRY: https://registry.npmmirror.com
+        VITE_SERVER_ORIGIN: ${WEB_PUBLIC_ORIGIN:?WEB_PUBLIC_ORIGIN 未设置（应由 CI export）}
+        VITE_AGENT_API_BASE: ${WEB_PUBLIC_ORIGIN}/agent/api
+    image: our-chat-web:local
     container_name: our-chat-web
     restart: unless-stopped
     depends_on:
