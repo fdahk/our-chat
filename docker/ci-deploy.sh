@@ -12,6 +12,9 @@ cd "$(dirname "$0")"
 
 # keys: OAuth 私钥; certbot-www: HTTPS 证书续期的 webroot 挑战目录
 mkdir -p keys certbot-www
+# 容器内 server 以非 root 用户(app,uid 10001)运行,需能"穿过"keys 目录读私钥;
+# 目录若是 700(受限 umask 下 mkdir 默认),other 无 x → 即便私钥文件 644 也会 EACCES。显式给目录 o+rx。
+chmod 755 keys
 
 # 跨项目共享网络（与 agent-server 互通）：compose 以 external 引用，必须先存在（幂等）
 docker network inspect oc-shared >/dev/null 2>&1 || docker network create oc-shared
