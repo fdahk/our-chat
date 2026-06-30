@@ -50,7 +50,7 @@ services:
     networks: [our-chat]
 
   server:
-    # 服务器本地构建(镜像不跨墙)。compose 在 repo/docker/ 运行,故上下文 = ../server(git 拉取的源码)。
+    # 服务器本地构建(镜像不跨墙)。compose 在 docker/ 运行,上下文 = ../server(CI scp 同步的源码)。
     build:
       context: ../server
       args:
@@ -93,7 +93,7 @@ services:
     networks: [our-chat, oc-shared]
 
   gateway:
-    # 服务器本地构建(镜像不跨墙)。compose 在 repo/docker/ 运行,故上下文 = ../gateway(git 拉取的源码)。
+    # 服务器本地构建(镜像不跨墙)。compose 在 docker/ 运行,上下文 = ../gateway(CI scp 同步的源码)。
     build:
       context: ../gateway
       args:
