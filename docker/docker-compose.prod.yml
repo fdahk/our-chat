@@ -149,10 +149,12 @@ services:
 
   # ── coturn:STUN/TURN,给 WebRTC 音视频做 NAT 穿透(异网络/对称 NAT 的兜底中继)──
   #   · host 网络:relay 要在真实网络上动态开一段 UDP 端口,bridge 的 NAT 会把 relay 地址搞乱 → 必须 host。
-  #   · 机密与环境项(共享 secret / 服务器公网 IP)经 command 以 ${} 从 .env 注入,不落进只读挂载的 conf。
+  #   · 机密与环境项(secret / 公网IP / 私网IP)经 command 以 ${} 从 .env 注入,不落进只读挂载的 conf。
   #   · 复用 nginx 的 Let's Encrypt 证书做 TURNS(5349,只读挂载 /etc/letsencrypt)。
   #   · 需在云防火墙放行入站:3478 udp+tcp、5349 tcp、49160-49200 udp(见技术方案文档)。
   #   · 覆盖默认 CMD 时要保留 --log-file=stdout,否则 docker logs 看不到日志。
+  #   · listening-ip/relay-ip 必须锁到真实私网网卡:host 网络下 coturn 会把 docker 网桥(172.x)、
+  #     回环也当 listener/relay 地址,中继若落在 172.x → 对外不可达、通话打不通。external-ip=公网/私网。
   coturn:
     image: coturn/coturn:4.6-alpine
     container_name: our-chat-coturn
@@ -166,7 +168,9 @@ services:
       - -c
       - /etc/coturn/turnserver.conf
       - --static-auth-secret=${TURN_SECRET:?TURN_SECRET 未设置（应由 CI 写入 .env）}
-      - --external-ip=${TURN_EXTERNAL_IP:?TURN_EXTERNAL_IP 未设置（服务器公网 IP,应由 CI 写入 .env）}
+      - --listening-ip=${TURN_LISTENING_IP:?TURN_LISTENING_IP 未设置（服务器私网 IP,应由 CI 写入 .env）}
+      - --relay-ip=${TURN_LISTENING_IP}
+      - --external-ip=${TURN_EXTERNAL_IP:?TURN_EXTERNAL_IP 未设置（服务器公网 IP,应由 CI 写入 .env）}/${TURN_LISTENING_IP}
 
 volumes:
   postgres_data:

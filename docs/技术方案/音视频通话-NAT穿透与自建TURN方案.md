@@ -82,9 +82,14 @@ use-auth-secret
 static-auth-secret=${TURN_SECRET}   # 与服务端共享(部署时注入)
 realm=tujiang.tech
 
-# 关键:Lighthouse 是 1:1 NAT,网卡只看到私网 IP,必须显式告知公网 IP,
-# 否则 relay 候选会广播私网地址,外网连不上。
-external-ip=${TURN_EXTERNAL_IP}
+# 关键①:Lighthouse 是 1:1 NAT,网卡只看到私网 IP,必须显式告知公网 IP,否则 relay 候选广播私网地址、外网连不上。
+# 关键②(host 网络必踩):不锁 listening-ip/relay-ip 时,coturn 会把 docker 网桥(172.17-20.0.1)、回环也
+#   当 listener/relay 地址,中继若落在 172.x → 对外不可达、通话打不通(实测现象:分配成功但媒体不通)。
+#   故必须把 listening-ip/relay-ip 锁到真实私网网卡(默认路由 src,如 10.0.0.5),external-ip=公网/私网 映射。
+#   这三项都由 compose command 从 .env 注入(TURN_LISTENING_IP 由 ci-deploy.sh 取默认路由 src 得到)。
+listening-ip=${TURN_LISTENING_IP}
+relay-ip=${TURN_LISTENING_IP}
+external-ip=${TURN_EXTERNAL_IP}/${TURN_LISTENING_IP}
 
 # relay 端口段(收窄,便于云防火墙放行 + 降低暴露面)
 min-port=49160

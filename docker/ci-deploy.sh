@@ -47,6 +47,9 @@ chmod 644 keys/oauth-private-prod.pem
   echo "TURN_SECRET=${TURN_SECRET:-}"
   echo "TURN_HOST=$(printf '%s' "${WEB_PUBLIC_ORIGIN}" | sed -E 's#^[a-z]+://##; s#[:/].*$##')"
   echo "TURN_EXTERNAL_IP=${TURN_EXTERNAL_IP:-}"
+  # coturn 用 host 网络会把 docker 网桥/回环也当中继地址,必须锁到真实私网网卡(默认路由源地址),
+  # 否则中继落在 172.x → 对外不可达、通话打不通。取默认路由的 src IP。
+  echo "TURN_LISTENING_IP=$(ip route get 1.1.1.1 2>/dev/null | grep -oE 'src [0-9.]+' | awk '{print $2}')"
 } > .env
 chmod 600 .env
 
