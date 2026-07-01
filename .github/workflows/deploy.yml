@@ -50,9 +50,10 @@ jobs:
           S3_REGION: ${{ secrets.S3_REGION }}
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
           S3_PUBLIC_BASE_URL: ${{ secrets.S3_PUBLIC_BASE_URL }}
+          TURN_SECRET: ${{ secrets.TURN_SECRET }}
         run: |
           miss=0
-          for v in SSH_HOST SSH_USER SSH_PRIVATE_KEY POSTGRES_PASSWORD JWT_SECRET GATEWAY_INTERNAL_TOKEN S3_ACCESS_KEY S3_SECRET_KEY OAUTH_PRIVATE_KEY_B64 WEB_PUBLIC_ORIGIN OAUTH_ACTIVE_KID S3_ENDPOINT S3_REGION S3_BUCKET S3_PUBLIC_BASE_URL; do
+          for v in SSH_HOST SSH_USER SSH_PRIVATE_KEY POSTGRES_PASSWORD JWT_SECRET GATEWAY_INTERNAL_TOKEN S3_ACCESS_KEY S3_SECRET_KEY OAUTH_PRIVATE_KEY_B64 WEB_PUBLIC_ORIGIN OAUTH_ACTIVE_KID S3_ENDPOINT S3_REGION S3_BUCKET S3_PUBLIC_BASE_URL TURN_SECRET; do
             if [ -z "${!v:-}" ]; then echo "❌ 缺少 Secret：$v"; miss=1; else echo "✓ Secret $v 已设置"; fi
           done
           if [ "$miss" -ne 0 ]; then
@@ -95,12 +96,16 @@ jobs:
           S3_PUBLIC_BASE_URL: ${{ secrets.S3_PUBLIC_BASE_URL }}
           POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
           POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          # WebRTC TURN(coturn):server 生成短期凭据 + coturn 校验用同一 secret;external-ip = 服务器公网 IP
+          # (没单独配 TURN_EXTERNAL_IP 时用 SSH_HOST——它就是公网 IP)。
+          TURN_SECRET: ${{ secrets.TURN_SECRET }}
+          TURN_EXTERNAL_IP: ${{ secrets.TURN_EXTERNAL_IP || secrets.SSH_HOST }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
-          envs: GIT_SHA,DEPLOY_PATH,POSTGRES_PASSWORD,JWT_SECRET,GATEWAY_INTERNAL_TOKEN,S3_ACCESS_KEY,S3_SECRET_KEY,OAUTH_PRIVATE_KEY_B64,WEB_PUBLIC_ORIGIN,OAUTH_ACTIVE_KID,S3_ENDPOINT,S3_REGION,S3_BUCKET,S3_PUBLIC_BASE_URL,POSTGRES_USER,POSTGRES_DB
+          envs: GIT_SHA,DEPLOY_PATH,POSTGRES_PASSWORD,JWT_SECRET,GATEWAY_INTERNAL_TOKEN,S3_ACCESS_KEY,S3_SECRET_KEY,OAUTH_PRIVATE_KEY_B64,WEB_PUBLIC_ORIGIN,OAUTH_ACTIVE_KID,S3_ENDPOINT,S3_REGION,S3_BUCKET,S3_PUBLIC_BASE_URL,POSTGRES_USER,POSTGRES_DB,TURN_SECRET,TURN_EXTERNAL_IP
           # ssh-action 内是轮询(每 10s tail 一次,顺便给 SSH 通道喂流量防弱网空闲被重置),
           # 实际 build+up 由 ci-deploy.sh 用 setsid 脱离本会话后台跑(断连也跑完)。放宽到 35m 覆盖轮询上限。
           command_timeout: 35m

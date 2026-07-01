@@ -42,8 +42,24 @@ chmod 644 keys/oauth-private-prod.pem
   echo "S3_PUBLIC_BASE_URL=${S3_PUBLIC_BASE_URL}"
   echo "S3_ACCESS_KEY=${S3_ACCESS_KEY}"
   echo "S3_SECRET_KEY=${S3_SECRET_KEY}"
+  # WebRTC TURN(coturn):server 用 TURN_SECRET/TURN_HOST 生成短期凭据;coturn 用 TURN_SECRET/TURN_EXTERNAL_IP。
+  # TURN_HOST 由 WEB_PUBLIC_ORIGIN 剥掉协议/端口/路径得到(如 https://tujiang.tech → tujiang.tech)。
+  echo "TURN_SECRET=${TURN_SECRET:-}"
+  echo "TURN_HOST=$(printf '%s' "${WEB_PUBLIC_ORIGIN}" | sed -E 's#^[a-z]+://##; s#[:/].*$##')"
+  echo "TURN_EXTERNAL_IP=${TURN_EXTERNAL_IP:-}"
 } > .env
 chmod 600 .env
+
+# —— 安装 Let's Encrypt 续期钩子:证书续期后自动 reload nginx + restart coturn(否则容器仍用旧证书)——
+# certbot 在宿主机续期,容器只读挂载;钩子放进 renewal-hooks/deploy/,续期成功后 certbot 自动运行。
+# 需免密 sudo 写 /etc/letsencrypt;没有则告警跳过(续期后需手动重载),不阻断部署。
+if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+  sudo -n install -D -m 0755 ./certbot-renew-hook.sh /etc/letsencrypt/renewal-hooks/deploy/our-chat-reload.sh \
+    && echo "certbot 续期钩子已安装" \
+    || echo "::warning::certbot 续期钩子安装失败;证书续期后需手动 nginx reload + coturn restart"
+else
+  echo "::warning::无免密 sudo,未安装 certbot 续期钩子;证书续期后需手动 nginx reload + coturn restart"
+fi
 
 # web 镜像构建期需 WEB_PUBLIC_ORIGIN(compose build-arg 从 shell env 取);导出供后台 build 继承。
 export WEB_PUBLIC_ORIGIN

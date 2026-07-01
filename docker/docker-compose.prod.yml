@@ -147,6 +147,27 @@ services:
     # 加入 oc-shared，让 nginx 能同源反代到 agent-node-server:3101（/agent/）
     networks: [our-chat, oc-shared]
 
+  # ── coturn:STUN/TURN,给 WebRTC 音视频做 NAT 穿透(异网络/对称 NAT 的兜底中继)──
+  #   · host 网络:relay 要在真实网络上动态开一段 UDP 端口,bridge 的 NAT 会把 relay 地址搞乱 → 必须 host。
+  #   · 机密与环境项(共享 secret / 服务器公网 IP)经 command 以 ${} 从 .env 注入,不落进只读挂载的 conf。
+  #   · 复用 nginx 的 Let's Encrypt 证书做 TURNS(5349,只读挂载 /etc/letsencrypt)。
+  #   · 需在云防火墙放行入站:3478 udp+tcp、5349 tcp、49160-49200 udp(见技术方案文档)。
+  #   · 覆盖默认 CMD 时要保留 --log-file=stdout,否则 docker logs 看不到日志。
+  coturn:
+    image: coturn/coturn:4.6-alpine
+    container_name: our-chat-coturn
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    command:
+      - --log-file=stdout
+      - -c
+      - /etc/coturn/turnserver.conf
+      - --static-auth-secret=${TURN_SECRET:?TURN_SECRET 未设置（应由 CI 写入 .env）}
+      - --external-ip=${TURN_EXTERNAL_IP:?TURN_EXTERNAL_IP 未设置（服务器公网 IP,应由 CI 写入 .env）}
+
 volumes:
   postgres_data:
     name: our-chat-postgres-data
